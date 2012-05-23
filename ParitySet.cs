@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
+using System.Security.Cryptography;
 
 namespace disParity
 {
@@ -47,6 +48,9 @@ namespace disParity
       Parity.Initialize(config.ParityDir, config.TempDir, false);
     }
 
+    /// <summary>
+    /// Returns whether or not there is any parity data generated yet for this parity set
+    /// </summary>
     public bool Empty { get; private set; }
 
     /// <summary>
@@ -77,6 +81,194 @@ namespace disParity
         d.Compare();
       }
 
+      // process all moves for all drives first, since that doesn't require changing
+      // any parity data, only the meta data
+      foreach (DataDrive d in drives)
+        d.ProcessMoves();
+
+      // now process deletes
+      int deleteCount = 0;
+      long deleteSize = 0;
+      DateTime start = DateTime.Now;
+      foreach (DataDrive d in drives) {
+        foreach (FileRecord r in d.Deletes)
+          if (RemoveFromParity(r)) {
+            deleteCount++;
+            deleteSize += r.Length;
+          }
+        foreach (FileRecord r in d.Edits)
+          if (RemoveFromParity(r)) {
+            deleteCount++;
+            deleteSize += r.Length;
+          }
+      }
+      if (deleteCount > 0) {
+        TimeSpan elapsed = DateTime.Now - start;
+        LogFile.Log("{0} file{1} ({2}) removed in {3:F2} sec", deleteCount,
+          deleteCount == 1 ? "" : "s", Utils.SmartSize(deleteSize), elapsed.TotalSeconds);
+      }
+
+      // now process adds
+      int addCount = 0;
+      long addSize = 0;
+      start = DateTime.Now;
+      foreach (DataDrive d in drives) {
+        foreach (FileRecord r in d.Adds)
+          if (AddToParity(r)) {
+            addCount++;
+            addSize += r.Length;
+          }
+        foreach (FileRecord r in d.Edits)
+          if (AddToParity(r)) {
+            addCount++;
+            addSize += r.Length;
+          }
+      }
+      if (addCount > 0) {
+        TimeSpan elapsed = DateTime.Now - start;
+        LogFile.Log("{0} file{1} ({2}) added in {3:F2} sec", addCount,
+          addCount == 1 ? "" : "s", Utils.SmartSize(addSize), elapsed.TotalSeconds);
+      }
+
+      Parity.Close();
+
+      foreach (DataDrive d in drives) {
+        Console.WriteLine("Block mask for {0}:", d.Root);
+        PrintBlockMask(d);
+      }
+
+    }
+
+    private bool AddToParity(FileRecord r)
+    {
+      string fullPath = r.FullPath;
+      // attributes may have changed since we started, refresh just in case
+      if (!r.Refresh(fullPath)) {
+        LogFile.Log("{0} no longer exists.", fullPath);
+        return false;
+      }
+      if (r.Length > 0) {
+        // See if we can find an empty chunk in the parity we can re-use.
+        // We don't want just any empty spot, we want the smallest one 
+        // that is large enough to contain the file, to minimize 
+        // fragmentation.  A chunk that is exactly the same size is ideal.
+        List<FreeNode> freeList = r.Drive.GetFreeList();
+        UInt32 startBlock = FreeNode.FindBest(freeList, r.LengthInBlocks);
+        if (startBlock == FreeNode.INVALID_BLOCK)
+          startBlock = r.Drive.MaxBlock;
+        UInt32 endBlock = startBlock + r.LengthInBlocks;
+        if (endBlock > MaxParityBlock()) {
+          // File is going on the end, so make sure there is enough space 
+          // left on the parity drive to actually add this file.
+          // FIXME: This check should also be sure there is enough space left for the new file table
+          long required = (endBlock - MaxParityBlock()) * Parity.BlockSize;
+          long available = Parity.FreeSpace;
+          if ((available != -1) && (available < required)) {
+            LogFile.Log("Insufficient space available on {0} to process " +
+              "{1}.  File will be skipped this update. (Required: {2} " +
+              "Available: {3})", Parity.Dir, fullPath, Utils.SmartSize(required), Utils.SmartSize(available));
+            return false;
+          }
+        }
+
+        r.StartBlock = startBlock;
+        if (LogFile.Verbose)
+          LogFile.Log("Adding {0} to blocks {1} to {2}...", fullPath, startBlock, endBlock - 1);
+        else
+          LogFile.Log("Adding {0}...", fullPath);
+
+        byte[] data = new byte[Parity.BlockSize];
+        MD5 hash = MD5.Create();
+        hash.Initialize();
+        using (ParityChange change = new ParityChange(startBlock, r.LengthInBlocks)) {
+          using (FileStream f = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            for (UInt32 b = startBlock; b < endBlock; b++) {
+              Int32 bytesRead;
+              try {
+                bytesRead = f.Read(data, 0, Parity.BlockSize);
+              }
+              catch (Exception e) {
+                LogFile.Log("Error reading {0}: {1}", fullPath, e.Message);
+                LogFile.Log("File will be skipped.");
+                return false;
+              }
+              if (b == (endBlock - 1))
+                hash.TransformFinalBlock(data, 0, bytesRead);
+              else
+                hash.TransformBlock(data, 0, bytesRead, data, 0);
+              while (bytesRead < Parity.BlockSize)
+                data[bytesRead++] = 0;
+              change.Reset(true);
+              change.AddData(data);
+              change.Write();
+            }
+          change.Save();
+        }
+        r.HashCode = hash.Hash;
+      }
+      r.Drive.AddFile(r);
+      return true;
+    }
+
+    private bool RemoveFromParity(FileRecord r)
+    {
+      if (r.Length > 0) {
+        UInt32 startBlock = r.StartBlock;
+        UInt32 endBlock = startBlock + r.LengthInBlocks;
+        string fullPath = r.FullPath;
+        if (LogFile.Verbose)
+          LogFile.Log("Removing {0} from blocks {1} to {2}...", fullPath, startBlock, endBlock - 1);
+        else
+          LogFile.Log("Removing {0}...", fullPath);
+
+        // Recalulate parity from scratch for all blocks that contained the deleted file's data.
+        using (ParityChange change = new ParityChange(startBlock, r.LengthInBlocks)) {
+          byte[] data = new byte[Parity.BlockSize];
+          for (UInt32 b = startBlock; b < endBlock; b++) {
+            change.Reset(false);
+            foreach (DataDrive d in drives) {
+              if (d == r.Drive)
+                continue;
+              // Note it's possible that this file may also have been deleted. That's OK, ReadFileData 
+              // returns false and we don't try to add the deleted file to the parity.
+              try {
+                if (d.ReadBlock(b, data))
+                  change.AddData(data);
+              }
+              catch (Exception e) {
+                LogFile.Log("Error: {0}", e.Message);
+                LogFile.Log("Unable to remove {0}, file will be skipped this update", fullPath);
+                Parity.CloseTemp();
+                return false;
+              }
+            }
+            change.Write();
+          }
+          change.Save();
+        }
+      }
+      r.Drive.RemoveFile(r);
+      return true;
+    }
+
+    private void PrintBlockMask(DataDrive d)
+    {
+      bool[] blockMask = d.BlockMask;
+      foreach (bool b in blockMask)
+        Console.Write("{0}", b ? 'X' : '.');
+      Console.WriteLine();
+    }
+
+    /// <summary>
+    /// Calculates the highest used parity block across all drives
+    /// </summary>
+    private UInt32 MaxParityBlock()
+    {
+      UInt32 maxBlock = 0;
+      foreach (DataDrive d in drives)
+        if (d.MaxBlock > maxBlock)
+          maxBlock = d.MaxBlock;
+      return maxBlock;
     }
 
     /// <summary>

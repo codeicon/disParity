@@ -29,7 +29,7 @@ namespace disParity
   class Program
   {
     public static LogFile logFile;
-    public static DataPath[] drives;
+    //public static DataPath[] drives;
     public static bool ignoreHidden = false;
 
     static string[] backupDirs;
@@ -102,10 +102,10 @@ namespace disParity
         return;
       }
 
-      if (!LoadConfig()) {
-        Console.WriteLine("Could not open config.txt");
-        return;
-      }
+      //if (!LoadConfig()) {
+      //  Console.WriteLine("Could not open config.txt");
+      //  return;
+      //}
 
       string logFileName = "disParity log " + 
         DateTime.Now.ToString("yy-MM-dd HH.mm.ss");
@@ -130,6 +130,7 @@ namespace disParity
         return;
       }
 
+#if false
       /* Make sure at least one drive has been set */
       if (backupDirs.Length == 0) {
         logFile.Write("No drives found in config.txt\r\n");
@@ -260,25 +261,11 @@ namespace disParity
         Usage.Close();
         logFile.Close();
       }
+#endif
 
     }
 
-    static bool ReadDriveNum(string[] args)
-    {
-      if (args.Length < 2) {
-        PrintUsage();
-        return false;
-      }
-      try {
-        driveNum = Convert.ToInt32(args[1]) - 1;
-        return true;
-      }
-      catch {
-        PrintUsage();
-        return false;
-      }
-    }
-
+#if false
     static bool LoadConfig()
     {
       try {
@@ -321,6 +308,7 @@ namespace disParity
 
     }
 
+
     static bool CheckFreeSpace()
     {
       /* Calculate requires disk space for parity */
@@ -355,7 +343,9 @@ namespace disParity
       }
       return true;
     }
+#endif
 
+#if false
     static void Create()
     {
       UInt32 block = 0;
@@ -485,19 +475,9 @@ namespace disParity
       Parity.Close();
     }
 
-    static UInt32 MaxParityBlock()
-
-    {
-      UInt32 maxBlock = 0;
-      foreach (DataPath d in drives)
-        if (d.maxBlock > maxBlock)
-          maxBlock = d.maxBlock;
-      return maxBlock;
-    }
-
     public static bool AddFileToParity(DataPath d, FileRecord f)   
     {
-      string fullPath = MakeFullPath(d.root, f.name);
+      string fullPath = MakeFullPath(d.root, f.Name);
       /* File may have been changed since the update begain, so refresh
        * its attributes. */
       if (!f.Refresh(fullPath)) {
@@ -549,7 +529,7 @@ namespace disParity
           /* Figure out how many blocks this file needs, then read each
            * block and add to parity. */
           f.startBlock = startBlock;
-          if (logFile.Verbose)
+          if (LogFile.Verbose)
             logFile.Write("Adding {0} to blocks {1} to {2}...\r\n", fullPath,
               startBlock, endBlock - 1);
           else
@@ -621,8 +601,8 @@ namespace disParity
       if (f.length > 0) {
         UInt32 startBlock = f.startBlock;
         UInt32 endBlock = startBlock + f.LengthInBlocks;
-        string fullPath = MakeFullPath(d.root, f.name);
-        if (logFile.Verbose)
+        string fullPath = MakeFullPath(d.root, f.Name);
+        if (LogFile.Verbose)
           logFile.Write("Removing {0} from blocks {1} to {2}...\r\n",
             fullPath, startBlock, endBlock - 1);
         else
@@ -663,7 +643,6 @@ namespace disParity
       return true;
     }
 
-#if false
     static void Recover(Int32 drive, string dir, bool testOnly)
     {
       byte[] data = new byte[Parity.BlockSize];
@@ -738,7 +717,6 @@ namespace disParity
         }
       }
     }
-#endif
 
     static void VerifyBlock(UInt32 block)
     {
@@ -805,7 +783,7 @@ namespace disParity
         DateTime timeStart = DateTime.Now; 
         if (endBlock > maxBlock)
           endBlock = maxBlock;
-        if (logFile.Verbose)
+        if (LogFile.Verbose)
           logFile.Write("Verifying blocks {0} through {1}...", block, endBlock - 1);
         for (; block < endBlock; block++) {
           Parity.ReadBlock(block, parity);
@@ -849,7 +827,7 @@ namespace disParity
                 Int32 index = p.FileFromBlock(block);
                 if (index != -1) {
                   FileRecord r = p.fileList[index];
-                  string filename = MakeFullPath(p.root, r.name);
+                  string filename = MakeFullPath(p.root, r.Name);
                   if (r.status == FileStatus.HashVerified)
                     logFile.Write("{0}...(hash verified)\r\n", filename);
                   else if (r.status == FileStatus.HashFailed)
@@ -886,7 +864,7 @@ namespace disParity
         totalBytes /= 1024;
         totalBytes /= 1024;
         if (errors == 0) {
-          if (logFile.Verbose)
+          if (LogFile.Verbose)
             logFile.Write("OK ({0:F2} sec, {1:F2} MB/s, {2} drive{3})\r\n",
               elapsed.TotalSeconds, (double)totalBytes / elapsed.TotalSeconds,
               maxDrives, maxDrives == 1 ? "" : "s");
@@ -917,15 +895,17 @@ namespace disParity
       logFile.Write("Hash failure(s): {0}\r\n", failures);
     }
 
+#endif
+
     static void VerifyHash(string root, FileRecord r)
     {
-      string filename = MakeFullPath(root, r.name);
-      if (r.length == 0)
+      string filename = Utils.MakeFullPath(root, r.Name);
+      if (r.Length == 0)
         /* Zero-length files can't fail a hash check */
-        r.status = FileStatus.HashVerified;
-      if (r.status == FileStatus.HashVerified)
+        r.Status = FileStatus.HashVerified;
+      if (r.Status == FileStatus.HashVerified)
         logFile.Write("{0}...(hash verified)\r\n", filename);
-      else if (r.status == FileStatus.HashFailed)
+      else if (r.Status == FileStatus.HashFailed)
         logFile.Write("{0}...(hash FAILED)\r\n", filename);
       else {
         logFile.Write("{0}...checking hash...", filename);
@@ -937,13 +917,13 @@ namespace disParity
           hash.Initialize();
           hashCode = hash.ComputeHash(f);
           f.Close();
-          if (DataPath.HashCodesMatch(r.hashCode, hashCode)) {
+          if (Utils.HashCodesMatch(r.HashCode, hashCode)) {
             logFile.Write("verified\r\n");
-            r.status = FileStatus.HashVerified;
+            r.Status = FileStatus.HashVerified;
           }
           else {
             logFile.Write("FAILED!\r\n");
-            r.status = FileStatus.HashFailed;
+            r.Status = FileStatus.HashFailed;
           }
         }
         catch {
@@ -952,6 +932,7 @@ namespace disParity
       }
     }
 
+#if false
     static void PrintStats()
     {
       Int64 totalSize = 0;
@@ -974,7 +955,7 @@ namespace disParity
     {
       DataPath d = drives[drive];
       foreach (FileRecord f in d.deletedFiles) {
-        string fullPath = MakeFullPath(d.root, f.name);
+        string fullPath = MakeFullPath(d.root, f.Name);
         if (File.Exists(fullPath))
           /* Can happen for edits; don't undelete in this case, obviously! */
           continue;
@@ -986,46 +967,22 @@ namespace disParity
         }
       }
     }
+#endif
 
-    public static string SmartSize(long size)
+    static bool ReadDriveNum(string[] args)
     {
-      const long KB = 1024;
-      const long MB = KB * 1024;
-      const long GB = MB * 1024;
-      const long TB = GB * 1024;
-
-      string units;
-      double result;
-
-      if (size < KB) {
-        if (size == 1)
-          return "1 byte";
-        else
-          return size.ToString() + " bytes";
-      } else if (size < MB) {
-        result = (double)size / KB;
-        units = "KB";
-      } else if (size < GB) {
-        result = (double)size / MB;
-        units = "MB";
-      } else if (size < TB) {
-        result = (double)size / GB;
-        units = "GB";
-      } else {
-        result = (double)size / TB;
-        units = "TB";
+      if (args.Length < 2) {
+        PrintUsage();
+        return false;
       }
-      return String.Format("{0:F2} {1}", result, units);
-    }
-
-    public static string MakeFullPath(string path, string name)
-    {
-      if (path == "")
-        return name;
-      if (path[path.Length - 1] == '\\')
-        return path + name;
-      else
-        return path + "\\" + name;
+      try {
+        driveNum = Convert.ToInt32(args[1]) - 1;
+        return true;
+      }
+      catch {
+        PrintUsage();
+        return false;
+      }
     }
 
     static void PrintUsage()

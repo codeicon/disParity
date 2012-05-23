@@ -15,30 +15,36 @@ namespace disParity
 
   public class FileRecord
   {
-    public string name;
-    public long length;
-    public FileAttributes attributes;
-    public DateTime creationTime;
-    public DateTime lastWriteTime;
-    public UInt32 startBlock;
-    public byte[] hashCode;
-    public bool exists;
-    public bool seen;
-    public bool skipped; // skipped during a create because of an error when opening
-    public Int32 drive;
-    public FileRecord replacement; // for edited files, this is the new
-                                   // record that will replace the old one
-    public FileStatus status;
+    private FileAttributes attributes;
+    private DataDrive drive;
 
     static byte[] dummyHash = new byte[16];
 
     private FileRecord()
     {
-      startBlock = 0;
-      exists = true;
-      status = FileStatus.Unknown;
-      skipped = false;
+      StartBlock = 0;
+      Status = FileStatus.Unknown;
+      Skipped = false;
     }
+
+    public string Name { get; set; }
+
+    public long Length { get; private set; }
+
+    public DateTime CreationTime { get; private set; }
+
+    public DateTime LastWriteTime { get; private set; }
+
+    public DataDrive Drive { get { return drive; } }
+
+    public UInt32 StartBlock { get; set; }
+
+    public byte[] HashCode { get; set; }
+
+    // skipped during a create because of an error when opening
+    public bool Skipped { get; set; }
+
+    public FileStatus Status { get; set; }
 
     static string StripRoot(string root, string path)
     {
@@ -50,24 +56,23 @@ namespace disParity
       return path;
     }
 
-    public FileRecord(FileInfo info, string path = "", Int32 drive = -1)
+    public FileRecord(FileInfo info, string path, DataDrive drive)
     {
       // what was this for?
       //if (path == "")
       //  path = info.FullName;
       if (Path.IsPathRooted(info.Name))
-        name = StripRoot(path, info.Name);
+        Name = StripRoot(path, info.Name);
       else
-        name = Program.MakeFullPath(path, info.Name);
-      length = info.Length;
+        Name = Utils.MakeFullPath(path, info.Name);
+      Length = info.Length;
       attributes = info.Attributes;
-      creationTime = info.CreationTime;
-      lastWriteTime = info.LastWriteTime;
-      startBlock = 0;
-      exists = true;
+      CreationTime = info.CreationTime;
+      LastWriteTime = info.LastWriteTime;
+      StartBlock = 0;
       this.drive = drive;
-      status = FileStatus.Unknown;
-      skipped = false;
+      Status = FileStatus.Unknown;
+      Skipped = false;
     }
 
     public bool Refresh(string fullPath)
@@ -75,57 +80,65 @@ namespace disParity
       if (!File.Exists(fullPath))
         return false;
       FileInfo info = new FileInfo(fullPath);
-      length = info.Length;
+      Length = info.Length;
       attributes = info.Attributes;
-      creationTime = info.CreationTime;
-      lastWriteTime = info.LastWriteTime;
+      CreationTime = info.CreationTime;
+      LastWriteTime = info.LastWriteTime;
       return true;
     }
 
-    public static FileRecord LoadFromFile(FileStream f)
+    public static FileRecord LoadFromFile(FileStream f, DataDrive drive)
     {
       FileRecord rec = new FileRecord();
-      rec.name = ReadString(f);
-      rec.length = ReadLong(f);
+      rec.Name = ReadString(f);
+      rec.Length = ReadLong(f);
       rec.attributes = (FileAttributes)ReadUInt32(f);
-      rec.creationTime = ReadDateTime(f);
-      rec.lastWriteTime = ReadDateTime(f);
-      rec.startBlock = ReadUInt32(f);
-      rec.hashCode = new byte[16];
-      rec.seen = false;
-      if (f.Read(rec.hashCode, 0, 16) != 16)
+      rec.CreationTime = ReadDateTime(f);
+      rec.LastWriteTime = ReadDateTime(f);
+      rec.StartBlock = ReadUInt32(f);
+      rec.HashCode = new byte[16];
+      rec.drive = drive;
+      if (f.Read(rec.HashCode, 0, 16) != 16)
         throw new Exception(String.Format("Could not read from {0}", f.Name));
-      if (rec.name[0] == '\\')
-        rec.name = rec.name.TrimStart('\\');
+      if (rec.Name[0] == '\\')
+        rec.Name = rec.Name.TrimStart('\\');
 
       return rec;
     }
 
     public void WriteToFile(FileStream f)
     {
-      WriteString(f, name);
-      WriteLong(f, length);
+      WriteString(f, Name);
+      WriteLong(f, Length);
       WriteUInt32(f, (UInt32)attributes);
-      WriteDateTime(f, creationTime);
-      WriteDateTime(f, lastWriteTime);
-      WriteUInt32(f, startBlock);
-      if (length == 0)
+      WriteDateTime(f, CreationTime);
+      WriteDateTime(f, LastWriteTime);
+      WriteUInt32(f, StartBlock);
+      if (Length == 0)
         f.Write(dummyHash, 0, 16);
       else
-        f.Write(hashCode, 0, 16);
+        f.Write(HashCode, 0, 16);
+    }
+
+    public string FullPath
+    {
+      get
+      {
+        return Utils.MakeFullPath(drive.Root, Name);
+      }
     }
 
     public long RecordSize
     {
       get
       {
-        return 2 + name.Length + 8 + 4 + 8 + 8 + 4 + 16;
+        return 2 + Name.Length + 8 + 4 + 8 + 8 + 4 + 16;
       }
     }
 
     public static int CompareByStartBlock(FileRecord r1, FileRecord r2)
     {
-      if (r1.startBlock < r2.startBlock)
+      if (r1.StartBlock < r2.StartBlock)
         return -1;
       else
         return 1;
@@ -133,8 +146,8 @@ namespace disParity
 
     public bool ContainsBlock(UInt32 block)
     {
-      UInt32 endBlock = startBlock + LengthInBlocks;
-      if (block >= startBlock && block < endBlock)
+      UInt32 endBlock = StartBlock + LengthInBlocks;
+      if (block >= StartBlock && block < endBlock)
         return true;
       else
         return false;
@@ -144,8 +157,8 @@ namespace disParity
     {
       get
       {
-        UInt32 result = (UInt32)(length / Parity.BlockSize);
-        if (result * Parity.BlockSize < length)
+        UInt32 result = (UInt32)(Length / Parity.BlockSize);
+        if (result * Parity.BlockSize < Length)
           result++;
         return result;
       }

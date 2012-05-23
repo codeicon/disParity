@@ -135,9 +135,10 @@ namespace disParity
         /* Force a garbage collection pass.  I don't know why this is necessary,
          * but it seems .NET would rather throw an OutOfMemory exception when
          * allocating the next temp buffer. */
-        GC.Collect();
-        if (File.Exists(tempFileName))
-          File.Delete(tempFileName);
+        // I don't think this is necessary anymore now that we're using mmf
+        // GC.Collect();
+        // if (File.Exists(tempFileName))
+        //   File.Delete(tempFileName);
       }
     }
 
