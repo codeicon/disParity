@@ -175,10 +175,10 @@ namespace disParity
           f.Read(data, 0, PARITY_BLOCK_SIZE);
       }
       catch (Exception e) {
-        Program.logFile.Write("FATAL ERROR: {0}\r\n", e.Message);
-        Program.logFile.Write("WARNING: parity data appears to be damaged. " +
+        LogFile.Log("FATAL ERROR: {0}", e.Message);
+        LogFile.Log("WARNING: parity data appears to be damaged. " +
           "It is strongly advised that you regenerate the snapshot using the " +
-          "\"create\" command.\r\n");
+          "\"create\" command.");
         return false;
       }
       return true;

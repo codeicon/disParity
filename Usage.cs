@@ -5,7 +5,7 @@ using System.Text;
 using Microsoft.Win32;
 using System.Threading;
 
-namespace disParity
+namespace disParity.CmdLine
 {
 
   public class Usage

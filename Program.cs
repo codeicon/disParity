@@ -7,8 +7,9 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Security.Cryptography;
 using System.Diagnostics;
+using disParity;
 
-namespace disParity
+namespace disParity.CmdLine
 {
 
   public enum Command
@@ -102,32 +103,32 @@ namespace disParity
         return;
       }
 
-      //if (!LoadConfig()) {
-      //  Console.WriteLine("Could not open config.txt");
-      //  return;
-      //}
-
       string logFileName = "disParity log " + 
         DateTime.Now.ToString("yy-MM-dd HH.mm.ss");
       logFile = new LogFile(logFileName, verbose);
       logFile.Write("Beginning \"{0}\" command at {1} on {2}\r\n", args[0].ToLower(),
         DateTime.Now.ToShortTimeString(), DateTime.Today.ToLongDateString());
 
-      if (cmd == Command.Update) {
-        try {
-          ParitySet set = new ParitySet("config.txt");
-          set.Update();
+      try {
+        ParitySet set = new ParitySet("config.txt"); 
+        switch (cmd) {
+          case Command.Update:
+            set.Update();
+            break;
+
+          case Command.Recover:
+            set.Recover(set.Drives[driveNum], recoverDir);
+            break;
         }
-        catch (Exception e) {
-          LogFile.Log("Fatal error encountered during {0}: {1}",
-            args[0].ToLower(), e.Message);
-          LogFile.Log("Stack trace: {0}", e.StackTrace);
-        }
-        finally {
-          Usage.Close();
-          logFile.Close();
-        }
-        return;
+      }
+      catch (Exception e) {
+        LogFile.Log("Fatal error encountered during {0}: {1}",
+          args[0].ToLower(), e.Message);
+        LogFile.Log("Stack trace: {0}", e.StackTrace);
+      }
+      finally {
+        Usage.Close();
+        logFile.Close();
       }
 
 #if false
@@ -895,8 +896,6 @@ namespace disParity
       logFile.Write("Hash failure(s): {0}\r\n", failures);
     }
 
-#endif
-
     static void VerifyHash(string root, FileRecord r)
     {
       string filename = Utils.MakeFullPath(root, r.Name);
@@ -932,7 +931,6 @@ namespace disParity
       }
     }
 
-#if false
     static void PrintStats()
     {
       Int64 totalSize = 0;

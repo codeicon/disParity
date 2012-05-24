@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
@@ -52,6 +53,19 @@ namespace disParity
     /// Returns whether or not there is any parity data generated yet for this parity set
     /// </summary>
     public bool Empty { get; private set; }
+
+    /// <summary>
+    /// Returns a copy of the master list of drives in this ParitySet.
+    /// </summary>
+    public DataDrive[] Drives
+    {
+      get
+      {
+        DataDrive[] copy = new DataDrive[drives.Length];
+        drives.CopyTo(copy, 0);
+        return copy;
+      }
+    }
 
     /// <summary>
     /// Erase a previously created parity set
@@ -137,6 +151,65 @@ namespace disParity
         PrintBlockMask(d);
       }
 
+    }
+
+    private bool ValidDrive(DataDrive d)
+    {
+      for (int i = 0; i < drives.Length; i++)
+        if (drives[i] == d)
+          return true;
+      return false;
+    }
+
+    /// <summary>
+    /// Recover all files from the given drive to the given location
+    /// </summary>
+    public void Recover(DataDrive drive, string path)
+    {
+      if (!ValidDrive(drive))
+        return;
+      foreach (FileRecord f in drive.Files)
+        RecoverFile(f, path);
+    }
+
+    private void RecoverFile(FileRecord r, string path)
+    {
+      string fullPath = Utils.MakeFullPath(path, r.Name);
+      LogFile.Log("Recovering {0}...", r.Name);
+      // make sure the destination directory exists
+      Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
+      MD5 hash = MD5.Create();
+      hash.Initialize();
+      using (FileStream f = new FileStream(fullPath, FileMode.Create, FileAccess.Write)) {
+        ParityBlock parityBlock = new ParityBlock();
+        long leftToWrite = r.Length;
+        UInt32 block = r.StartBlock;
+        while (leftToWrite > 0) {
+          RecoverBlock(r.Drive, block, parityBlock);
+          int blockSize = leftToWrite > Parity.BlockSize ? Parity.BlockSize : (int)leftToWrite;
+          f.Write(parityBlock.Data, 0, blockSize);
+          hash.TransformBlock(parityBlock.Data, 0, blockSize, parityBlock.Data, 0);
+          leftToWrite -= Parity.BlockSize;
+          block++;
+        }
+        hash.TransformFinalBlock(parityBlock.Data, 0, 0);
+      }
+      if (r.Length > 0 && !Utils.HashCodesMatch(hash.Hash, r.HashCode))
+        LogFile.Log("ERROR: hash verify FAILED for {0}", fullPath);
+      File.SetCreationTime(fullPath, r.CreationTime);
+      File.SetLastWriteTime(fullPath, r.LastWriteTime);
+      File.SetAttributes(fullPath, r.Attributes);
+    }
+
+    private byte[] tempBuf = new byte[Parity.BlockSize];
+
+    private void RecoverBlock(DataDrive drive, UInt32 block, ParityBlock parity)
+    {
+      parity.Load(block);
+      foreach (DataDrive d in drives)
+        if (d != drive)
+          if (d.ReadBlock(block, tempBuf))
+            parity.Add(tempBuf);
     }
 
     private bool AddToParity(FileRecord r)
@@ -253,7 +326,7 @@ namespace disParity
 
     private void PrintBlockMask(DataDrive d)
     {
-      bool[] blockMask = d.BlockMask;
+      BitArray blockMask = d.BlockMask;
       foreach (bool b in blockMask)
         Console.Write("{0}", b ? 'X' : '.');
       Console.WriteLine();
@@ -287,7 +360,7 @@ namespace disParity
       foreach (DataDrive d in drives)
         d.BeginFileEnum();
 
-      byte[] parityBuf = new byte[Parity.BlockSize];
+      ParityBlock parityBlock = new ParityBlock();
       byte[] dataBuf = new byte[Parity.BlockSize];
       UInt32 block = 0;
 
@@ -295,13 +368,13 @@ namespace disParity
       while (!done) {
         done = true;
         foreach (DataDrive d in drives)
-          if (d.GetNextBlock(done ? parityBuf : dataBuf))
+          if (d.GetNextBlock(done ? parityBlock.Data : dataBuf))
             if (done)
               done = false;
             else
-              Parity.FastXOR(parityBuf, dataBuf);
+              parityBlock.Add(dataBuf);
         if (!done)
-          Parity.WriteBlock(block, parityBuf);
+          parityBlock.Write(block);
         block++;
       }
       Parity.Close();

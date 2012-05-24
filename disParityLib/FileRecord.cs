@@ -15,7 +15,6 @@ namespace disParity
 
   public class FileRecord
   {
-    private FileAttributes attributes;
     private DataDrive drive;
 
     static byte[] dummyHash = new byte[16];
@@ -35,13 +34,15 @@ namespace disParity
 
     public DateTime LastWriteTime { get; private set; }
 
+    public FileAttributes Attributes { get; private set; }
+
     public DataDrive Drive { get { return drive; } }
 
     public UInt32 StartBlock { get; set; }
 
     public byte[] HashCode { get; set; }
 
-    // skipped during a create because of an error when opening
+    // skipped during a create because of an error when opening - NOT USED FOR ANYTHING CURRENTLY
     public bool Skipped { get; set; }
 
     public FileStatus Status { get; set; }
@@ -66,7 +67,7 @@ namespace disParity
       else
         Name = Utils.MakeFullPath(path, info.Name);
       Length = info.Length;
-      attributes = info.Attributes;
+      Attributes = info.Attributes;
       CreationTime = info.CreationTime;
       LastWriteTime = info.LastWriteTime;
       StartBlock = 0;
@@ -81,7 +82,7 @@ namespace disParity
         return false;
       FileInfo info = new FileInfo(fullPath);
       Length = info.Length;
-      attributes = info.Attributes;
+      Attributes = info.Attributes;
       CreationTime = info.CreationTime;
       LastWriteTime = info.LastWriteTime;
       return true;
@@ -92,7 +93,7 @@ namespace disParity
       FileRecord rec = new FileRecord();
       rec.Name = ReadString(f);
       rec.Length = ReadLong(f);
-      rec.attributes = (FileAttributes)ReadUInt32(f);
+      rec.Attributes = (FileAttributes)ReadUInt32(f);
       rec.CreationTime = ReadDateTime(f);
       rec.LastWriteTime = ReadDateTime(f);
       rec.StartBlock = ReadUInt32(f);
@@ -110,7 +111,7 @@ namespace disParity
     {
       WriteString(f, Name);
       WriteLong(f, Length);
-      WriteUInt32(f, (UInt32)attributes);
+      WriteUInt32(f, (UInt32)Attributes);
       WriteDateTime(f, CreationTime);
       WriteDateTime(f, LastWriteTime);
       WriteUInt32(f, StartBlock);
