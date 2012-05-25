@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.IO;
 using System.Diagnostics;
 
@@ -17,6 +18,8 @@ namespace disParity
     private List<FileRecord> files;     // Master list of protected files; should reflect what is currently in files.dat at all times
     private List<FileRecord> scanFiles; // List of current files on the drive as seen this scan
     private MD5 hash;
+    private bool ignoreHidden;
+    private List<Regex> ignores;
 
     const UInt32 META_FILE_VERSION = 2;
 
@@ -29,6 +32,7 @@ namespace disParity
         LoadFileData();
 
       hash = MD5.Create();
+      ignores = new List<Regex>();
     }
 
     public string Root { get { return root; } }
@@ -54,8 +58,16 @@ namespace disParity
     /// Scans the drive from 'root' down, generating the current list of files on the drive.
     /// Files that should not be protected (e.g. Hidden files) are not included.
     /// </summary>
-    public void Scan()
+    public void Scan(bool ignoreHidden, string[] ignore)
     {
+      this.ignoreHidden = ignoreHidden;
+      ignores.Clear();
+      foreach (string i in ignore) {
+        string pattern = Regex.Escape(i.ToLower());       // Escape the original string
+        pattern = pattern.Replace(@"\?", ".");  // Replace all \? with .
+        pattern = pattern.Replace(@"\*", ".*"); // Replace all \* with .*
+        ignores.Add(new Regex(pattern));
+      }
       scanFiles = new List<FileRecord>();
       LogFile.Log("Scanning {0}...", root);
       Scan(new DirectoryInfo(root));
@@ -85,7 +97,7 @@ namespace disParity
         return;
       }
       foreach (DirectoryInfo d in subDirs) {
-        if (IgnoreHidden && (d.Attributes & FileAttributes.Hidden) != 0)
+        if (ignoreHidden && (d.Attributes & FileAttributes.Hidden) != 0)
           continue;
         if ((d.Attributes & FileAttributes.System) != 0)
           continue;
@@ -95,10 +107,20 @@ namespace disParity
       foreach (FileInfo f in fileInfos) {
         if (f.Attributes == (FileAttributes)(-1))
           continue;
-        if (IgnoreHidden && (f.Attributes & FileAttributes.Hidden) != 0)
+        if (ignoreHidden && (f.Attributes & FileAttributes.Hidden) != 0)
           continue;
         if ((f.Attributes & FileAttributes.System) != 0)
           continue;
+        bool ignore = false;
+        foreach (Regex regex in ignores)
+          if (regex.IsMatch(f.Name.ToLower())) {
+            ignore = true;
+            break;
+          }
+        if (ignore) {
+          LogFile.Log("Skipping {0} because it matches an ignore...", f.FullName);
+          continue;
+        }
         scanFiles.Add(new FileRecord(f, relativePath, this));
       }
     }
@@ -276,12 +298,6 @@ namespace disParity
     {
       return (files != null);
     }
-
-    /// <summary>
-    /// Specifies whether files and folders with the Hidden attribute set should
-    /// be ignored
-    /// </summary>
-    public bool IgnoreHidden { get; set; }
 
     private UInt32 enumBlock;
     private FileStream enumFile;

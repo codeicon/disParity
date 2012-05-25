@@ -11,7 +11,7 @@ namespace disParity
   public class ParitySet
   {
 
-    private Config config;
+    private OldConfig config;
     private string configFilePath;
     private DataDrive[] drives;
     private Parity parity;
@@ -23,7 +23,21 @@ namespace disParity
 
       this.configFilePath = configFilePath;
       try {
-        config = new Config(configFilePath);
+        config = new OldConfig(configFilePath);
+
+        Config newConfig = new Config(configFilePath.Replace(".txt", ".xml"));
+        newConfig.ParityDir = config.ParityDir;
+        newConfig.TempDir = config.TempDir;
+        newConfig.MaxTempRAM = config.MaxTempRAM;
+        newConfig.IgnoreHidden = config.IgnoreHidden;
+        newConfig.Drives = new List<string>();
+        foreach (string d in config.BackupDirs)
+          newConfig.Drives.Add(d);
+        newConfig.Ignores = new List<string>();
+        foreach (string i in config.Ignores)
+          newConfig.Ignores.Add(i);
+        newConfig.Save();
+
       }
       catch (Exception e) {
         throw new Exception("Could not load config file: " + e.Message);
@@ -54,6 +68,11 @@ namespace disParity
     /// Returns whether or not there is any parity data generated yet for this parity set
     /// </summary>
     public bool Empty { get; private set; }
+
+    /// <summary>
+    /// List of zero or more regular expressions defining files to be ignored
+    /// </summary>
+    public List<string> Ignore { get; private set; }
 
     /// <summary>
     /// Returns a copy of the master list of drives in this ParitySet.
@@ -91,10 +110,9 @@ namespace disParity
       }
 
       // get the current list of files on each drive and compare to old state
-      foreach (DataDrive d in drives) {
-        d.Scan();
+      ScanAll();
+      foreach (DataDrive d in drives)
         d.Compare();
-      }
 
       // process all moves for all drives first, since that doesn't require changing
       // any parity data, only the meta data
@@ -360,6 +378,12 @@ namespace disParity
       return maxBlock;
     }
 
+    private void ScanAll()
+    {
+      foreach (DataDrive d in drives)
+        d.Scan(config.IgnoreHidden, config.Ignores);
+    }
+
     /// <summary>
     /// Creates a new snapshot from scratch
     /// </summary>
@@ -368,8 +392,7 @@ namespace disParity
       DateTime start = DateTime.Now;
 
       // generate the list of all files to be protected from all drives
-      foreach (DataDrive d in drives)
-        d.Scan();
+      ScanAll();
 
       // TO DO: check free space on parity drive here
 

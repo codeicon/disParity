@@ -1,2 +1,3 @@
 * update scan should handle case where file attributes only have changed -
   no parity change occurs but the updated attributes should be saved to the meta data
+* thread safety
