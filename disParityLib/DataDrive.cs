@@ -176,12 +176,10 @@ namespace disParity
           // because it has the new attributes and we want those saved later
           if (o.Length != n.Length)
             edits.Add(n); // trivial case, length changed
-          else if (o.CreationTime != n.CreationTime || o.LastWriteTime != n.LastWriteTime) {
-            // probable edit, compare hash codes to be sure
-            if (!Utils.HashCodesMatch(o.HashCode, ComputeHash(n)))
+          else if (o.CreationTime != n.CreationTime || o.LastWriteTime != n.LastWriteTime)
+            // probable edit, check hash code to be sure
+            if (!HashCheck(o))
               edits.Add(n); 
-          }
-
         }
       }
 
@@ -230,9 +228,43 @@ namespace disParity
       SaveFileList();
     }
 
+    /// <summary>
+    /// Run a hash check on every file on this drive.  Return the number of failures.
+    /// </summary>
+    public int HashCheck()
+    {
+      int failures = 0;
+      foreach (FileRecord r in files)
+        try {
+          LogFile.Log("Checking hash for {0}...", r.FullPath);
+          if (!HashCheck(r)) {
+            LogFile.Log("Hash check FAILED");
+            failures++;
+          }
+        }
+        catch (Exception e) {
+          LogFile.Log("Error opening {0} for hash check: {1}", r.FullPath, e.Message);
+        }
+      return failures;
+    }
+
+    /// <summary>
+    /// Verify that the hash on record for this file matches the actual file currently on disk
+    /// </summary>
+    public bool HashCheck(FileRecord r)
+    {
+      if (r.Length == 0)
+        return true; // zero length files cannot fail a hash check
+      else
+       return Utils.HashCodesMatch(ComputeHash(r), r.HashCode);
+    }
+
+    /// <summary>
+    /// Compute the hash code for the file on disk
+    /// </summary>
     private byte[] ComputeHash(FileRecord r)
     {
-      using (FileStream s = new FileStream(Utils.MakeFullPath(root, r.Name), FileMode.Open, FileAccess.Read))
+      using (FileStream s = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read))
         hash.ComputeHash(s);
       return hash.Hash;
     }

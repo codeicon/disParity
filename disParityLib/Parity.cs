@@ -6,36 +6,37 @@ using System.IO;
 namespace disParity
 {
 
-  class Parity
+  internal class Parity
   {
 
     const Int32 PARITY_BLOCK_SIZE = 65536; 
     const Int32 BLOCKS_PER_FILE = 16384;
     const Int32 MAX_BLOCK_CACHE = 512;
     const Int32 DEFAULT_MAX_TEMP_BLOCKS = 4096;
-    static string parityDir;
-    static string tempFileName;
-    static FileStream f = null;
-    static UInt32 currentParityFile;
-    static UInt32 maxTempBlocks = DEFAULT_MAX_TEMP_BLOCKS;
-    static SortedList<UInt32, byte[]> blockCache = null;
+
+    private string parityDir;
+    private string tempFileName;
+    private FileStream f = null;
+    private UInt32 currentParityFile;
+    private UInt32 maxTempBlocks = DEFAULT_MAX_TEMP_BLOCKS;
 
     /* Temp parity stuff */
     const string TEMP_PARITY_FILENAME = "parity.tmp";
-    static Stream temp = null;
-    static UInt32 tempStartBlock;
-    static UInt32 tempLength;
+    private Stream temp = null;
+    private UInt32 tempStartBlock;
+    private UInt32 tempLength;
 
-    public static void Initialize(string dir, string tempDir, 
-      bool enableBlockCache)
+    public Parity(string dir, string tempDir)
     {
-      if (enableBlockCache)
-        blockCache = new SortedList<UInt32, byte[]>();
       parityDir = dir;
       tempFileName = tempDir + TEMP_PARITY_FILENAME;
     }
 
-    public static void DeleteAll()
+    public string Dir { get { return parityDir; } }
+
+    public static Int32 BlockSize { get { return PARITY_BLOCK_SIZE; } }
+
+    public void DeleteAll()
     {
       DirectoryInfo dirInfo = new DirectoryInfo(parityDir);
       FileInfo[] files = dirInfo.GetFiles();
@@ -45,13 +46,13 @@ namespace disParity
           File.Delete(f.FullName);
     }
 
-    static string ParityFileName(UInt32 block)
+    private string ParityFileName(UInt32 block)
     {
       UInt32 partityFileNum = block / (UInt32)BLOCKS_PER_FILE;
       return parityDir + "parity" + partityFileNum.ToString() + ".dat";
     }
 
-    static bool OpenParityFile(UInt32 block, bool readOnly)
+    private bool OpenParityFile(UInt32 block, bool readOnly)
     {
       UInt32 partityFileNum = block / (UInt32)BLOCKS_PER_FILE;
       if (f != null && partityFileNum == currentParityFile) {
@@ -62,38 +63,21 @@ namespace disParity
           f.Position = position;
         return true;
       }
-      if (f != null) {
-        FlushBlockCache();
-        f.Close();
-        f = null;
-      }
-      string fileName = parityDir + "parity" + partityFileNum.ToString() + 
-        ".dat";
+      Close();
+      string fileName = parityDir + "parity" + partityFileNum.ToString() + ".dat";
       if (readOnly && !File.Exists(ParityFileName(block)))
         return false;
-      f = new FileStream(ParityFileName(block), FileMode.OpenOrCreate, 
-        FileAccess.ReadWrite);
+      f = new FileStream(ParityFileName(block), FileMode.OpenOrCreate,  FileAccess.ReadWrite);
       currentParityFile = partityFileNum;
       f.Position = FilePosition(block);
       return true;
     }
 
-    public static void FlushBlockCache()
-    {
-      if (blockCache != null) {
-        for (int i = 0; i < blockCache.Count; i++) {
-          f.Position = FilePosition(blockCache.Keys[i]);
-          f.Write(blockCache.Values[i], 0, PARITY_BLOCK_SIZE);
-        }
-        blockCache.Clear();
-      }
-    }
-
-    public static void Close()
+    public void Close()
     {
       if (f != null) {
-        FlushBlockCache();
         f.Close();
+        f.Dispose();
         f = null;
       }
     }
@@ -101,7 +85,7 @@ namespace disParity
     /* NOTE: The temp parity mechanism REQUIRES that blocks are written
      * sequentially by increasing block number; any other write sequence will
      * not work! */
-    public static void OpenTempParity(UInt32 startBlock, UInt32 lengthInBlocks)
+    public void OpenTempParity(UInt32 startBlock, UInt32 lengthInBlocks)
     {
       if (lengthInBlocks < maxTempBlocks)
         try {
@@ -120,29 +104,22 @@ namespace disParity
       tempLength = lengthInBlocks;
     }
 
-    public static void WriteTempBlock(UInt32 block, byte[] data)
+    public void WriteTempBlock(UInt32 block, byte[] data)
     {
       if (temp != null)
         temp.Write(data, 0, PARITY_BLOCK_SIZE);
     }
 
-    public static void CloseTemp()
+    public void CloseTemp()
     {
       if (temp != null) {
         temp.Close();
         temp.Dispose();
         temp = null;
-        /* Force a garbage collection pass.  I don't know why this is necessary,
-         * but it seems .NET would rather throw an OutOfMemory exception when
-         * allocating the next temp buffer. */
-        // I don't think this is necessary anymore now that we're using mmf
-        // GC.Collect();
-        // if (File.Exists(tempFileName))
-        //   File.Delete(tempFileName);
       }
     }
 
-    public static void FlushTemp()
+    public void FlushTemp()
     {
       if (temp is MemoryStream) {
         byte[] buf = (temp as MemoryStream).GetBuffer();
@@ -166,7 +143,7 @@ namespace disParity
       Close(); // closes the actual parity file
     }
 
-    public static bool ReadBlock(UInt32 block, byte[] data)
+    public bool ReadBlock(UInt32 block, byte[] data)
     {
       try {
         if (!OpenParityFile(block, true))
@@ -185,73 +162,19 @@ namespace disParity
     }
 
     /* WriteBlock is currently called during creates. */
-    public static void WriteBlock(UInt32 block, byte[] data)
+    public void WriteBlock(UInt32 block, byte[] data)
     {
       OpenParityFile(block, false);
-      if (blockCache == null) {
-        f.Write(data, 0, PARITY_BLOCK_SIZE);
-        return;
-      }
-      if (blockCache.Count == MAX_BLOCK_CACHE)
-        FlushBlockCache();
-      byte[] cachedBlock = new byte[PARITY_BLOCK_SIZE];
-      Array.Copy(data, cachedBlock, PARITY_BLOCK_SIZE);
-      /* By using [] instead of Add, we guarantee that in the unlikely case
-       * that the block is already in the cache, it gets replaced instead of
-       * throwing an exception. */
-      blockCache[block] = cachedBlock;
+      f.Write(data, 0, PARITY_BLOCK_SIZE);
     }
 
-    /* AddFileData is currently not used. */
-    public static void AddFileData(UInt32 block, byte[] data)
-    {
-      OpenParityFile(block, false);
-      byte[] parity;
-      if (blockCache == null) {
-        parity = new byte[PARITY_BLOCK_SIZE];
-        f.Read(parity, 0, PARITY_BLOCK_SIZE);
-        FastXOR(parity, data);
-        f.Position = FilePosition(block);
-        f.Write(parity, 0, PARITY_BLOCK_SIZE);
-        return;
-      }
-      bool alreadyInCache = false;
-      if (!blockCache.TryGetValue(block, out parity)) {
-        parity = new byte[PARITY_BLOCK_SIZE];
-        /* This read may fail if we are at the end of the parity file, but
-         * that's ok, parity will then just be zeroes which is what we want. */
-        f.Read(parity, 0, PARITY_BLOCK_SIZE);
-      } else
-        alreadyInCache = true; // unlikely, but theoretically possible
-      FastXOR(parity, data);
-      if (!alreadyInCache) {
-        if (blockCache.Count == MAX_BLOCK_CACHE)
-          FlushBlockCache();
-        blockCache.Add(block, parity);
-      }
-    }
-
-    public static unsafe void FastXOR(byte[] buf1, byte[] buf2)
-    {
-      fixed (byte* p1 = buf1)
-      fixed (byte* p2 = buf2) {
-        long* lp1 = (long*)p1;
-        long* lp2 = (long*)p2;
-        for (int i = 0; i < (PARITY_BLOCK_SIZE / 8); i++) {
-          *lp1 ^= *lp2;
-          lp1++;
-          lp2++;
-        }
-      }
-    }
-
-    static long FilePosition(UInt32 block)
+    private static long FilePosition(UInt32 block)
     {
       UInt32 partityFileNum = block / (UInt32)BLOCKS_PER_FILE;
       return (block - (partityFileNum * BLOCKS_PER_FILE)) * PARITY_BLOCK_SIZE;
     }
 
-    public static void SetMaxTempRAM(UInt32 mb)
+    public void SetMaxTempRAM(UInt32 mb)
     {
       const int MAX_TEMP_RAM = 2047;
       if (mb < 0)
@@ -261,19 +184,10 @@ namespace disParity
       maxTempBlocks = ((mb * 1024 * 1024) / PARITY_BLOCK_SIZE) + 1;
     }
 
-    public static string Dir
-    {
-      get { return parityDir; }
-    }
-
-    public static Int32 BlockSize
-    {
-      get { return PARITY_BLOCK_SIZE; }
-    }
-
-    /* Returns free space available on parity drive, or -1 if it cannot be
-     * determined. */
-    public static long FreeSpace
+    /// <summary>
+    /// Returns free space available on parity drive, or -1 if it cannot be determined.
+    /// </summary>
+    public long FreeSpace
     {
       get
       {

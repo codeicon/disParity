@@ -9,9 +9,11 @@ namespace disParity
   {
 
     private byte[] data;
+    private Parity parity;
 
-    public ParityBlock()
+    public ParityBlock(Parity parity)
     {
+      this.parity = parity;
       data = new byte[Parity.BlockSize];
     }
 
@@ -24,17 +26,17 @@ namespace disParity
 
     public void Load(UInt32 block)
     {
-      Parity.ReadBlock(block, data);
+      parity.ReadBlock(block, data);
     }
 
     public void Add(byte[] data)
     {
-      Parity.FastXOR(this.data, data);
+      Utils.FastXOR(this.data, data);
     }
 
     public void Write(UInt32 block)
     {
-      Parity.WriteBlock(block, data);
+      parity.WriteBlock(block, data);
     }
 
   }

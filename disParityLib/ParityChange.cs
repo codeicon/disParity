@@ -10,13 +10,15 @@ namespace disParity
   internal class ParityChange : IDisposable
   {
 
-    private ParityBlock parity;
+    private Parity parity;
+    private ParityBlock parityBlock;
     private UInt32 block;
 
-    public ParityChange(UInt32 startBlock, UInt32 lengthInBlocks)
+    public ParityChange(Parity parity, UInt32 startBlock, UInt32 lengthInBlocks)
     {
-      Parity.OpenTempParity(startBlock, lengthInBlocks);
-      parity = new ParityBlock();
+      this.parity = parity;
+      parity.OpenTempParity(startBlock, lengthInBlocks);
+      parityBlock = new ParityBlock(parity);
       block = startBlock;
     }
 
@@ -27,9 +29,9 @@ namespace disParity
     {
       if (fromParity)
         // todo: handle parity block read failure (fatal error!)
-        parity.Load(block);
+        parityBlock.Load(block);
       else
-        parity.Clear();
+        parityBlock.Clear();
     }
 
     /// <summary>
@@ -37,23 +39,23 @@ namespace disParity
     /// </summary>
     public void AddData(byte[] data)
     {
-      parity.Add(data);
+      parityBlock.Add(data);
     }
 
     public void Write()
     {
-      Parity.WriteTempBlock(0 /* Not used */, parity.Data);
+      parity.WriteTempBlock(0 /* Not used */, parityBlock.Data);
       block++;
     }
 
     public void Save()
     {
-      Parity.FlushTemp();
+      parity.FlushTemp();
     }
 
     public void Dispose()
     {
-      Parity.CloseTemp();
+      parity.CloseTemp();
     }
 
   }

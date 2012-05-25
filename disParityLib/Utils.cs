@@ -39,6 +39,20 @@ namespace disParity
       return true;
     }
 
+    public static unsafe void FastXOR(byte[] buf1, byte[] buf2)
+    {
+      fixed (byte* p1 = buf1)
+      fixed (byte* p2 = buf2) {
+        long* lp1 = (long*)p1;
+        long* lp2 = (long*)p2;
+        for (int i = 0; i < (buf1.Length / 8); i++) {
+          *lp1 ^= *lp2;
+          lp1++;
+          lp2++;
+        }
+      }
+    }
+
     public static string SmartSize(long size)
     {
       const long KB = 1024;

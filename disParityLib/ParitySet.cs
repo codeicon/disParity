@@ -14,6 +14,7 @@ namespace disParity
     private Config config;
     private string configFilePath;
     private DataDrive[] drives;
+    private Parity parity;
 
     public ParitySet(string configFilePath)
     {
@@ -46,7 +47,7 @@ namespace disParity
         drives[i] = new DataDrive(config.BackupDirs[i], metaFile);
       }
 
-      Parity.Initialize(config.ParityDir, config.TempDir, false);
+      parity = new Parity(config.ParityDir, config.TempDir);
     }
 
     /// <summary>
@@ -72,7 +73,7 @@ namespace disParity
     /// </summary>
     public void Erase()
     {
-      Parity.DeleteAll();
+      parity.DeleteAll();
       foreach (DataDrive d in drives)
         d.Clear();
       Empty = true;
@@ -144,7 +145,7 @@ namespace disParity
           addCount == 1 ? "" : "s", Utils.SmartSize(addSize), elapsed.TotalSeconds);
       }
 
-      Parity.Close();
+      parity.Close();
 
       foreach (DataDrive d in drives) {
         Console.WriteLine("Block mask for {0}:", d.Root);
@@ -172,6 +173,21 @@ namespace disParity
         RecoverFile(f, path);
     }
 
+    public void HashCheck(DataDrive drive = null)
+    {
+      int failures = 0;
+      if (drive != null) {
+        if (!ValidDrive(drive))
+          return;
+        else
+          failures = drive.HashCheck();
+      }
+      else
+        foreach (DataDrive d in drives)
+          failures += d.HashCheck();
+      LogFile.Log("Hash failure(s): {0}", failures);
+    }
+
     private void RecoverFile(FileRecord r, string path)
     {
       string fullPath = Utils.MakeFullPath(path, r.Name);
@@ -181,7 +197,7 @@ namespace disParity
       MD5 hash = MD5.Create();
       hash.Initialize();
       using (FileStream f = new FileStream(fullPath, FileMode.Create, FileAccess.Write)) {
-        ParityBlock parityBlock = new ParityBlock();
+        ParityBlock parityBlock = new ParityBlock(parity);
         long leftToWrite = r.Length;
         UInt32 block = r.StartBlock;
         while (leftToWrite > 0) {
@@ -235,11 +251,11 @@ namespace disParity
           // left on the parity drive to actually add this file.
           // FIXME: This check should also be sure there is enough space left for the new file table
           long required = (endBlock - MaxParityBlock()) * Parity.BlockSize;
-          long available = Parity.FreeSpace;
+          long available = parity.FreeSpace;
           if ((available != -1) && (available < required)) {
             LogFile.Log("Insufficient space available on {0} to process " +
               "{1}.  File will be skipped this update. (Required: {2} " +
-              "Available: {3})", Parity.Dir, fullPath, Utils.SmartSize(required), Utils.SmartSize(available));
+              "Available: {3})", parity.Dir, fullPath, Utils.SmartSize(required), Utils.SmartSize(available));
             return false;
           }
         }
@@ -253,7 +269,7 @@ namespace disParity
         byte[] data = new byte[Parity.BlockSize];
         MD5 hash = MD5.Create();
         hash.Initialize();
-        using (ParityChange change = new ParityChange(startBlock, r.LengthInBlocks)) {
+        using (ParityChange change = new ParityChange(parity, startBlock, r.LengthInBlocks)) {
           using (FileStream f = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read))
             for (UInt32 b = startBlock; b < endBlock; b++) {
               Int32 bytesRead;
@@ -295,7 +311,7 @@ namespace disParity
           LogFile.Log("Removing {0}...", fullPath);
 
         // Recalulate parity from scratch for all blocks that contained the deleted file's data.
-        using (ParityChange change = new ParityChange(startBlock, r.LengthInBlocks)) {
+        using (ParityChange change = new ParityChange(parity, startBlock, r.LengthInBlocks)) {
           byte[] data = new byte[Parity.BlockSize];
           for (UInt32 b = startBlock; b < endBlock; b++) {
             change.Reset(false);
@@ -311,7 +327,7 @@ namespace disParity
               catch (Exception e) {
                 LogFile.Log("Error: {0}", e.Message);
                 LogFile.Log("Unable to remove {0}, file will be skipped this update", fullPath);
-                Parity.CloseTemp();
+                parity.CloseTemp();
                 return false;
               }
             }
@@ -360,7 +376,7 @@ namespace disParity
       foreach (DataDrive d in drives)
         d.BeginFileEnum();
 
-      ParityBlock parityBlock = new ParityBlock();
+      ParityBlock parityBlock = new ParityBlock(parity);
       byte[] dataBuf = new byte[Parity.BlockSize];
       UInt32 block = 0;
 
@@ -377,7 +393,7 @@ namespace disParity
           parityBlock.Write(block);
         block++;
       }
-      Parity.Close();
+      parity.Close();
 
     }
 
