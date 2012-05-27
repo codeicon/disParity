@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Xml;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 
@@ -12,6 +13,7 @@ namespace disParity
 
     private string filename;
 
+    const Int32 VERSION = 1;
     const string DEFAULT_TEMP_DIR = ".\\";
     const UInt32 DEFAULT_MAX_TEMP_RAM = 512;
     const bool DEFAULT_IGNORE_HIDDEN = true;
@@ -28,6 +30,70 @@ namespace disParity
 
     public void Load()
     {
+      if (!File.Exists(filename))
+        return;
+      using (XmlReader reader = XmlReader.Create(new StreamReader(filename))) {
+        for (; ; ) {
+          reader.Read();
+          if (reader.EOF)
+            break;
+          if (reader.NodeType == XmlNodeType.Whitespace)
+            continue;
+          if (reader.Name == "Options" && reader.IsStartElement()) {
+            for (; ; ) {
+              if (!reader.Read() || reader.EOF)
+                break;
+              if (reader.NodeType == XmlNodeType.Whitespace)
+                continue;
+              else if (reader.NodeType == XmlNodeType.EndElement)
+                break;
+              if (reader.Name == "TempDir") {
+                reader.Read();
+                TempDir = reader.Value;
+                reader.Read();
+              }
+              else if (reader.Name == "MaxTempRAM") {
+                reader.Read();
+                MaxTempRAM = Convert.ToUInt32(reader.Value);
+                reader.Read();
+              }
+              else if (reader.Name == "IgnoreHidden") {
+                reader.Read();
+                IgnoreHidden = (reader.Value == "true") ? true : false;
+                reader.Read();
+              }
+              else if (reader.Name == "Ignores") {
+                for (; ; ) {
+                  if (!reader.Read() || reader.EOF)
+                    break;
+                  if (reader.NodeType == XmlNodeType.Whitespace)
+                    continue;
+                  else if (reader.NodeType == XmlNodeType.EndElement)
+                    break;
+                  if (reader.Name == "Ignore" && reader.IsStartElement()) {
+                    reader.Read();
+                    Ignores.Add(reader.Value);
+                  }
+                }
+              }
+            }
+          }
+          else if (reader.Name == "Parity")
+            ParityDir = reader.GetAttribute("Path");
+          else if (reader.Name == "Drives" && reader.IsStartElement()) {
+            for (; ; ) {
+              if (!reader.Read() || reader.EOF)
+                break;
+              if (reader.NodeType == XmlNodeType.Whitespace)
+                continue;
+              else if (reader.NodeType == XmlNodeType.EndElement)
+                break;
+              if (reader.Name == "Drive")
+                Drives.Add(reader.GetAttribute("Path"));
+            }
+          }
+        }
+      }
     }
 
     public void Save()
@@ -37,6 +103,7 @@ namespace disParity
       using (XmlWriter writer = XmlWriter.Create(filename, settings)) {
         writer.WriteStartDocument();
         writer.WriteStartElement("disParity");
+        writer.WriteAttributeString("Version", VERSION.ToString());
         writer.WriteStartElement("Options");
 
         if (!String.Equals(TempDir, DEFAULT_TEMP_DIR))
@@ -74,6 +141,14 @@ namespace disParity
         writer.WriteEndElement();
 
         writer.WriteEndDocument();
+      }
+    }
+
+    public string Filename
+    {
+      get
+      {
+        return filename;
       }
     }
 

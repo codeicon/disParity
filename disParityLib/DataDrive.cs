@@ -10,6 +10,13 @@ using System.Diagnostics;
 namespace disParity
 {
 
+  public enum DriveStatus
+  {
+    ScanRequired,
+    UpdateRequired,
+    UpToDate
+  }
+
   public class DataDrive
   {
 
@@ -20,10 +27,14 @@ namespace disParity
     private MD5 hash;
     private bool ignoreHidden;
     private List<Regex> ignores;
+    private ProgressReporter scanProgress;
 
-    const UInt32 META_FILE_VERSION = 2;
+    const UInt32 META_FILE_VERSION = 1;
 
-    public DataDrive(string root, string metaFileName)
+    public event EventHandler<ScanProgressEventArgs> ScanProgress;
+    public event EventHandler<ScanCompletedEventArgs> ScanCompleted;
+
+    public DataDrive(string root, string metaFileName, bool ignoreHidden, List<string> ignore)
     {
       this.root = root;
       this.metaFileName = metaFileName;
@@ -33,6 +44,15 @@ namespace disParity
 
       hash = MD5.Create();
       ignores = new List<Regex>();
+      Status = DriveStatus.ScanRequired;
+      this.ignoreHidden = ignoreHidden;
+      ignores.Clear();
+      foreach (string i in ignore) {
+        string pattern = Regex.Escape(i.ToLower());       // Escape the original string
+        pattern = pattern.Replace(@"\?", ".");  // Replace all \? with .
+        pattern = pattern.Replace(@"\*", ".*"); // Replace all \* with .*
+        ignores.Add(new Regex(pattern));
+      }
     }
 
     public string Root { get { return root; } }
@@ -40,6 +60,8 @@ namespace disParity
     public UInt32 MaxBlock { get; private set; }
 
     public IEnumerable<FileRecord> Files { get { return files; } }
+
+    public DriveStatus Status { get; private set; }
 
     /// <summary>
     /// Clears all state of the DataDrive, resetting to empty (deletes on-disk
@@ -58,28 +80,30 @@ namespace disParity
     /// Scans the drive from 'root' down, generating the current list of files on the drive.
     /// Files that should not be protected (e.g. Hidden files) are not included.
     /// </summary>
-    public void Scan(bool ignoreHidden, string[] ignore)
+    public void Scan()
     {
-      this.ignoreHidden = ignoreHidden;
-      ignores.Clear();
-      foreach (string i in ignore) {
-        string pattern = Regex.Escape(i.ToLower());       // Escape the original string
-        pattern = pattern.Replace(@"\?", ".");  // Replace all \? with .
-        pattern = pattern.Replace(@"\*", ".*"); // Replace all \* with .*
-        ignores.Add(new Regex(pattern));
-      }
       scanFiles = new List<FileRecord>();
       LogFile.Log("Scanning {0}...", root);
+      scanProgress = null;
       Scan(new DirectoryInfo(root));
       long totalSize = 0;
       foreach (FileRecord f in scanFiles)
         totalSize += f.Length;
       LogFile.Log("Found {0} file{1} ({2} total)", scanFiles.Count, 
         scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize));
+      FireScanProgress("Scan complete. Analyzing results...", 100.0);
+      Compare();
+      if (adds.Count > 0 || deletes.Count > 0 || moves.Count > 0 || edits.Count > 0)
+        Status = DriveStatus.UpdateRequired;
+      else
+        Status = DriveStatus.UpToDate;
+      FireScanCompleted(adds.Count, deletes.Count, moves.Count, edits.Count);
     }
 
-    private void Scan(DirectoryInfo dir)
+    private void Scan(DirectoryInfo dir, ProgressReporter progress = null)
     {
+      if (scanProgress != null)
+        FireScanProgress("Scanning " + dir.FullName + "...", scanProgress.Progress);
       DirectoryInfo[] subDirs;
       try {
         subDirs = dir.GetDirectories();
@@ -96,13 +120,26 @@ namespace disParity
         LogFile.Log("Warning: Could not enumerate files in {0}: {1}", dir.FullName, e.Message);
         return;
       }
-      foreach (DirectoryInfo d in subDirs) {
-        if (ignoreHidden && (d.Attributes & FileAttributes.Hidden) != 0)
-          continue;
-        if ((d.Attributes & FileAttributes.System) != 0)
-          continue;
-        Scan(d);
+
+      ProgressReporter folderProgress;
+      if (scanProgress == null) {
+        scanProgress = new ProgressReporter();
+        scanProgress.Reset(subDirs.Length);
+        folderProgress = scanProgress;
       }
+      else
+        folderProgress = progress.BeginSubPhase(subDirs.Length);
+
+      foreach (DirectoryInfo d in subDirs) {
+        if ((ignoreHidden && (d.Attributes & FileAttributes.Hidden) != 0) ||
+            ((d.Attributes & FileAttributes.System) != 0)) {
+          folderProgress.EndPhase();
+          continue;
+        }
+        Scan(d, folderProgress);
+        folderProgress.EndPhase();
+      }
+      FireScanProgress("", scanProgress.Progress);
       string relativePath = Utils.StripRoot(root, dir.FullName);
       foreach (FileInfo f in fileInfos) {
         if (f.Attributes == (FileAttributes)(-1))
@@ -125,6 +162,18 @@ namespace disParity
       }
     }
 
+    private void FireScanProgress(string status, double progress)
+    {
+      if (ScanProgress != null)
+        ScanProgress(this, new ScanProgressEventArgs(status, progress));
+    }
+
+    private void FireScanCompleted(int addCount, int deleteCount, int moveCount, int editCount)
+    {
+      if (ScanCompleted != null)
+        ScanCompleted(this, new ScanCompletedEventArgs(addCount, deleteCount, moveCount, editCount));
+    }
+
     // the "deletes" list contains FileRecords from the master files list
     private List<FileRecord> deletes;
     public List<FileRecord> Deletes { get { return deletes; } }
@@ -144,30 +193,37 @@ namespace disParity
     /// Compare the old list of files with the new list in order to
     /// determine which files had been added, removed, moved, or edited.
     /// </summary>
-    public void Compare()
+    private void Compare()
     {
+      adds = new List<FileRecord>();
+      deletes = new List<FileRecord>();
+      moves = new Dictionary<FileRecord, FileRecord>();
+      edits = new List<FileRecord>();
+
       // build dictionaries of file names for fast lookup
       Dictionary<string, FileRecord> oldFileNames = new Dictionary<string, FileRecord>();
-      foreach (FileRecord r in files)
-        oldFileNames[r.Name.ToLower()] = r;
+      if (files != null) // can be null if this drive was never scanned before
+        foreach (FileRecord r in files)
+          oldFileNames[r.Name.ToLower()] = r;
       Dictionary<string, FileRecord> seenFileNames = new Dictionary<string, FileRecord>();
       foreach (FileRecord r in scanFiles)
         seenFileNames[r.Name.ToLower()] = r;
 
       // build list of new files we haven't seen before (adds)
-      adds = new List<FileRecord>();
       foreach (FileRecord r in scanFiles)
         if (!oldFileNames.ContainsKey(r.Name.ToLower()))
           adds.Add(r);
 
+      if (files == null || files.Count == 0) 
+        // nothing more to do if there are no protected files
+        return;
+
       // build list of old files we don't see now (deletes)
-      deletes = new List<FileRecord>();
       foreach (FileRecord r in files)
         if (!seenFileNames.ContainsKey(r.Name.ToLower()))
           deletes.Add(r);
       
       // some of the files in add/delete list might actually be moves, check for that
-      moves = new Dictionary<FileRecord, FileRecord>();
       foreach (FileRecord a in adds) {
         byte[] hashCode = null;
         if (a.Length > 0)
@@ -189,7 +245,6 @@ namespace disParity
       }
 
       // now check for edits
-      edits = new List<FileRecord>();
       foreach (FileRecord o in files) {
         FileRecord n;
         // can only be an edit if we saw the same file name this scan...
@@ -207,6 +262,7 @@ namespace disParity
 
       LogFile.Log("Adds: {0} Deletes: {1} Moves: {2} Edits: {3}", adds.Count,
         deletes.Count, moves.Count, edits.Count);
+
 
     }
 
@@ -409,6 +465,7 @@ namespace disParity
       }
       using (FileStream f = new FileStream(metaFileName, FileMode.Create, FileAccess.Write)) {
         FileRecord.WriteUInt32(f, META_FILE_VERSION);
+        FileRecord.WriteUInt32(f, (UInt32)files.Count);
         foreach (FileRecord r in files)
           r.WriteToFile(f);
         f.Close();
@@ -422,8 +479,10 @@ namespace disParity
     private void AppendFileRecord(FileRecord r)
     {
       if (!File.Exists(metaFileName))
-        using (FileStream fNew = new FileStream(metaFileName, FileMode.Create, FileAccess.Write))
+        using (FileStream fNew = new FileStream(metaFileName, FileMode.Create, FileAccess.Write)) {
           FileRecord.WriteUInt32(fNew, META_FILE_VERSION);
+          FileRecord.WriteUInt32(fNew, 0); // unknown count
+        }
       using (FileStream f = new FileStream(metaFileName, FileMode.Append, FileAccess.Write))
         r.WriteToFile(f); 
     }
@@ -487,6 +546,12 @@ namespace disParity
 
       return freeList;
     }
+
+    public override string ToString()
+    {
+      return root;
+    }
+
   }
 
   public class FreeNode
@@ -518,6 +583,34 @@ namespace disParity
       return result;
     }
 
+  }
+
+  public class ScanProgressEventArgs : EventArgs
+  {
+    public ScanProgressEventArgs(string status, double progress)
+    {
+      Status = status;
+      Progress = progress;
+    }
+
+    public string Status { get; private set; }
+    public double Progress { get; private set; }
+  }
+
+  public class ScanCompletedEventArgs : EventArgs
+  {
+    public ScanCompletedEventArgs(int addCount, int deleteCount, int moveCount, int editCount)
+    {
+      AddCount = addCount;
+      DeleteCount = deleteCount;
+      MoveCount = moveCount;
+      EditCount = editCount;
+    }
+
+    public int AddCount { get; private set; }
+    public int DeleteCount { get; private set; }
+    public int MoveCount { get; private set; }
+    public int EditCount { get; private set; }
   }
 
 }

@@ -108,7 +108,7 @@ namespace disParity.CmdLine
         DateTime.Now.ToShortTimeString(), DateTime.Today.ToLongDateString());
 
       try {
-        ParitySet set = new ParitySet("config.txt");
+        ParitySet set = new ParitySet(@".\");
         switch (cmd) {
           case Command.Update:
             set.Update();
