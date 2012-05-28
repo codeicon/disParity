@@ -175,10 +175,12 @@ namespace disParity
 
       parity.Close();
 
+      /*
       foreach (DataDrive d in drives) {
         Console.WriteLine("Block mask for {0}:", d.Root);
         PrintBlockMask(d);
       }
+       */
 
     }
 
