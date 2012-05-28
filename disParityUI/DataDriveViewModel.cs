@@ -21,7 +21,11 @@ namespace disParityUI
       this.dataDrive = dataDrive;
       dataDrive.ScanProgress += HandleScanProgress;
       dataDrive.ScanCompleted += HandleScanCompleted;
+      dataDrive.UpdateProgress += HandleUpdateProgress;
+      dataDrive.UpdateCompleted += HandleUpdateCompleted;
       UpdateStatus();
+      if (dataDrive.Files != null)
+        FileCount = dataDrive.Files.Count();
     }
 
     public void Scan()
@@ -52,6 +56,20 @@ namespace disParityUI
       Progress = 0;
     }
 
+    private void HandleUpdateProgress(object sender, UpdateProgressEventArgs args)
+    {
+      if (!String.IsNullOrEmpty(args.Status))
+        Status = args.Status;
+      FileCount = args.Files;
+      Progress = args.Progress;
+    }
+
+    private void HandleUpdateCompleted(object sender, EventArgs args)
+    {
+      UpdateStatus();
+      Progress = 0;
+    }
+
     public string Root
     {
       get
@@ -60,14 +78,17 @@ namespace disParityUI
       }
     }
 
+    private int fileCount;
     public int FileCount
     {
       get
       {
-        if (dataDrive.Files == null)
-          return 0;
-        else
-          return dataDrive.Files.Count();
+        return fileCount;
+      }
+      set
+      {
+        fileCount = value;
+        FirePropertyChanged("FileCount");
       }
     }
 

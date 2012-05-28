@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.ComponentModel;
 using disParity;
 
@@ -38,6 +39,15 @@ namespace disParityUI
     {
       foreach (DataDriveViewModel vm in drives)
         ScanDrive(vm);
+    }
+
+    public void UpdateAll()
+    {
+      Task.Factory.StartNew(() =>
+      {
+        paritySet.Update();
+      }
+      );
     }
 
     public ObservableCollection<DataDriveViewModel> Drives

@@ -33,6 +33,8 @@ namespace disParity
 
     public event EventHandler<ScanProgressEventArgs> ScanProgress;
     public event EventHandler<ScanCompletedEventArgs> ScanCompleted;
+    public event EventHandler<UpdateProgressEventArgs> UpdateProgress;
+    public event EventHandler UpdateCompleted;
 
     public DataDrive(string root, string metaFileName, bool ignoreHidden, List<string> ignore)
     {
@@ -172,6 +174,18 @@ namespace disParity
     {
       if (ScanCompleted != null)
         ScanCompleted(this, new ScanCompletedEventArgs(addCount, deleteCount, moveCount, editCount));
+    }
+
+    private void FireUpdateProgress(string file, int count, double progress)
+    {
+      if (UpdateProgress != null)
+        UpdateProgress(this, new UpdateProgressEventArgs(file, count, progress));
+    }
+
+    private void FireUpdateCompleted()
+    {
+      if (UpdateCompleted != null)
+        UpdateCompleted(this, new EventArgs());
     }
 
     // the "deletes" list contains FileRecords from the master files list
@@ -356,21 +370,38 @@ namespace disParity
     }
 
     private UInt32 enumBlock;
+    private UInt32 enumBlocks;
+    private int enumCount;
     private FileStream enumFile;
     private List<FileRecord>.Enumerator enumerator;
+    private bool enumComplete;
 
     public void BeginFileEnum()
     {
       enumBlock = 0;
       enumFile = null;
+      enumComplete = false;
+      enumBlocks = 0;
+      foreach (FileRecord r in scanFiles)
+        enumBlocks += r.LengthInBlocks;
       enumerator = scanFiles.GetEnumerator();
+      enumCount = 0;
     }
 
     public bool GetNextBlock(byte[] buf)
     {
+      if (buf.Length != Parity.BlockSize)
+        throw new Exception("Invalid buffer size (must be " + Parity.BlockSize + " bytes)");
       if (enumFile == null) {
-        if (!enumerator.MoveNext())
+        if (enumComplete)
           return false;
+        if (!enumerator.MoveNext()) {
+          enumerator.Dispose();
+          enumComplete = true;
+          Status = DriveStatus.UpToDate;
+          FireUpdateCompleted();
+          return false;
+        }
         // TODO: Handle zero-length file here?
         string fullName = Utils.MakeFullPath(root, enumerator.Current.Name);
         try {
@@ -382,11 +413,12 @@ namespace disParity
           enumerator.MoveNext();
           return GetNextBlock(buf);
         }
+        FireUpdateProgress("Reading " + fullName, enumCount, (double)enumBlock / (double)enumBlocks);
         LogFile.Log("Reading {0}", fullName);
         hash.Initialize();
         enumerator.Current.StartBlock = enumBlock;
       }
-      int bytesRead = enumFile.Read(buf, 0, buf.Length);
+      int bytesRead = enumFile.Read(buf, 0, Parity.BlockSize);
       if (enumFile.Position < enumFile.Length)
         hash.TransformBlock(buf, 0, bytesRead, buf, 0);
       else {
@@ -397,9 +429,12 @@ namespace disParity
         enumFile.Close();
         enumFile.Dispose();
         enumFile = null;
-        enumBlock += enumerator.Current.LengthInBlocks;
-        Array.Clear(buf, bytesRead, buf.Length - bytesRead);
+        enumCount++;
+        //enumBlock += enumerator.Current.LengthInBlocks;
+        Array.Clear(buf, bytesRead, Parity.BlockSize - bytesRead);
       }
+      enumBlock++;
+      FireUpdateProgress("", enumCount, (double)enumBlock / (double)enumBlocks);
       return true;
     }    
 
@@ -611,6 +646,20 @@ namespace disParity
     public int DeleteCount { get; private set; }
     public int MoveCount { get; private set; }
     public int EditCount { get; private set; }
+  }
+
+  public class UpdateProgressEventArgs : EventArgs
+  {
+    public UpdateProgressEventArgs(string status, int files, double progress)
+    {
+      Status = status;
+      Files = files;
+      Progress = progress;
+    }
+
+    public string Status { get; private set; }
+    public int Files { get; private set; }
+    public double Progress { get; private set; }
   }
 
 }

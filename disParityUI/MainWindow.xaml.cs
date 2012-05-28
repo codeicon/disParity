@@ -16,9 +16,7 @@ using disParity;
 
 namespace disParityUI
 {
-  /// <summary>
-  /// Interaction logic for MainWindow.xaml
-  /// </summary>
+
   public partial class MainWindow : Window
   {
 
@@ -30,6 +28,12 @@ namespace disParityUI
 
       viewModel = new MainWindowViewModel();
       DataContext = viewModel;
+      Loaded += HandleLoaded;
+    }
+
+    private void HandleLoaded(object sender, EventArgs args)
+    {
+      viewModel.ScanAll();
     }
 
     void AddDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
@@ -67,6 +71,16 @@ namespace disParityUI
       viewModel.ScanAll();
     }
 
+    void UpdateAllCanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+      e.CanExecute = true;
+    }
+
+    void UpdateAllExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+      viewModel.UpdateAll();
+    }
+
   }
 
   public class Commands
@@ -74,12 +88,14 @@ namespace disParityUI
     public static RoutedUICommand AddDrive;
     public static RoutedUICommand ScanDrive;
     public static RoutedUICommand ScanAll;
+    public static RoutedUICommand UpdateAll;
 
     static Commands()
     {
       AddDrive = new RoutedUICommand("Add Drive...", "AddDrive", typeof(MainWindow));
       ScanDrive = new RoutedUICommand("Scan Drive", "ScanDrive", typeof(MainWindow));
       ScanAll = new RoutedUICommand("Scan All", "ScanAll", typeof(MainWindow));
+      UpdateAll = new RoutedUICommand("Update All", "UpdateAll", typeof(MainWindow));
     }
   }
 

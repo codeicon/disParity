@@ -58,7 +58,7 @@ namespace disParity
       Empty = true;
       drives = new List<DataDrive>(config.Drives.Count);
       for (int i = 0; i < config.Drives.Count; i++) {
-        string metaFile = Path.Combine(config.ParityDir, String.Format("files{0}.dat", i + 1));
+        string metaFile = Path.Combine(config.ParityDir, String.Format("files{0}.dat", i));
         if (File.Exists(metaFile))
           Empty = false;
         drives.Add(new DataDrive(config.Drives[i], metaFile, config.IgnoreHidden, config.Ignores));
@@ -221,7 +221,7 @@ namespace disParity
     /// </summary>
     public DataDrive AddDrive(string path)
     {
-      string metaFile = Path.Combine(config.ParityDir, String.Format("files{0}.dat", drives.Count + 1));
+      string metaFile = Path.Combine(config.ParityDir, String.Format("files{0}.dat", drives.Count));
       DataDrive newDrive = new DataDrive(path, metaFile, config.IgnoreHidden, config.Ignores);
       drives.Add(newDrive);
       // update config and save
@@ -409,7 +409,7 @@ namespace disParity
     }
 
     /// <summary>
-    /// Creates a new snapshot from scratch
+    /// Create a new snapshot from scratch
     /// </summary>
     private void Create()
     {
