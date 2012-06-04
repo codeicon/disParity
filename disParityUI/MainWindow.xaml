@@ -54,9 +54,9 @@
               </Grid.RowDefinitions>
               <TextBlock FontWeight="Bold" Margin="5,0,0,0" Text="{Binding Path=Root}"></TextBlock>
               <StackPanel Grid.Row="1" Margin ="5,0,5,5" Orientation="Horizontal">
-                <TextBlock Margin="0,0,10,0">Protected files:</TextBlock>
+                <TextBlock Margin="0,0,5,0">Protected files:</TextBlock>
                 <TextBlock Margin="0,0,10,0" Text="{Binding Path=FileCount}"></TextBlock>
-                <TextBlock Margin="0,0,10,0">Status:</TextBlock>
+                <TextBlock Margin="0,0,5,0">Status:</TextBlock>
                 <TextBlock Margin="0,0,10,0" Text="{Binding Path=Status}"></TextBlock>
               </StackPanel>
               <ProgressBar Margin="5,0,5,4" Grid.Row="2" Height="20" Minimum="0" Maximum="1" Value="{Binding Path=Progress}"/>

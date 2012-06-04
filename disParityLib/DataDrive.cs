@@ -41,8 +41,9 @@ namespace disParity
       this.root = root;
       this.metaFileName = metaFileName;
 
+      files = new Dictionary<string, FileRecord>();
       if (File.Exists(metaFileName))
-        LoadFileData();
+        LoadFileList();
 
       hash = MD5.Create();
       ignores = new List<Regex>();
@@ -61,7 +62,7 @@ namespace disParity
 
     public UInt32 MaxBlock { get; private set; }
 
-    public IEnumerable<FileRecord> Files { get { return files.Values; } }
+    public IEnumerable<FileRecord> Files { get {  return files.Values; } }
 
     public DriveStatus Status { get; private set; }
 
@@ -70,12 +71,17 @@ namespace disParity
     public int FileCount { get { return files.Count; } }
 
     /// <summary>
+    /// Total size, in bytes, of all protected files on this drive
+    /// </summary>
+    public long TotalSize { get; private set; } 
+
+    /// <summary>
     /// Clears all state of the DataDrive, resetting to empty (deletes on-disk
     /// meta data as well.)
     /// </summary>
     public void Clear()
     {
-      files = null;
+      files.Clear();
       scanFiles = null;
       MaxBlock = 0;
       if (File.Exists(metaFileName))
@@ -186,10 +192,10 @@ namespace disParity
         ScanCompleted(this, new ScanCompletedEventArgs(addCount, deleteCount, moveCount, editCount));
     }
 
-    public void FireUpdateProgress(string file, int count, double progress)
+    public void FireUpdateProgress(string file, int count, long size, double progress)
     {
       if (UpdateProgress != null)
-        UpdateProgress(this, new UpdateProgressEventArgs(file, count, progress));
+        UpdateProgress(this, new UpdateProgressEventArgs(file, count, size, progress));
     }
 
     private void FireUpdateCompleted()
@@ -233,10 +239,6 @@ namespace disParity
       foreach (FileRecord r in scanFiles)
         if (!files.ContainsKey(r.Name.ToLower()))
           adds.Add(r);
-
-      if (files == null || files.Count == 0) 
-        // nothing more to do if there are no protected files
-        return;
 
       // build list of old files we don't see now (deletes)
       foreach (var kvp in files)
@@ -337,10 +339,9 @@ namespace disParity
     /// </summary>
     public void AddFile(FileRecord r)
     {
-      UInt32 endBlock = r.StartBlock + r.LengthInBlocks;
-      if (endBlock > MaxBlock)
-        MaxBlock = endBlock;
-      files[r.Name.ToLower()] = r;
+      string filename = r.Name.ToLower();
+      Debug.Assert(!files.ContainsKey(filename));
+      files[filename] = r;
       SaveFileList();
     }
 
@@ -402,18 +403,11 @@ namespace disParity
       return hash.Hash;
     }
 
-    /// <summary>
-    /// Returns true if there is a files.dat file present for this drive
-    /// </summary>
-    public bool HasFileData()
-    {
-      return (files != null);
-    }
-
     private UInt32 enumBlock;
     private UInt32 enumBlocks;
     private int enumCount;
     private FileStream enumFile;
+    private long enumSize;
     private List<FileRecord>.Enumerator enumerator;
     private bool enumComplete;
 
@@ -427,6 +421,7 @@ namespace disParity
         enumBlocks += r.LengthInBlocks;
       enumerator = scanFiles.GetEnumerator();
       enumCount = 0;
+      enumSize = 0;
       Busy = true;
     }
 
@@ -440,7 +435,7 @@ namespace disParity
         if (!enumerator.MoveNext()) {
           enumerator.Dispose();
           enumComplete = true;
-          LoadFileData(); // this loads completed filesX.dat back into the master files list
+          LoadFileList(); // this loads completed filesX.dat back into the master files list
           Status = DriveStatus.UpToDate;
           FireUpdateCompleted();
           Busy = false;
@@ -457,7 +452,7 @@ namespace disParity
           enumerator.MoveNext();
           return GetNextBlock(buf);
         }
-        FireUpdateProgress("Reading " + fullName, enumCount, (double)enumBlock / (double)enumBlocks);
+        FireUpdateProgress("Reading " + fullName, enumCount, enumSize, (double)enumBlock / (double)enumBlocks);
         LogFile.Log("Reading {0}", fullName);
         hash.Initialize();
         enumerator.Current.StartBlock = enumBlock;
@@ -474,11 +469,11 @@ namespace disParity
         enumFile.Dispose();
         enumFile = null;
         enumCount++;
-        //enumBlock += enumerator.Current.LengthInBlocks;
+        enumSize += enumerator.Current.Length;
         Array.Clear(buf, bytesRead, Parity.BlockSize - bytesRead);
       }
       enumBlock++;
-      FireUpdateProgress("", enumCount, (double)enumBlock / (double)enumBlocks);
+      FireUpdateProgress("", enumCount, enumSize, (double)enumBlock / (double)enumBlocks);
       return true;
     }    
 
@@ -533,6 +528,27 @@ namespace disParity
       return null;
     }
 
+    /// <summary>
+    /// Loads the files.dat file containing the records of any existing protected file data
+    /// </summary>
+    private void LoadFileList()
+    {
+      using (FileStream metaData = new FileStream(metaFileName, FileMode.Open, FileAccess.Read)) {
+        UInt32 version = FileRecord.ReadUInt32(metaData);
+        if (version == 1)
+          // skip past unused count field
+          FileRecord.ReadUInt32(metaData);
+        else if (version != META_FILE_VERSION)
+          throw new Exception("file version mismatch: " + metaFileName);
+        files.Clear();
+        while (metaData.Position < metaData.Length) {
+          FileRecord r = FileRecord.LoadFromFile(metaData, this);
+          files[r.Name.ToLower()] = r;
+        }
+      }
+      CalculateMaxBlock();
+    }
+
     private void SaveFileList()
     {
       DateTime start = DateTime.Now;
@@ -552,6 +568,7 @@ namespace disParity
       if (backup != "")
         File.Delete(backup);
       TimeSpan elapsed = DateTime.Now - start;
+      CalculateMaxBlock();
       LogFile.VerboseLog("{0} records saved in {1:F2} sec", files.Count, elapsed.TotalSeconds);
     }
 
@@ -567,36 +584,18 @@ namespace disParity
     }
     
     /// <summary>
-    /// Loads the files.dat file containing the record of any existing protected file data
-    /// </summary>
-    private void LoadFileData()
-    {
-      using (FileStream metaData = new FileStream(metaFileName, FileMode.Open, FileAccess.Read)) {
-        UInt32 version = FileRecord.ReadUInt32(metaData);
-        if (version == 1)
-          // skip past unused count field
-          FileRecord.ReadUInt32(metaData);
-        else if (version != META_FILE_VERSION)
-          throw new Exception("file version mismatch: " + metaFileName);
-        files = new Dictionary<string, FileRecord>();
-        while (metaData.Position < metaData.Length) {
-          FileRecord r = FileRecord.LoadFromFile(metaData, this);
-          files[r.Name.ToLower()] = r;
-        }
-      }
-      CalculateMaxBlock();
-    }
-
-    /// <summary>
     /// Determines the index of the first unused 64K parity block for this drive.
+    /// Also re-calculates TotalSize while we're at it.
     /// </summary>
     private void CalculateMaxBlock()
     {
       MaxBlock = 0;
+      TotalSize = 0;
       foreach (FileRecord r in files.Values) {
         UInt32 endBlock = r.StartBlock + r.LengthInBlocks;
         if (endBlock > MaxBlock)
           MaxBlock = endBlock;
+        TotalSize += r.Length;
       }
     }
 
@@ -696,15 +695,17 @@ namespace disParity
 
   public class UpdateProgressEventArgs : EventArgs
   {
-    public UpdateProgressEventArgs(string status, int files, double progress)
+    public UpdateProgressEventArgs(string status, int files, long size, double progress)
     {
       Status = status;
       Files = files;
+      Size = size;
       Progress = progress;
     }
 
     public string Status { get; private set; }
     public int Files { get; private set; }
+    public long Size { get; private set; }
     public double Progress { get; private set; }
   }
 

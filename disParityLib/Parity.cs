@@ -11,30 +11,28 @@ namespace disParity
 
     const Int32 PARITY_BLOCK_SIZE = 65536; 
     const Int32 BLOCKS_PER_FILE = 16384;
-    const Int32 MAX_BLOCK_CACHE = 512;
     const Int32 DEFAULT_MAX_TEMP_BLOCKS = 4096;
 
     private string parityDir;
-    private string tempFileName;
+    private string tempDir;
     private FileStream f = null;
     private UInt32 currentParityFile;
     private UInt32 maxTempBlocks = DEFAULT_MAX_TEMP_BLOCKS;
 
-    /* Temp parity stuff */
-    const string TEMP_PARITY_FILENAME = "parity.tmp";
-    private Stream temp = null;
-    private UInt32 tempStartBlock;
-    private UInt32 tempLength;
-
-    public Parity(string dir, string tempDir)
+    public Parity(string dir, string tempDir, UInt32 maxTempRAM)
     {
       parityDir = dir;
-      tempFileName = tempDir + TEMP_PARITY_FILENAME;
+      this.tempDir = tempDir;
+      SetMaxTempRAM(maxTempRAM);
     }
+
+    public static Int32 BlockSize { get { return PARITY_BLOCK_SIZE; } }
 
     public string Dir { get { return parityDir; } }
 
-    public static Int32 BlockSize { get { return PARITY_BLOCK_SIZE; } }
+    public string TempDir { get { return tempDir; } }
+
+    public UInt32 MaxTempBlocks { get { return maxTempBlocks; } }
 
     public void DeleteAll()
     {
@@ -82,67 +80,6 @@ namespace disParity
       }
     }
 
-    /* NOTE: The temp parity mechanism REQUIRES that blocks are written
-     * sequentially by increasing block number; any other write sequence will
-     * not work! */
-    public void OpenTempParity(UInt32 startBlock, UInt32 lengthInBlocks)
-    {
-      if (lengthInBlocks < maxTempBlocks)
-        try {
-          temp = new MemoryStream((int)(lengthInBlocks * PARITY_BLOCK_SIZE));
-        }
-        catch {
-          /* If the allocation fails for any reason (most likely cause is out
-           * of memory) just fall back to the temp file. */
-          temp = new FileStream(tempFileName, FileMode.Create,
-            FileAccess.ReadWrite);
-        }
-      else
-        temp = new FileStream(tempFileName, FileMode.Create,
-          FileAccess.ReadWrite);
-      tempStartBlock = startBlock;
-      tempLength = lengthInBlocks;
-    }
-
-    public void WriteTempBlock(UInt32 block, byte[] data)
-    {
-      if (temp != null)
-        temp.Write(data, 0, PARITY_BLOCK_SIZE);
-    }
-
-    public void CloseTemp()
-    {
-      if (temp != null) {
-        temp.Close();
-        temp.Dispose();
-        temp = null;
-      }
-    }
-
-    public void FlushTemp()
-    {
-      if (temp is MemoryStream) {
-        byte[] buf = (temp as MemoryStream).GetBuffer();
-        int offset = 0;
-        UInt32 endBlock = tempStartBlock + tempLength;
-        for (UInt32 b = tempStartBlock; b < endBlock; b++) {
-          OpenParityFile(b, false);
-          f.Write(buf, offset, PARITY_BLOCK_SIZE);
-          offset += PARITY_BLOCK_SIZE;
-        }
-      } else {
-        temp.Seek(0, SeekOrigin.Begin);
-        byte[] data = new byte[PARITY_BLOCK_SIZE];
-        UInt32 endBlock = tempStartBlock + tempLength;
-        for (UInt32 b = tempStartBlock; b < endBlock; b++) {
-          temp.Read(data, 0, PARITY_BLOCK_SIZE);
-          OpenParityFile(b, false);
-          f.Write(data, 0, PARITY_BLOCK_SIZE);
-        }
-      }
-      Close(); // closes the actual parity file
-    }
-
     public bool ReadBlock(UInt32 block, byte[] data)
     {
       try {
@@ -161,7 +98,6 @@ namespace disParity
       return true;
     }
 
-    /* WriteBlock is currently called during creates. */
     public void WriteBlock(UInt32 block, byte[] data)
     {
       OpenParityFile(block, false);
@@ -174,7 +110,7 @@ namespace disParity
       return (block - (partityFileNum * BLOCKS_PER_FILE)) * PARITY_BLOCK_SIZE;
     }
 
-    public void SetMaxTempRAM(UInt32 mb)
+    private void SetMaxTempRAM(UInt32 mb)
     {
       const int MAX_TEMP_RAM = 2047;
       if (mb < 0)

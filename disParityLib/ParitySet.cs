@@ -15,11 +15,16 @@ namespace disParity
     private List<DataDrive> drives;
     private Parity parity;
     private bool busy;
+    private LogFile logFile;
 
     public ParitySet(string configFilePath)
     {
       if (!Directory.Exists(configFilePath))
         throw new Exception(configFilePath + " not found");
+
+
+      string logFileName = "disParity log " + DateTime.Now.ToString("yy-MM-dd HH.mm.ss");
+      logFile = new LogFile(logFileName, true);
 
       busy = true;
       string configPath = Path.Combine(configFilePath, "disparity.xml");
@@ -66,7 +71,7 @@ namespace disParity
         drives.Add(new DataDrive(config.Drives[i], metaFile, config.IgnoreHidden, config.Ignores));
       }
 
-      parity = new Parity(config.ParityDir, config.TempDir);
+      parity = new Parity(config.ParityDir, config.TempDir, config.MaxTempRAM);
       busy = false;
     }
 
@@ -336,7 +341,7 @@ namespace disParity
         else
           LogFile.Log("Adding {0}...", fullPath);
 
-        r.Drive.FireUpdateProgress("Adding  " + fullPath, r.Drive.FileCount, 0);
+        r.Drive.FireUpdateProgress("Adding  " + fullPath, r.Drive.FileCount, r.Drive.TotalSize, 0);
 
         byte[] data = new byte[Parity.BlockSize];
         MD5 hash = MD5.Create();
@@ -362,7 +367,7 @@ namespace disParity
               change.Reset(true);
               change.AddData(data);
               change.Write();
-              r.Drive.FireUpdateProgress("", r.Drive.FileCount, (double)(b - startBlock) / (double)(endBlock - startBlock));
+              r.Drive.FireUpdateProgress("", r.Drive.FileCount, r.Drive.TotalSize, (double)(b - startBlock) / (double)(endBlock - startBlock));
             }
           change.Save();
         }
@@ -383,7 +388,7 @@ namespace disParity
         else
           LogFile.Log("Removing {0}...", fullPath);
 
-        r.Drive.FireUpdateProgress("Removing  " + fullPath, r.Drive.FileCount - 1, 0);
+        r.Drive.FireUpdateProgress("Removing  " + fullPath, r.Drive.FileCount, r.Drive.TotalSize, 0);
 
         // Recalulate parity from scratch for all blocks that contained the deleted file's data.
         using (ParityChange change = new ParityChange(parity, startBlock, r.LengthInBlocks)) {
@@ -402,12 +407,12 @@ namespace disParity
               catch (Exception e) {
                 LogFile.Log("Error: {0}", e.Message);
                 LogFile.Log("Unable to remove {0}, file will be skipped this update", fullPath);
-                parity.CloseTemp();
                 return false;
               }
             }
             change.Write();
-            r.Drive.FireUpdateProgress("", r.Drive.FileCount - 1, (double)(b - startBlock) / (double)(endBlock - startBlock));
+            r.Drive.FireUpdateProgress("", r.Drive.FileCount, r.Drive.TotalSize,
+              (double)(b - startBlock) / (double)(endBlock - startBlock));
           }
           change.Save();
         }

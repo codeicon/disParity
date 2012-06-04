@@ -6,7 +6,7 @@ using System.IO;
 namespace disParity
 {
 
-  internal class Utils
+  public class Utils
   {
 
     public static string MakeFullPath(string path, string name)

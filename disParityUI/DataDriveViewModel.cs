@@ -24,8 +24,7 @@ namespace disParityUI
       DataDrive.UpdateProgress += HandleUpdateProgress;
       DataDrive.UpdateCompleted += HandleUpdateCompleted;
       UpdateStatus();
-      if (dataDrive.Files != null)
-        FileCount = dataDrive.Files.Count();
+      FileCount = String.Format("{0} ({1})", DataDrive.FileCount, Utils.SmartSize(DataDrive.TotalSize));
     }
 
     public void Scan()
@@ -62,7 +61,7 @@ namespace disParityUI
     {
       if (!String.IsNullOrEmpty(args.Status))
         Status = args.Status;
-      FileCount = args.Files;
+      FileCount = String.Format("{0} ({1})", args.Files, Utils.SmartSize(args.Size));
       Progress = args.Progress;
     }
 
@@ -70,6 +69,8 @@ namespace disParityUI
     {
       UpdateStatus();
       Progress = 0;
+      FileCount = String.Format("{0} ({1})", DataDrive.FileCount,
+        Utils.SmartSize(DataDrive.TotalSize));
     }
 
     public string Root
@@ -80,8 +81,8 @@ namespace disParityUI
       }
     }
 
-    private int fileCount;
-    public int FileCount
+    private string fileCount;
+    public string FileCount
     {
       get
       {
