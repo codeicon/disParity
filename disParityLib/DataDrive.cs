@@ -22,7 +22,7 @@ namespace disParity
 
     private string root;
     private string metaFileName;
-    private List<FileRecord> files;     // Master list of protected files; should reflect what is currently in files.dat at all times
+    private Dictionary<string, FileRecord> files;     // Master list of protected files; should reflect what is currently in files.dat at all times
     private List<FileRecord> scanFiles; // List of current files on the drive as seen this scan
     private MD5 hash;
     private bool ignoreHidden;
@@ -61,9 +61,13 @@ namespace disParity
 
     public UInt32 MaxBlock { get; private set; }
 
-    public IEnumerable<FileRecord> Files { get { return files; } }
+    public IEnumerable<FileRecord> Files { get { return files.Values; } }
 
     public DriveStatus Status { get; private set; }
+
+    public bool Busy { get; private set; }
+
+    public int FileCount { get { return files.Count; } }
 
     /// <summary>
     /// Clears all state of the DataDrive, resetting to empty (deletes on-disk
@@ -84,22 +88,28 @@ namespace disParity
     /// </summary>
     public void Scan()
     {
-      scanFiles = new List<FileRecord>();
-      LogFile.Log("Scanning {0}...", root);
-      scanProgress = null;
-      Scan(new DirectoryInfo(root));
-      long totalSize = 0;
-      foreach (FileRecord f in scanFiles)
-        totalSize += f.Length;
-      LogFile.Log("Found {0} file{1} ({2} total)", scanFiles.Count, 
-        scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize));
-      FireScanProgress("Scan complete. Analyzing results...", 100.0);
-      Compare();
-      if (adds.Count > 0 || deletes.Count > 0 || moves.Count > 0 || edits.Count > 0)
-        Status = DriveStatus.UpdateRequired;
-      else
-        Status = DriveStatus.UpToDate;
-      FireScanCompleted(adds.Count, deletes.Count, moves.Count, edits.Count);
+      Busy = true;
+      try {
+        scanFiles = new List<FileRecord>();
+        LogFile.Log("Scanning {0}...", root);
+        scanProgress = null;
+        Scan(new DirectoryInfo(root));
+        long totalSize = 0;
+        foreach (FileRecord f in scanFiles)
+          totalSize += f.Length;
+        LogFile.Log("Found {0} file{1} ({2} total)", scanFiles.Count,
+          scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize));
+        FireScanProgress("Scan complete. Analyzing results...", 100.0);
+        Compare();
+        if (adds.Count > 0 || deletes.Count > 0 || moves.Count > 0 || edits.Count > 0)
+          Status = DriveStatus.UpdateRequired;
+        else
+          Status = DriveStatus.UpToDate;
+        FireScanCompleted(adds.Count, deletes.Count, moves.Count, edits.Count);
+      }
+      finally {
+        Busy = false;
+      }
     }
 
     private void Scan(DirectoryInfo dir, ProgressReporter progress = null)
@@ -176,7 +186,7 @@ namespace disParity
         ScanCompleted(this, new ScanCompletedEventArgs(addCount, deleteCount, moveCount, editCount));
     }
 
-    private void FireUpdateProgress(string file, int count, double progress)
+    public void FireUpdateProgress(string file, int count, double progress)
     {
       if (UpdateProgress != null)
         UpdateProgress(this, new UpdateProgressEventArgs(file, count, progress));
@@ -201,7 +211,7 @@ namespace disParity
     public List<FileRecord> Edits { get { return edits; } }
 
     // the "moves" dictionary maps FilesRecords from the master files list to the new scanFiles list
-    private Dictionary<FileRecord, FileRecord> moves;
+    private Dictionary<string, FileRecord> moves;
 
     /// <summary>
     /// Compare the old list of files with the new list in order to
@@ -211,21 +221,17 @@ namespace disParity
     {
       adds = new List<FileRecord>();
       deletes = new List<FileRecord>();
-      moves = new Dictionary<FileRecord, FileRecord>();
+      moves = new Dictionary<string, FileRecord>();
       edits = new List<FileRecord>();
 
-      // build dictionaries of file names for fast lookup
-      Dictionary<string, FileRecord> oldFileNames = new Dictionary<string, FileRecord>();
-      if (files != null) // can be null if this drive was never scanned before
-        foreach (FileRecord r in files)
-          oldFileNames[r.Name.ToLower()] = r;
+      // build dictionary of seen file names for fast lookup
       Dictionary<string, FileRecord> seenFileNames = new Dictionary<string, FileRecord>();
       foreach (FileRecord r in scanFiles)
         seenFileNames[r.Name.ToLower()] = r;
 
       // build list of new files we haven't seen before (adds)
       foreach (FileRecord r in scanFiles)
-        if (!oldFileNames.ContainsKey(r.Name.ToLower()))
+        if (!files.ContainsKey(r.Name.ToLower()))
           adds.Add(r);
 
       if (files == null || files.Count == 0) 
@@ -233,9 +239,9 @@ namespace disParity
         return;
 
       // build list of old files we don't see now (deletes)
-      foreach (FileRecord r in files)
-        if (!seenFileNames.ContainsKey(r.Name.ToLower()))
-          deletes.Add(r);
+      foreach (var kvp in files)
+        if (!seenFileNames.ContainsKey(kvp.Key))
+          deletes.Add(kvp.Value);
       
       // some of the files in add/delete list might actually be moves, check for that
       foreach (FileRecord a in adds) {
@@ -248,28 +254,35 @@ namespace disParity
                 hashCode = ComputeHash(a);
               if (Utils.HashCodesMatch(hashCode, d.HashCode)) {
                 LogFile.Log("{0} moved to {1}", Utils.MakeFullPath(root, d.Name), Utils.MakeFullPath(root, a.Name));
-                moves[d] = a;
+                moves[d.Name.ToLower()] = a;
               }
             }
       }
       // remove the moved files from the add and delete lists
       foreach (var kvp in moves) {
-        deletes.Remove(kvp.Key);
+        FileRecord delete = null;
+        foreach (FileRecord r in deletes)
+          if (String.Equals(kvp.Key, r.Name.ToLower())) {
+            delete = r;
+            break;
+          }
+        if (delete != null)
+          deletes.Remove(delete);
         adds.Remove(kvp.Value);
       }
 
       // now check for edits
-      foreach (FileRecord o in files) {
+      foreach (var kvp in files) {
         FileRecord n;
         // can only be an edit if we saw the same file name this scan...
-        if (seenFileNames.TryGetValue(o.Name.ToLower(), out n)) {
+        if (seenFileNames.TryGetValue(kvp.Key, out n)) {
           // if we detect an edit, we add the "new" version of the file to the "edit" list, 
           // because it has the new attributes and we want those saved later
-          if (o.Length != n.Length)
+          if (kvp.Value.Length != n.Length)
             edits.Add(n); // trivial case, length changed
-          else if (o.CreationTime != n.CreationTime || o.LastWriteTime != n.LastWriteTime)
+          else if (kvp.Value.CreationTime != n.CreationTime || kvp.Value.LastWriteTime != n.LastWriteTime)
             // probable edit, check hash code to be sure
-            if (!HashCheck(o))
+            if (!HashCheck(kvp.Value))
               edits.Add(n); 
         }
       }
@@ -287,12 +300,22 @@ namespace disParity
     {
       if (moves.Count == 0)
         return;
+      // the moves dictionary maps old file names to new FileRecords
       LogFile.Log("Processing moves for {0}...", root);
       foreach (var kvp in moves) {
+        // find the old entry
+        FileRecord old;
+        if (!files.TryGetValue(kvp.Key, out old))
+          throw new Exception("Unable to locate moved file " + kvp.Key + " in master file table");
+        // remove it from the table
         files.Remove(kvp.Key);
-        files.Add(kvp.Value);
+        // update new record to carry over meta data from the old one
+        kvp.Value.StartBlock = old.StartBlock;
+        kvp.Value.HashCode = old.HashCode;
+        // store new record in master file table
+        files[kvp.Value.Name.ToLower()] = kvp.Value;
       }
-      // save updated oldFiles list
+      // save updated master file table
       SaveFileList();
       // clear moves list, don't need it anymore
       moves.Clear();
@@ -303,8 +326,9 @@ namespace disParity
     /// </summary>
     public void RemoveFile(FileRecord r)
     {
-      Debug.Assert(deletes.Contains(r) || edits.Contains(r));
-      files.Remove(r);
+      string filename = r.Name.ToLower();
+      Debug.Assert(files.ContainsKey(filename));
+      files.Remove(filename);
       SaveFileList();
     }
 
@@ -316,8 +340,18 @@ namespace disParity
       UInt32 endBlock = r.StartBlock + r.LengthInBlocks;
       if (endBlock > MaxBlock)
         MaxBlock = endBlock;
-      files.Add(r);
+      files[r.Name.ToLower()] = r;
       SaveFileList();
+    }
+
+    public void FinishUpdate()
+    {
+      adds.Clear();
+      deletes.Clear();
+      edits.Clear();
+      moves.Clear();
+      Status = DriveStatus.UpToDate;
+      FireUpdateCompleted();
     }
 
     /// <summary>
@@ -325,19 +359,26 @@ namespace disParity
     /// </summary>
     public int HashCheck()
     {
-      int failures = 0;
-      foreach (FileRecord r in files)
-        try {
-          LogFile.Log("Checking hash for {0}...", r.FullPath);
-          if (!HashCheck(r)) {
-            LogFile.Log("Hash check FAILED");
-            failures++;
+      Busy = true;
+      try {
+        int failures = 0;
+        foreach (FileRecord r in files.Values)
+          try {
+            LogFile.Log("Checking hash for {0}...", r.FullPath);
+            if (!HashCheck(r)) {
+              LogFile.Log("Hash check FAILED");
+              failures++;
+            }
           }
-        }
-        catch (Exception e) {
-          LogFile.Log("Error opening {0} for hash check: {1}", r.FullPath, e.Message);
-        }
-      return failures;
+          catch (Exception e) {
+            LogFile.Log("Error opening {0} for hash check: {1}", r.FullPath, e.Message);
+          }
+        return failures;
+
+      }
+      finally {
+        Busy = false;
+      }
     }
 
     /// <summary>
@@ -386,6 +427,7 @@ namespace disParity
         enumBlocks += r.LengthInBlocks;
       enumerator = scanFiles.GetEnumerator();
       enumCount = 0;
+      Busy = true;
     }
 
     public bool GetNextBlock(byte[] buf)
@@ -398,8 +440,10 @@ namespace disParity
         if (!enumerator.MoveNext()) {
           enumerator.Dispose();
           enumComplete = true;
+          LoadFileData(); // this loads completed filesX.dat back into the master files list
           Status = DriveStatus.UpToDate;
           FireUpdateCompleted();
+          Busy = false;
           return false;
         }
         // TODO: Handle zero-length file here?
@@ -471,7 +515,7 @@ namespace disParity
       get
       {
         BitArray blockMask = new BitArray((int)MaxBlock);
-        foreach (FileRecord r in files) {
+        foreach (FileRecord r in files.Values) {
           UInt32 endBlock = r.StartBlock + r.LengthInBlocks;
           for (int i = (int)r.StartBlock; i < endBlock; i++)
             blockMask.Set(i, true);
@@ -483,7 +527,7 @@ namespace disParity
     private FileRecord FindFileContaining(UInt32 block)
     {
       if (block < MaxBlock)
-        foreach (FileRecord r in files)
+        foreach (FileRecord r in files.Values)
           if (r.ContainsBlock(block))
             return r;
       return null;
@@ -501,7 +545,7 @@ namespace disParity
       using (FileStream f = new FileStream(metaFileName, FileMode.Create, FileAccess.Write)) {
         FileRecord.WriteUInt32(f, META_FILE_VERSION);
         FileRecord.WriteUInt32(f, (UInt32)files.Count);
-        foreach (FileRecord r in files)
+        foreach (FileRecord r in files.Values)
           r.WriteToFile(f);
         f.Close();
       }
@@ -534,9 +578,11 @@ namespace disParity
           FileRecord.ReadUInt32(metaData);
         else if (version != META_FILE_VERSION)
           throw new Exception("file version mismatch: " + metaFileName);
-        files = new List<FileRecord>();
-        while (metaData.Position < metaData.Length)
-          files.Add(FileRecord.LoadFromFile(metaData, this));
+        files = new Dictionary<string, FileRecord>();
+        while (metaData.Position < metaData.Length) {
+          FileRecord r = FileRecord.LoadFromFile(metaData, this);
+          files[r.Name.ToLower()] = r;
+        }
       }
       CalculateMaxBlock();
     }
@@ -547,7 +593,7 @@ namespace disParity
     private void CalculateMaxBlock()
     {
       MaxBlock = 0;
-      foreach (FileRecord r in files) {
+      foreach (FileRecord r in files.Values) {
         UInt32 endBlock = r.StartBlock + r.LengthInBlocks;
         if (endBlock > MaxBlock)
           MaxBlock = endBlock;

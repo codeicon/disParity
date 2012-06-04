@@ -14,12 +14,14 @@ namespace disParity
     private Config config;
     private List<DataDrive> drives;
     private Parity parity;
+    private bool busy;
 
     public ParitySet(string configFilePath)
     {
       if (!Directory.Exists(configFilePath))
         throw new Exception(configFilePath + " not found");
 
+      busy = true;
       string configPath = Path.Combine(configFilePath, "disparity.xml");
       config = new Config(configPath);
       try {
@@ -65,6 +67,7 @@ namespace disParity
       }
 
       parity = new Parity(config.ParityDir, config.TempDir);
+      busy = false;
     }
 
     /// <summary>
@@ -85,6 +88,22 @@ namespace disParity
       get
       {
         return config.ParityDir;
+      }
+    }
+
+    /// <summary>
+    /// Returns whether or not one or more drives are busy doing a parity operation
+    /// </summary>
+    public bool Busy
+    {
+      get
+      {
+        if (busy)
+          return true;
+        foreach (DataDrive d in drives)
+          if (d.Busy)
+            return true;
+        return false;
       }
     }
 
@@ -121,67 +140,68 @@ namespace disParity
         return;
       }
 
-      // get the current list of files on each drive and compare to old state
-      ScanAll();
+      busy = true;
+      try {
+        // get the current list of files on each drive and compare to old state
+        ScanAll();
 
-      // process all moves for all drives first, since that doesn't require changing
-      // any parity data, only the meta data
+        // process all moves for all drives first, since that doesn't require changing
+        // any parity data, only the meta data
+        foreach (DataDrive d in drives)
+          d.ProcessMoves();
+
+        // now process deletes
+        int deleteCount = 0;
+        long deleteSize = 0;
+        DateTime start = DateTime.Now;
+        foreach (DataDrive d in drives) {
+          foreach (FileRecord r in d.Deletes)
+            if (RemoveFromParity(r)) {
+              deleteCount++;
+              deleteSize += r.Length;
+            }
+          foreach (FileRecord r in d.Edits)
+            if (RemoveFromParity(r)) {
+              deleteCount++;
+              deleteSize += r.Length;
+            }
+        }
+        if (deleteCount > 0) {
+          TimeSpan elapsed = DateTime.Now - start;
+          LogFile.Log("{0} file{1} ({2}) removed in {3:F2} sec", deleteCount,
+            deleteCount == 1 ? "" : "s", Utils.SmartSize(deleteSize), elapsed.TotalSeconds);
+        }
+
+        // now process adds
+        int addCount = 0;
+        long addSize = 0;
+        start = DateTime.Now;
+        foreach (DataDrive d in drives) {
+          foreach (FileRecord r in d.Adds)
+            if (AddToParity(r)) {
+              addCount++;
+              addSize += r.Length;
+            }
+          foreach (FileRecord r in d.Edits)
+            if (AddToParity(r)) {
+              addCount++;
+              addSize += r.Length;
+            }
+        }
+        if (addCount > 0) {
+          TimeSpan elapsed = DateTime.Now - start;
+          LogFile.Log("{0} file{1} ({2}) added in {3:F2} sec", addCount,
+            addCount == 1 ? "" : "s", Utils.SmartSize(addSize), elapsed.TotalSeconds);
+        }
+
+        parity.Close();
+      }
+      finally {
+        busy = false;
+      }
+
       foreach (DataDrive d in drives)
-        d.ProcessMoves();
-
-      // now process deletes
-      int deleteCount = 0;
-      long deleteSize = 0;
-      DateTime start = DateTime.Now;
-      foreach (DataDrive d in drives) {
-        foreach (FileRecord r in d.Deletes)
-          if (RemoveFromParity(r)) {
-            deleteCount++;
-            deleteSize += r.Length;
-          }
-        foreach (FileRecord r in d.Edits)
-          if (RemoveFromParity(r)) {
-            deleteCount++;
-            deleteSize += r.Length;
-          }
-      }
-      if (deleteCount > 0) {
-        TimeSpan elapsed = DateTime.Now - start;
-        LogFile.Log("{0} file{1} ({2}) removed in {3:F2} sec", deleteCount,
-          deleteCount == 1 ? "" : "s", Utils.SmartSize(deleteSize), elapsed.TotalSeconds);
-      }
-
-      // now process adds
-      int addCount = 0;
-      long addSize = 0;
-      start = DateTime.Now;
-      foreach (DataDrive d in drives) {
-        foreach (FileRecord r in d.Adds)
-          if (AddToParity(r)) {
-            addCount++;
-            addSize += r.Length;
-          }
-        foreach (FileRecord r in d.Edits)
-          if (AddToParity(r)) {
-            addCount++;
-            addSize += r.Length;
-          }
-      }
-      if (addCount > 0) {
-        TimeSpan elapsed = DateTime.Now - start;
-        LogFile.Log("{0} file{1} ({2}) added in {3:F2} sec", addCount,
-          addCount == 1 ? "" : "s", Utils.SmartSize(addSize), elapsed.TotalSeconds);
-      }
-
-      parity.Close();
-
-      /*
-      foreach (DataDrive d in drives) {
-        Console.WriteLine("Block mask for {0}:", d.Root);
-        PrintBlockMask(d);
-      }
-       */
-
+        d.FinishUpdate();
     }
 
     private bool ValidDrive(DataDrive drive)
@@ -199,8 +219,14 @@ namespace disParity
     {
       if (!ValidDrive(drive))
         return;
-      foreach (FileRecord f in drive.Files)
-        RecoverFile(f, path);
+      busy = true;
+      try {
+        foreach (FileRecord f in drive.Files)
+          RecoverFile(f, path);
+      }
+      finally {
+        busy = false;
+      }
     }
 
     public void HashCheck(DataDrive drive = null)
@@ -310,6 +336,8 @@ namespace disParity
         else
           LogFile.Log("Adding {0}...", fullPath);
 
+        r.Drive.FireUpdateProgress("Adding  " + fullPath, r.Drive.FileCount, 0);
+
         byte[] data = new byte[Parity.BlockSize];
         MD5 hash = MD5.Create();
         hash.Initialize();
@@ -334,6 +362,7 @@ namespace disParity
               change.Reset(true);
               change.AddData(data);
               change.Write();
+              r.Drive.FireUpdateProgress("", r.Drive.FileCount, (double)(b - startBlock) / (double)(endBlock - startBlock));
             }
           change.Save();
         }
@@ -353,6 +382,8 @@ namespace disParity
           LogFile.Log("Removing {0} from blocks {1} to {2}...", fullPath, startBlock, endBlock - 1);
         else
           LogFile.Log("Removing {0}...", fullPath);
+
+        r.Drive.FireUpdateProgress("Removing  " + fullPath, r.Drive.FileCount - 1, 0);
 
         // Recalulate parity from scratch for all blocks that contained the deleted file's data.
         using (ParityChange change = new ParityChange(parity, startBlock, r.LengthInBlocks)) {
@@ -376,6 +407,7 @@ namespace disParity
               }
             }
             change.Write();
+            r.Drive.FireUpdateProgress("", r.Drive.FileCount - 1, (double)(b - startBlock) / (double)(endBlock - startBlock));
           }
           change.Save();
         }

@@ -20,7 +20,7 @@ namespace disParityUI
 
     public MainWindowViewModel()
     {
-      paritySet = new ParitySet(@"C:\projects\disParity\bin\Debug\");
+      paritySet = new ParitySet(@".\");
       foreach (DataDrive d in paritySet.Drives)
         drives.Add(new DataDriveViewModel(d));
     }
@@ -30,15 +30,15 @@ namespace disParityUI
       drives.Add(new DataDriveViewModel(paritySet.AddDrive(path)));
     }
 
-    public void ScanDrive(DataDriveViewModel drive)
-    {
-      drive.Scan();
-    }
-
     public void ScanAll()
     {
       foreach (DataDriveViewModel vm in drives)
         ScanDrive(vm);
+    }
+
+    public void ScanDrive(DataDriveViewModel drive)
+    {
+      drive.Scan();
     }
 
     public void UpdateAll()
@@ -48,6 +48,11 @@ namespace disParityUI
         paritySet.Update();
       }
       );
+    }
+
+    public void RecoverDrive(DataDriveViewModel drive, string path)
+    {
+      paritySet.Recover(drive.DataDrive, path);
     }
 
     public ObservableCollection<DataDriveViewModel> Drives
@@ -63,6 +68,14 @@ namespace disParityUI
       get
       {
         return paritySet.ParityPath;
+      }
+    }
+
+    public bool Busy
+    {
+      get
+      {
+        return paritySet.Busy;
       }
     }
 

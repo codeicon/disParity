@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using disParity;
 
 namespace disParityUI
@@ -21,14 +22,25 @@ namespace disParityUI
   {
 
     private MainWindowViewModel viewModel;
+    private DispatcherTimer timer;
 
     public MainWindow()
     {
-      InitializeComponent();
-
       viewModel = new MainWindowViewModel();
       DataContext = viewModel;
       Loaded += HandleLoaded;
+
+      InitializeComponent();
+      timer = new DispatcherTimer();
+      timer.Tick += HandleTimer;
+      timer.Interval = new TimeSpan(0, 0, 1);
+      timer.Start();
+    }
+
+    private void HandleTimer(object sender, EventArgs args)
+    {
+      // Console.WriteLine("InvalidateRequerySuggested");
+      CommandManager.InvalidateRequerySuggested();
     }
 
     private void HandleLoaded(object sender, EventArgs args)
@@ -38,7 +50,7 @@ namespace disParityUI
 
     void AddDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = true;
+      e.CanExecute = !viewModel.Busy;
     }
 
     void AddDriveExecuted(object sender, ExecutedRoutedEventArgs e)
@@ -52,7 +64,7 @@ namespace disParityUI
 
     void ScanDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = DriveList.SelectedItems.Count == 1;
+      e.CanExecute = !viewModel.Busy && (DriveList.SelectedItems.Count == 1);
     }
 
     void ScanDriveExecuted(object sender, ExecutedRoutedEventArgs e)
@@ -63,7 +75,7 @@ namespace disParityUI
 
     void ScanAllCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = DriveList.HasItems;
+      e.CanExecute = !viewModel.Busy && DriveList.HasItems;
     }
 
     void ScanAllExecuted(object sender, ExecutedRoutedEventArgs e)
@@ -73,13 +85,37 @@ namespace disParityUI
 
     void UpdateAllCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = true;
+      // Console.WriteLine("ViewModel is {0}", viewModel.Busy ? "busy" : "NOT busy");
+      if (viewModel.Busy)
+        e.CanExecute = false;
+      else
+        foreach (var d in viewModel.Drives)
+          if (d.NeedsUpdate) {
+            e.CanExecute = true;
+            return;
+          }
+      e.CanExecute = false;
     }
 
     void UpdateAllExecuted(object sender, ExecutedRoutedEventArgs e)
     {
       viewModel.UpdateAll();
     }
+
+    void RecoverDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+      e.CanExecute = !viewModel.Busy && (DriveList.SelectedItems.Count == 1);
+    }
+
+    void RecoverDriveExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+      FolderBrowserDialog d = new FolderBrowserDialog();
+      d.Description = "Choose a location to place recovered files:";
+      DialogResult r = d.ShowDialog();
+      if (r == System.Windows.Forms.DialogResult.OK)
+        viewModel.RecoverDrive((DataDriveViewModel)DriveList.SelectedItem, d.SelectedPath);
+    }
+
 
   }
 
@@ -89,6 +125,7 @@ namespace disParityUI
     public static RoutedUICommand ScanDrive;
     public static RoutedUICommand ScanAll;
     public static RoutedUICommand UpdateAll;
+    public static RoutedUICommand RecoverDrive;
 
     static Commands()
     {
@@ -96,6 +133,7 @@ namespace disParityUI
       ScanDrive = new RoutedUICommand("Scan Drive", "ScanDrive", typeof(MainWindow));
       ScanAll = new RoutedUICommand("Scan All", "ScanAll", typeof(MainWindow));
       UpdateAll = new RoutedUICommand("Update All", "UpdateAll", typeof(MainWindow));
+      RecoverDrive = new RoutedUICommand("Recover Drive...", "RecoverDrive", typeof(MainWindow));
     }
   }
 

@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using disParity;
+using System.Windows.Input;
 using System.ComponentModel;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace disParityUI
@@ -12,17 +14,15 @@ namespace disParityUI
   class DataDriveViewModel : INotifyPropertyChanged
   {
 
-    private DataDrive dataDrive;
-
     public event PropertyChangedEventHandler PropertyChanged;
 
     public DataDriveViewModel(DataDrive dataDrive)
     {
-      this.dataDrive = dataDrive;
-      dataDrive.ScanProgress += HandleScanProgress;
-      dataDrive.ScanCompleted += HandleScanCompleted;
-      dataDrive.UpdateProgress += HandleUpdateProgress;
-      dataDrive.UpdateCompleted += HandleUpdateCompleted;
+      DataDrive = dataDrive;
+      DataDrive.ScanProgress += HandleScanProgress;
+      DataDrive.ScanCompleted += HandleScanCompleted;
+      DataDrive.UpdateProgress += HandleUpdateProgress;
+      DataDrive.UpdateCompleted += HandleUpdateCompleted;
       UpdateStatus();
       if (dataDrive.Files != null)
         FileCount = dataDrive.Files.Count();
@@ -32,11 +32,13 @@ namespace disParityUI
     {
       Task.Factory.StartNew(() =>
       {
-        dataDrive.Scan();
+        DataDrive.Scan();
       }
       );
     }
 
+    public DataDrive DataDrive { get; private set; }
+    
     private void HandleScanProgress(object sender, ScanProgressEventArgs args)
     {
       if (!String.IsNullOrEmpty(args.Status))
@@ -46,7 +48,7 @@ namespace disParityUI
 
     private void HandleScanCompleted(object sender, ScanCompletedEventArgs args)
     {
-      if (dataDrive.Status == DriveStatus.UpdateRequired) {
+      if (DataDrive.Status == DriveStatus.UpdateRequired) {
         Status = String.Format("Update Required ({0} new, {1} deleted, {2} moved, {3} edited)",
           args.AddCount, args.DeleteCount, args.MoveCount, args.EditCount);
         WarningLevel = "Medium";
@@ -74,7 +76,7 @@ namespace disParityUI
     {
       get
       {
-        return dataDrive.Root;
+        return DataDrive.Root;
       }
     }
 
@@ -134,9 +136,17 @@ namespace disParityUI
       }
     }
 
+    public bool NeedsUpdate
+    {
+      get
+      {
+        return (DataDrive.Status == DriveStatus.UpdateRequired);
+      }
+    }
+
     private void UpdateStatus()
     {
-      switch (dataDrive.Status) {
+      switch (DataDrive.Status) {
         case DriveStatus.ScanRequired:
           Status = "Unknown (Scan Required)";
           WarningLevel = "High";
