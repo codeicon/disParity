@@ -17,6 +17,7 @@ namespace disParity
     private UInt32 block;
     private UInt32 startBlock;
     private Stream tempParity;
+    private string tempFileName;
     private MemoryMappedFile mmf;
 
     public ParityChange(Parity parity, UInt32 startBlock, UInt32 lengthInBlocks)
@@ -25,6 +26,7 @@ namespace disParity
       this.startBlock = startBlock;
       mmf = null;
       tempParity = null;
+      tempFileName = Path.Combine(parity.TempDir, TEMP_PARITY_FILENAME);
       if (lengthInBlocks < parity.MaxTempBlocks)
         try {
           mmf = MemoryMappedFile.CreateNew("disparity.tmp", (long)lengthInBlocks * Parity.BlockSize);
@@ -35,8 +37,7 @@ namespace disParity
           tempParity = null;
         }
       if (tempParity == null)
-        tempParity = new FileStream(Path.Combine(parity.TempDir, TEMP_PARITY_FILENAME), 
-          FileMode.Create, FileAccess.ReadWrite); 
+        tempParity = new FileStream(tempFileName, FileMode.Create, FileAccess.ReadWrite); 
       parityBlock = new ParityBlock(parity);
       block = startBlock;
     }
@@ -90,6 +91,8 @@ namespace disParity
       tempParity.Dispose();
       if (mmf != null)
         mmf.Dispose();
+      if (File.Exists(tempFileName))
+        File.Delete(tempFileName);
     }
 
   }

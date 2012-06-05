@@ -165,11 +165,7 @@ namespace disParity
               deleteCount++;
               deleteSize += r.Length;
             }
-          foreach (FileRecord r in d.Edits)
-            if (RemoveFromParity(r)) {
-              deleteCount++;
-              deleteSize += r.Length;
-            }
+          d.ClearDeletes();
         }
         if (deleteCount > 0) {
           TimeSpan elapsed = DateTime.Now - start;
@@ -187,11 +183,7 @@ namespace disParity
               addCount++;
               addSize += r.Length;
             }
-          foreach (FileRecord r in d.Edits)
-            if (AddToParity(r)) {
-              addCount++;
-              addSize += r.Length;
-            }
+          d.ClearAdds();
         }
         if (addCount > 0) {
           TimeSpan elapsed = DateTime.Now - start;
@@ -205,8 +197,8 @@ namespace disParity
         busy = false;
       }
 
-      foreach (DataDrive d in drives)
-        d.FinishUpdate();
+      //foreach (DataDrive d in drives)
+      //  d.FinishUpdate();
     }
 
     private bool ValidDrive(DataDrive drive)

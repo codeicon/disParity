@@ -14,7 +14,8 @@ namespace disParity
   {
     ScanRequired,
     UpdateRequired,
-    UpToDate
+    UpToDate,
+    AccessError
   }
 
   public class DataDrive
@@ -32,9 +33,8 @@ namespace disParity
     const UInt32 META_FILE_VERSION = 1;
 
     public event EventHandler<ScanProgressEventArgs> ScanProgress;
-    public event EventHandler<ScanCompletedEventArgs> ScanCompleted;
+    public event EventHandler<StatusChangedEventArgs> StatusChanged;
     public event EventHandler<UpdateProgressEventArgs> UpdateProgress;
-    public event EventHandler UpdateCompleted;
 
     public DataDrive(string root, string metaFileName, bool ignoreHidden, List<string> ignore)
     {
@@ -107,11 +107,11 @@ namespace disParity
           scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize));
         FireScanProgress("Scan complete. Analyzing results...", 100.0);
         Compare();
-        if (adds.Count > 0 || deletes.Count > 0 || moves.Count > 0 || edits.Count > 0)
+        if (adds.Count > 0 || deletes.Count > 0 || moves.Count > 0)
           Status = DriveStatus.UpdateRequired;
         else
           Status = DriveStatus.UpToDate;
-        FireScanCompleted(adds.Count, deletes.Count, moves.Count, edits.Count);
+        FireStatusChanged();
       }
       finally {
         Busy = false;
@@ -186,10 +186,10 @@ namespace disParity
         ScanProgress(this, new ScanProgressEventArgs(status, progress));
     }
 
-    private void FireScanCompleted(int addCount, int deleteCount, int moveCount, int editCount)
+    private void FireStatusChanged()
     {
-      if (ScanCompleted != null)
-        ScanCompleted(this, new ScanCompletedEventArgs(addCount, deleteCount, moveCount, editCount));
+      if (StatusChanged != null)
+        StatusChanged(this, new StatusChangedEventArgs(Status, adds.Count, deletes.Count, moves.Count));
     }
 
     public void FireUpdateProgress(string file, int count, long size, double progress)
@@ -198,26 +198,16 @@ namespace disParity
         UpdateProgress(this, new UpdateProgressEventArgs(file, count, size, progress));
     }
 
-    private void FireUpdateCompleted()
-    {
-      if (UpdateCompleted != null)
-        UpdateCompleted(this, new EventArgs());
-    }
-
     // the "deletes" list contains FileRecords from the master files list
-    private List<FileRecord> deletes;
+    private List<FileRecord> deletes = new List<FileRecord>();
     public List<FileRecord> Deletes { get { return deletes; } }
 
     // the "adds" list contains FileRecords from the new scanFiles list
-    private List<FileRecord> adds;
+    private List<FileRecord> adds = new List<FileRecord>();
     public List<FileRecord> Adds { get { return adds; } }
 
-    // the "edits" list contains FileRecorsd from the new scanFiles list
-    private List<FileRecord> edits;
-    public List<FileRecord> Edits { get { return edits; } }
-
     // the "moves" dictionary maps FilesRecords from the master files list to the new scanFiles list
-    private Dictionary<string, FileRecord> moves;
+    private Dictionary<string, FileRecord> moves = new Dictionary<string, FileRecord>();
 
     /// <summary>
     /// Compare the old list of files with the new list in order to
@@ -225,10 +215,9 @@ namespace disParity
     /// </summary>
     private void Compare()
     {
-      adds = new List<FileRecord>();
-      deletes = new List<FileRecord>();
-      moves = new Dictionary<string, FileRecord>();
-      edits = new List<FileRecord>();
+      adds.Clear();
+      deletes.Clear();
+      moves.Clear();
 
       // build dictionary of seen file names for fast lookup
       Dictionary<string, FileRecord> seenFileNames = new Dictionary<string, FileRecord>();
@@ -280,18 +269,20 @@ namespace disParity
         if (seenFileNames.TryGetValue(kvp.Key, out n)) {
           // if we detect an edit, we add the "new" version of the file to the "edit" list, 
           // because it has the new attributes and we want those saved later
-          if (kvp.Value.Length != n.Length)
-            edits.Add(n); // trivial case, length changed
+          if (kvp.Value.Length != n.Length) {
+            deletes.Add(kvp.Value);
+            adds.Add(n);
+          } 
           else if (kvp.Value.CreationTime != n.CreationTime || kvp.Value.LastWriteTime != n.LastWriteTime)
             // probable edit, check hash code to be sure
-            if (!HashCheck(kvp.Value))
-              edits.Add(n); 
+            if (!HashCheck(kvp.Value)) {
+              deletes.Add(kvp.Value);
+              adds.Add(n);
+            }
         }
       }
 
-      LogFile.Log("Adds: {0} Deletes: {1} Moves: {2} Edits: {3}", adds.Count,
-        deletes.Count, moves.Count, edits.Count);
-
+      LogFile.Log("Adds: {0} Deletes: {1} Moves: {2}", adds.Count, deletes.Count, moves.Count);
 
     }
 
@@ -345,14 +336,25 @@ namespace disParity
       SaveFileList();
     }
 
-    public void FinishUpdate()
+    public void ClearDeletes()
+    {
+      deletes.Clear();
+      UpdateStatus();
+    }
+
+    public void ClearAdds()
     {
       adds.Clear();
-      deletes.Clear();
-      edits.Clear();
-      moves.Clear();
-      Status = DriveStatus.UpToDate;
-      FireUpdateCompleted();
+      UpdateStatus();
+    }
+
+    private void UpdateStatus()
+    {
+      if (adds.Count > 0 || moves.Count > 0 || deletes.Count > 0)
+        Status = DriveStatus.UpdateRequired;
+      else
+        Status = DriveStatus.UpToDate;
+      FireStatusChanged();
     }
 
     /// <summary>
@@ -437,7 +439,7 @@ namespace disParity
           enumComplete = true;
           LoadFileList(); // this loads completed filesX.dat back into the master files list
           Status = DriveStatus.UpToDate;
-          FireUpdateCompleted();
+          FireStatusChanged();
           Busy = false;
           return false;
         }
@@ -677,20 +679,20 @@ namespace disParity
     public double Progress { get; private set; }
   }
 
-  public class ScanCompletedEventArgs : EventArgs
+  public class StatusChangedEventArgs : EventArgs
   {
-    public ScanCompletedEventArgs(int addCount, int deleteCount, int moveCount, int editCount)
+    public StatusChangedEventArgs(DriveStatus status, int addCount, int deleteCount, int moveCount)
     {
+      Status = status;
       AddCount = addCount;
       DeleteCount = deleteCount;
       MoveCount = moveCount;
-      EditCount = editCount;
     }
 
+    public DriveStatus Status { get; private set; }
     public int AddCount { get; private set; }
     public int DeleteCount { get; private set; }
     public int MoveCount { get; private set; }
-    public int EditCount { get; private set; }
   }
 
   public class UpdateProgressEventArgs : EventArgs

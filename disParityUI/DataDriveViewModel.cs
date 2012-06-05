@@ -20,9 +20,8 @@ namespace disParityUI
     {
       DataDrive = dataDrive;
       DataDrive.ScanProgress += HandleScanProgress;
-      DataDrive.ScanCompleted += HandleScanCompleted;
+      DataDrive.StatusChanged += HandleStatusChanged;
       DataDrive.UpdateProgress += HandleUpdateProgress;
-      DataDrive.UpdateCompleted += HandleUpdateCompleted;
       UpdateStatus();
       FileCount = String.Format("{0} ({1})", DataDrive.FileCount, Utils.SmartSize(DataDrive.TotalSize));
     }
@@ -45,15 +44,17 @@ namespace disParityUI
       Progress = args.Progress;
     }
 
-    private void HandleScanCompleted(object sender, ScanCompletedEventArgs args)
+    private void HandleStatusChanged(object sender, StatusChangedEventArgs args)
     {
-      if (DataDrive.Status == DriveStatus.UpdateRequired) {
-        Status = String.Format("Update Required ({0} new, {1} deleted, {2} moved, {3} edited)",
-          args.AddCount, args.DeleteCount, args.MoveCount, args.EditCount);
+      if (args.Status == DriveStatus.UpdateRequired) {
+        Status = String.Format("Update Required ({0} new, {1} deleted, {2} moved",
+          args.AddCount, args.DeleteCount, args.MoveCount);
         WarningLevel = "Medium";
       } 
       else
         UpdateStatus();
+      FileCount = String.Format("{0} ({1})", DataDrive.FileCount,
+        Utils.SmartSize(DataDrive.TotalSize));
       Progress = 0;
     }
 
@@ -63,14 +64,6 @@ namespace disParityUI
         Status = args.Status;
       FileCount = String.Format("{0} ({1})", args.Files, Utils.SmartSize(args.Size));
       Progress = args.Progress;
-    }
-
-    private void HandleUpdateCompleted(object sender, EventArgs args)
-    {
-      UpdateStatus();
-      Progress = 0;
-      FileCount = String.Format("{0} ({1})", DataDrive.FileCount,
-        Utils.SmartSize(DataDrive.TotalSize));
     }
 
     public string Root
