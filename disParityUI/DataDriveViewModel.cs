@@ -7,12 +7,15 @@ using System.Windows.Input;
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Threading;
 
 namespace disParityUI
 {
 
   class DataDriveViewModel : INotifyPropertyChanged
   {
+
+    private DispatcherTimer updateStatusTimer;
 
     public event PropertyChangedEventHandler PropertyChanged;
 
@@ -22,8 +25,13 @@ namespace disParityUI
       DataDrive.ScanProgress += HandleScanProgress;
       DataDrive.StatusChanged += HandleStatusChanged;
       DataDrive.UpdateProgress += HandleUpdateProgress;
+      DataDrive.ReadingFile += HandleReadingFile;
       UpdateStatus();
       FileCount = String.Format("{0} ({1})", DataDrive.FileCount, Utils.SmartSize(DataDrive.TotalSize));
+      updateStatusTimer = new DispatcherTimer();
+      updateStatusTimer.Interval = TimeSpan.FromSeconds(1);
+      updateStatusTimer.Tick += HandleUpdateStatus;
+      updateStatusTimer.Stop();
     }
 
     public void Scan()
@@ -32,11 +40,23 @@ namespace disParityUI
       {
         DataDrive.Scan();
       }
-      );
+      );      
     }
 
     public DataDrive DataDrive { get; private set; }
-    
+
+    private void HandleUpdateStatus(object sender, EventArgs args)
+    {
+      UpdateStatus();
+      updateStatusTimer.Stop();
+    }
+
+    private void HandleReadingFile(object sender, ReadingFileEventArgs args)
+    {
+      Status = "Reading " + args.Filename;
+      updateStatusTimer.Start();
+    }
+
     private void HandleScanProgress(object sender, ScanProgressEventArgs args)
     {
       if (!String.IsNullOrEmpty(args.Status))
@@ -97,8 +117,10 @@ namespace disParityUI
       }
       set
       {
-        status = value;
-        FirePropertyChanged("Status");
+        if (status != value) {
+          status = value;
+          FirePropertyChanged("Status");
+        }
       }
     }
 
@@ -152,6 +174,10 @@ namespace disParityUI
         case DriveStatus.UpToDate:
           Status = "Up To Date";
           WarningLevel = "Low";
+          break;
+        case DriveStatus.AccessError:
+          Status = "Error: " + DataDrive.LastError;
+          WarningLevel = "High";
           break;
       }
     }

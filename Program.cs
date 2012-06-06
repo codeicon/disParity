@@ -111,7 +111,7 @@ namespace disParity.CmdLine
         ParitySet set = new ParitySet(@".\");
         switch (cmd) {
           case Command.Update:
-            set.Update();
+            set.Update(true);
             break;
 
           case Command.Recover:

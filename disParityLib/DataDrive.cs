@@ -35,6 +35,8 @@ namespace disParity
     public event EventHandler<ScanProgressEventArgs> ScanProgress;
     public event EventHandler<StatusChangedEventArgs> StatusChanged;
     public event EventHandler<UpdateProgressEventArgs> UpdateProgress;
+    public event EventHandler<EventArgs> ScanCompleted;
+    public event EventHandler<ReadingFileEventArgs> ReadingFile;
 
     public DataDrive(string root, string metaFileName, bool ignoreHidden, List<string> ignore)
     {
@@ -70,6 +72,8 @@ namespace disParity
 
     public int FileCount { get { return files.Count; } }
 
+    public string LastError { get; private set; }
+
     /// <summary>
     /// Total size, in bytes, of all protected files on this drive
     /// </summary>
@@ -94,12 +98,22 @@ namespace disParity
     /// </summary>
     public void Scan()
     {
+      Debug.Assert(!Busy);
       Busy = true;
       try {
         scanFiles = new List<FileRecord>();
         LogFile.Log("Scanning {0}...", root);
         scanProgress = null;
-        Scan(new DirectoryInfo(root));
+        try {
+          Scan(new DirectoryInfo(root));
+        }
+        catch (Exception e) {
+          LogFile.Log("Could not scan {0}: {1}", root, e.Message);
+          LastError = e.Message;
+          Status = DriveStatus.AccessError;
+          FireStatusChanged();
+          return;
+        }
         long totalSize = 0;
         foreach (FileRecord f in scanFiles)
           totalSize += f.Length;
@@ -107,13 +121,10 @@ namespace disParity
           scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize));
         FireScanProgress("Scan complete. Analyzing results...", 100.0);
         Compare();
-        if (adds.Count > 0 || deletes.Count > 0 || moves.Count > 0)
-          Status = DriveStatus.UpdateRequired;
-        else
-          Status = DriveStatus.UpToDate;
-        FireStatusChanged();
+        UpdateStatus();
       }
       finally {
+        FireScanCompleted();
         Busy = false;
       }
     }
@@ -127,6 +138,8 @@ namespace disParity
         subDirs = dir.GetDirectories();
       }
       catch (Exception e) {
+        if (progress == null)
+          throw;
         LogFile.Log("Warning: Could not enumerate subdirectories of {0}: {1}", dir.FullName, e.Message);
         return;
       }
@@ -196,6 +209,18 @@ namespace disParity
     {
       if (UpdateProgress != null)
         UpdateProgress(this, new UpdateProgressEventArgs(file, count, size, progress));
+    }
+
+    public void FireScanCompleted()
+    {
+      if (ScanCompleted != null)
+        ScanCompleted(this, new EventArgs());
+    }
+
+    public void FireReadingFile(string filename)
+    {
+      if (ReadingFile != null)
+        ReadingFile(this, new ReadingFileEventArgs(filename));
     }
 
     // the "deletes" list contains FileRecords from the master files list
@@ -492,6 +517,7 @@ namespace disParity
       string fullPath = r.FullPath;
       if (!File.Exists(fullPath))
         return false;
+      FireReadingFile(fullPath);
       // to do: what if the file has been edited?
       // Allow any I/O exceptions below to be caught by parent
       using (FileStream f = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read)) {
@@ -709,6 +735,16 @@ namespace disParity
     public int Files { get; private set; }
     public long Size { get; private set; }
     public double Progress { get; private set; }
+  }
+
+  public class ReadingFileEventArgs : EventArgs
+  {
+    public ReadingFileEventArgs(string filename)
+    {
+      Filename = filename;
+    }
+
+    public string Filename;
   }
 
 }

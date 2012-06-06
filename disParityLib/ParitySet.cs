@@ -17,6 +17,9 @@ namespace disParity
     private bool busy;
     private LogFile logFile;
 
+    public event EventHandler<RecoverProgressEventArgs> RecoverProgress;
+    public event EventHandler<RecoverCompleteEventArgs> RecoverComplete;
+
     public ParitySet(string configFilePath)
     {
       if (!Directory.Exists(configFilePath))
@@ -137,7 +140,7 @@ namespace disParity
     /// <summary>
     /// Update a parity set to reflect the latest changes
     /// </summary>
-    public void Update()
+    public void Update(bool scanFirst = false)
     {
       if (Empty) {
         LogFile.Log("No existing parity data found.  Creating new snapshot.");
@@ -147,8 +150,9 @@ namespace disParity
 
       busy = true;
       try {
-        // get the current list of files on each drive and compare to old state
-        ScanAll();
+        if (scanFirst)
+          // get the current list of files on each drive and compare to old state
+          ScanAll();
 
         // process all moves for all drives first, since that doesn't require changing
         // any parity data, only the meta data
@@ -209,23 +213,6 @@ namespace disParity
       return false;
     }
 
-    /// <summary>
-    /// Recover all files from the given drive to the given location
-    /// </summary>
-    public void Recover(DataDrive drive, string path)
-    {
-      if (!ValidDrive(drive))
-        return;
-      busy = true;
-      try {
-        foreach (FileRecord f in drive.Files)
-          RecoverFile(f, path);
-      }
-      finally {
-        busy = false;
-      }
-    }
-
     public void HashCheck(DataDrive drive = null)
     {
       int failures = 0;
@@ -255,10 +242,41 @@ namespace disParity
       return newDrive;
     }
 
+    // Recover state variables
+    private int recoverSuccesses;
+    private int recoverFailures;
+    private UInt32 recoverTotalBlocks;
+    private UInt32 recoverBlocks;
+
+    /// <summary>
+    /// Recover all files from the given drive to the given location
+    /// </summary>
+    public void Recover(DataDrive drive, string path)
+    {
+      if (!ValidDrive(drive))
+        return;
+      busy = true;
+      recoverFailures = 0;
+      recoverSuccesses = 0;
+      recoverTotalBlocks = 0;
+      foreach (FileRecord f in drive.Files)
+        recoverTotalBlocks += f.LengthInBlocks;
+      recoverBlocks = 0;
+      try {
+        foreach (FileRecord f in drive.Files)
+          RecoverFile(f, path);
+      }
+      finally {
+        FireRecoverComplete(recoverSuccesses, recoverFailures);
+        busy = false;
+      }
+    }
+
     private void RecoverFile(FileRecord r, string path)
     {
       string fullPath = Utils.MakeFullPath(path, r.Name);
       LogFile.Log("Recovering {0}...", r.Name);
+      FireRecoverProgress(r.Name, 0);
       // make sure the destination directory exists
       Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
       MD5 hash = MD5.Create();
@@ -274,11 +292,18 @@ namespace disParity
           hash.TransformBlock(parityBlock.Data, 0, blockSize, parityBlock.Data, 0);
           leftToWrite -= Parity.BlockSize;
           block++;
+          recoverBlocks++;
+          // FireRecoverProgress(r.Name, (double)(block - r.StartBlock) / r.LengthInBlocks);
+          FireRecoverProgress("", (double)recoverBlocks / recoverTotalBlocks);
         }
         hash.TransformFinalBlock(parityBlock.Data, 0, 0);
       }
-      if (r.Length > 0 && !Utils.HashCodesMatch(hash.Hash, r.HashCode))
+      if (r.Length > 0 && !Utils.HashCodesMatch(hash.Hash, r.HashCode)) {
         LogFile.Log("ERROR: hash verify FAILED for {0}", fullPath);
+        recoverFailures++;
+      }
+      else
+        recoverSuccesses++;
       File.SetCreationTime(fullPath, r.CreationTime);
       File.SetLastWriteTime(fullPath, r.LastWriteTime);
       File.SetAttributes(fullPath, r.Attributes);
@@ -492,6 +517,44 @@ namespace disParity
         throw new Exception(String.Format("{0} is not a valid parity path (must be absolute)", config.ParityDir));
 
     }
+
+    private void FireRecoverProgress(string filename, double progress)
+    {
+      if (RecoverProgress != null)
+        RecoverProgress(this, new RecoverProgressEventArgs(filename, progress));
+    }
+
+    private void FireRecoverComplete(int successes, int failures)
+    {
+      if (RecoverComplete != null)
+        RecoverComplete(this, new RecoverCompleteEventArgs(successes, failures));
+    }
+
+  }
+
+  public class RecoverProgressEventArgs : EventArgs
+  {
+    public RecoverProgressEventArgs(string filename, double progress)
+    {
+      Filename = filename;
+      Progress = progress;
+    }
+
+    public string Filename { get; private set; }
+    public double Progress { get; private set; }
+
+  }
+
+  public class RecoverCompleteEventArgs : EventArgs
+  {
+    public RecoverCompleteEventArgs(int successes, int failures)
+    {
+      Successes = successes;
+      Failures = failures;
+    }
+
+    public int Successes { get; private set; }
+    public int Failures { get; private set; }
 
   }
 
