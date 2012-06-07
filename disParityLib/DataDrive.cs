@@ -32,7 +32,7 @@ namespace disParity
 
     const UInt32 META_FILE_VERSION = 1;
 
-    public event EventHandler<ScanProgressEventArgs> ScanProgress;
+    public event EventHandler<ProgressReportEventArgs> ProgressReport;
     public event EventHandler<StatusChangedEventArgs> StatusChanged;
     public event EventHandler<UpdateProgressEventArgs> UpdateProgress;
     public event EventHandler<EventArgs> ScanCompleted;
@@ -42,6 +42,23 @@ namespace disParity
     {
       this.root = root;
       this.metaFileName = metaFileName;
+
+      if (!root.StartsWith(@"\\")) {
+        string drive = Path.GetPathRoot(root);
+        if (!String.IsNullOrEmpty(drive))
+          try {
+            DriveInfo driveInfo = new DriveInfo(drive);
+            DriveType = driveInfo.DriveType;
+            VolumeLabel = driveInfo.VolumeLabel;
+            TotalSpace = driveInfo.TotalSize;
+            FreeSpace = driveInfo.TotalFreeSpace;
+          }
+          catch {
+            DriveType = DriveType.Unknown;
+          }
+      }
+      else
+        DriveType = DriveType.Network;
 
       files = new Dictionary<string, FileRecord>();
       if (File.Exists(metaFileName))
@@ -74,10 +91,18 @@ namespace disParity
 
     public string LastError { get; private set; }
 
+    public DriveType DriveType { get; private set; }
+
+    public string VolumeLabel { get; private set; }
+
+    public long FreeSpace { get; private set; }
+
+    public long TotalSpace { get; private set; }
+
     /// <summary>
     /// Total size, in bytes, of all protected files on this drive
     /// </summary>
-    public long TotalSize { get; private set; } 
+    public long TotalFileSize { get; private set; } 
 
     /// <summary>
     /// Clears all state of the DataDrive, resetting to empty (deletes on-disk
@@ -119,7 +144,7 @@ namespace disParity
           totalSize += f.Length;
         LogFile.Log("Found {0} file{1} ({2} total)", scanFiles.Count,
           scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize));
-        FireScanProgress("Scan complete. Analyzing results...", 100.0);
+        FireProgressReport("Scan complete. Analyzing results...", 100.0);
         Compare();
         UpdateStatus();
       }
@@ -132,7 +157,7 @@ namespace disParity
     private void Scan(DirectoryInfo dir, ProgressReporter progress = null)
     {
       if (scanProgress != null)
-        FireScanProgress("Scanning " + dir.FullName + "...", scanProgress.Progress);
+        FireProgressReport("Scanning " + dir.FullName + "...", scanProgress.Progress);
       DirectoryInfo[] subDirs;
       try {
         subDirs = dir.GetDirectories();
@@ -170,7 +195,7 @@ namespace disParity
         Scan(d, folderProgress);
         folderProgress.EndPhase();
       }
-      FireScanProgress("", scanProgress.Progress);
+      FireProgressReport("", scanProgress.Progress);
       string relativePath = Utils.StripRoot(root, dir.FullName);
       foreach (FileInfo f in fileInfos) {
         if (f.Attributes == (FileAttributes)(-1))
@@ -193,10 +218,10 @@ namespace disParity
       }
     }
 
-    private void FireScanProgress(string status, double progress)
+    public void FireProgressReport(string status, double progress)
     {
-      if (ScanProgress != null)
-        ScanProgress(this, new ScanProgressEventArgs(status, progress));
+      if (ProgressReport != null)
+        ProgressReport(this, new ProgressReportEventArgs(status, progress));
     }
 
     private void FireStatusChanged()
@@ -618,12 +643,12 @@ namespace disParity
     private void CalculateMaxBlock()
     {
       MaxBlock = 0;
-      TotalSize = 0;
+      TotalFileSize = 0;
       foreach (FileRecord r in files.Values) {
         UInt32 endBlock = r.StartBlock + r.LengthInBlocks;
         if (endBlock > MaxBlock)
           MaxBlock = endBlock;
-        TotalSize += r.Length;
+        TotalFileSize += r.Length;
       }
     }
 
@@ -693,9 +718,9 @@ namespace disParity
 
   }
 
-  public class ScanProgressEventArgs : EventArgs
+  public class ProgressReportEventArgs : EventArgs
   {
-    public ScanProgressEventArgs(string status, double progress)
+    public ProgressReportEventArgs(string status, double progress)
     {
       Status = status;
       Progress = progress;

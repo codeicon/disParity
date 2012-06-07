@@ -115,7 +115,9 @@ namespace disParity.CmdLine
             break;
 
           case Command.Recover:
-            set.Recover(set.Drives[driveNum], recoverDir);
+            int successes;
+            int failures;
+            set.Recover(set.Drives[driveNum], recoverDir, out successes, out failures);
             break;
 
           case Command.HashCheck:

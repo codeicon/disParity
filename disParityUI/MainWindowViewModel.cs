@@ -16,7 +16,6 @@ namespace disParityUI
     private ParitySet paritySet;
     private ObservableCollection<DataDriveViewModel> drives = new ObservableCollection<DataDriveViewModel>();
     private int runningScans;
-    private int runningUpdates;
     private DataDriveViewModel recoverDrive; // current drive being recovered, if any
 
     public event PropertyChangedEventHandler PropertyChanged;
@@ -29,7 +28,7 @@ namespace disParityUI
         drives.Add(new DataDriveViewModel(d));
       }
       paritySet.RecoverProgress += HandleRecoverProgress;
-      paritySet.RecoverComplete += HandleRecoverComplete;
+      paritySet.UpdateProgress += HandleUpdateProgress;
     }
 
     public void AddDrive(string path)
@@ -53,6 +52,11 @@ namespace disParityUI
         drive.Scan();
       }
       );
+    }
+
+    private void HandleUpdateProgress(object sender, UpdateProgressEventArgs args)
+    {
+      Progress = args.Progress;
     }
 
     private void HandleScanCompleted(object sender, EventArgs args)
@@ -80,7 +84,17 @@ namespace disParityUI
       Status = "Update In Progress...";
       Task.Factory.StartNew(() =>
       {
-        paritySet.Update();
+        try {
+          paritySet.Update();
+          Status = "All drives up to date.";
+        }
+        catch (Exception e) {
+          Status = "Update failed: " + e.Message;
+        }
+        finally {
+          Progress = 0;
+          Busy = false;
+        }
       }
       );
     }
@@ -92,7 +106,21 @@ namespace disParityUI
       recoverDrive = drive;
       Task.Factory.StartNew(() =>
       {
-        paritySet.Recover(drive.DataDrive, path);
+        try {
+          int successes;
+          int failures;
+          paritySet.Recover(drive.DataDrive, path, out successes, out failures);
+          Status = String.Format("{0} file{1} recovered ({2} failure{3})",
+            successes, successes == 1 ? "" : "s", failures, failures == 1 ? "" : "s");
+        }
+        catch (Exception e) {
+          Status = "Recover failed: " + e.Message;
+        }
+        finally {
+          Progress = 0;
+          recoverDrive.UpdateStatus();
+          Busy = false;
+        }
       }
       );
     }
@@ -102,15 +130,6 @@ namespace disParityUI
       Progress = args.Progress;
       if (!String.IsNullOrEmpty(args.Filename))
         recoverDrive.Status = "Recovering " + args.Filename + "...";
-    }
-
-    private void HandleRecoverComplete(object sender, RecoverCompleteEventArgs args)
-    {
-      Status = "Recovery complete!";
-      recoverDrive.Status = String.Format("{0} file{1} recovered ({2} failure{3})",
-        args.Successes, args.Successes == 1 ? "" : "s", args.Failures, args.Failures == 1 ? "" : "s");
-      Progress = 0;
-      Busy = false;
     }
 
     public ObservableCollection<DataDriveViewModel> Drives

@@ -18,7 +18,7 @@ namespace disParity
     private LogFile logFile;
 
     public event EventHandler<RecoverProgressEventArgs> RecoverProgress;
-    public event EventHandler<RecoverCompleteEventArgs> RecoverComplete;
+    public event EventHandler<UpdateProgressEventArgs> UpdateProgress;
 
     public ParitySet(string configFilePath)
     {
@@ -137,6 +137,10 @@ namespace disParity
       Empty = true;
     }
 
+    // update progress state
+    private UInt32 currentUpdateBlocks;
+    private UInt32 totalUpdateBlocks;
+
     /// <summary>
     /// Update a parity set to reflect the latest changes
     /// </summary>
@@ -158,6 +162,16 @@ namespace disParity
         // any parity data, only the meta data
         foreach (DataDrive d in drives)
           d.ProcessMoves();
+
+        // count total blocks for this update, for progress reporting
+        currentUpdateBlocks = 0;
+        totalUpdateBlocks = 0;
+        foreach (DataDrive d in drives) {
+          foreach (FileRecord r in d.Adds)
+            totalUpdateBlocks += r.LengthInBlocks;
+          foreach (FileRecord r in d.Deletes)
+            totalUpdateBlocks += r.LengthInBlocks;
+        }
 
         // now process deletes
         int deleteCount = 0;
@@ -201,8 +215,6 @@ namespace disParity
         busy = false;
       }
 
-      //foreach (DataDrive d in drives)
-      //  d.FinishUpdate();
     }
 
     private bool ValidDrive(DataDrive drive)
@@ -243,39 +255,40 @@ namespace disParity
     }
 
     // Recover state variables
-    private int recoverSuccesses;
-    private int recoverFailures;
     private UInt32 recoverTotalBlocks;
     private UInt32 recoverBlocks;
 
     /// <summary>
     /// Recover all files from the given drive to the given location
     /// </summary>
-    public void Recover(DataDrive drive, string path)
+    public void Recover(DataDrive drive, string path, out int successes, out int failures)
     {
       if (!ValidDrive(drive))
-        return;
+        throw new Exception("Invalid drive passed to Recover");
+      successes = 0;
+      failures = 0;
       busy = true;
-      recoverFailures = 0;
-      recoverSuccesses = 0;
       recoverTotalBlocks = 0;
       foreach (FileRecord f in drive.Files)
         recoverTotalBlocks += f.LengthInBlocks;
       recoverBlocks = 0;
       try {
         foreach (FileRecord f in drive.Files)
-          RecoverFile(f, path);
+          if (RecoverFile(f, path))
+            successes++;
+          else
+            failures++;
       }
       finally {
-        FireRecoverComplete(recoverSuccesses, recoverFailures);
         busy = false;
       }
     }
 
-    private void RecoverFile(FileRecord r, string path)
+    private bool RecoverFile(FileRecord r, string path)
     {
       string fullPath = Utils.MakeFullPath(path, r.Name);
       LogFile.Log("Recovering {0}...", r.Name);
+      r.Drive.FireProgressReport("Recovering " + r.Name + " ...", 0);
       FireRecoverProgress(r.Name, 0);
       // make sure the destination directory exists
       Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
@@ -293,20 +306,23 @@ namespace disParity
           leftToWrite -= Parity.BlockSize;
           block++;
           recoverBlocks++;
-          // FireRecoverProgress(r.Name, (double)(block - r.StartBlock) / r.LengthInBlocks);
-          FireRecoverProgress("", (double)recoverBlocks / recoverTotalBlocks);
+          if ((block % 10) == 0) { // report progress every 10 blocks
+            r.Drive.FireProgressReport("", (double)(block - r.StartBlock) / r.LengthInBlocks);
+            FireRecoverProgress("", (double)recoverBlocks / recoverTotalBlocks);
+          }
         }
         hash.TransformFinalBlock(parityBlock.Data, 0, 0);
       }
-      if (r.Length > 0 && !Utils.HashCodesMatch(hash.Hash, r.HashCode)) {
-        LogFile.Log("ERROR: hash verify FAILED for {0}", fullPath);
-        recoverFailures++;
-      }
-      else
-        recoverSuccesses++;
+      r.Drive.FireProgressReport("", 0);
       File.SetCreationTime(fullPath, r.CreationTime);
       File.SetLastWriteTime(fullPath, r.LastWriteTime);
       File.SetAttributes(fullPath, r.Attributes);
+      if (r.Length > 0 && !Utils.HashCodesMatch(hash.Hash, r.HashCode)) {
+        LogFile.Log("ERROR: hash verify FAILED for {0}", fullPath);
+        return false;
+      }
+      else
+        return true;
     }
 
     private byte[] tempBuf = new byte[Parity.BlockSize];
@@ -358,7 +374,7 @@ namespace disParity
         else
           LogFile.Log("Adding {0}...", fullPath);
 
-        r.Drive.FireUpdateProgress("Adding  " + fullPath, r.Drive.FileCount, r.Drive.TotalSize, 0);
+        r.Drive.FireUpdateProgress("Adding  " + fullPath, r.Drive.FileCount, r.Drive.TotalFileSize, 0);
 
         byte[] data = new byte[Parity.BlockSize];
         MD5 hash = MD5.Create();
@@ -384,7 +400,12 @@ namespace disParity
               change.Reset(true);
               change.AddData(data);
               change.Write();
-              r.Drive.FireUpdateProgress("", r.Drive.FileCount, r.Drive.TotalSize, (double)(b - startBlock) / (double)(endBlock - startBlock));
+              currentUpdateBlocks++;
+              // only report once every 10 blocks
+              if ((currentUpdateBlocks % 10) == 0) {
+                r.Drive.FireUpdateProgress("", r.Drive.FileCount, r.Drive.TotalFileSize, (double)(b - startBlock) / (double)(endBlock - startBlock));
+                FireUpdateProgress((double)currentUpdateBlocks / totalUpdateBlocks);
+              }
             }
           change.Save();
         }
@@ -405,7 +426,7 @@ namespace disParity
         else
           LogFile.Log("Removing {0}...", fullPath);
 
-        r.Drive.FireUpdateProgress("Removing  " + fullPath, r.Drive.FileCount, r.Drive.TotalSize, 0);
+        r.Drive.FireUpdateProgress("Removing  " + fullPath, r.Drive.FileCount, r.Drive.TotalFileSize, 0);
 
         // Recalulate parity from scratch for all blocks that contained the deleted file's data.
         using (ParityChange change = new ParityChange(parity, startBlock, r.LengthInBlocks)) {
@@ -428,8 +449,14 @@ namespace disParity
               }
             }
             change.Write();
-            r.Drive.FireUpdateProgress("", r.Drive.FileCount, r.Drive.TotalSize,
-              (double)(b - startBlock) / (double)(endBlock - startBlock));
+            currentUpdateBlocks++;
+            // only report once every 10 blocks
+            if ((currentUpdateBlocks % 10) == 0) {
+              r.Drive.FireUpdateProgress("", r.Drive.FileCount, r.Drive.TotalFileSize,
+                (double)(b - startBlock) / (double)(endBlock - startBlock));
+              FireUpdateProgress((double)currentUpdateBlocks / totalUpdateBlocks);
+            }
+
           }
           change.Save();
         }
@@ -470,9 +497,6 @@ namespace disParity
     private void Create()
     {
       DateTime start = DateTime.Now;
-
-      // generate the list of all files to be protected from all drives
-      ScanAll();
 
       // TO DO: check free space on parity drive here
 
@@ -524,10 +548,10 @@ namespace disParity
         RecoverProgress(this, new RecoverProgressEventArgs(filename, progress));
     }
 
-    private void FireRecoverComplete(int successes, int failures)
+    private void FireUpdateProgress(double progress)
     {
-      if (RecoverComplete != null)
-        RecoverComplete(this, new RecoverCompleteEventArgs(successes, failures));
+      if (UpdateProgress != null)
+        UpdateProgress(this, new UpdateProgressEventArgs("", 0, 0, progress));
     }
 
   }
@@ -542,19 +566,6 @@ namespace disParity
 
     public string Filename { get; private set; }
     public double Progress { get; private set; }
-
-  }
-
-  public class RecoverCompleteEventArgs : EventArgs
-  {
-    public RecoverCompleteEventArgs(int successes, int failures)
-    {
-      Successes = successes;
-      Failures = failures;
-    }
-
-    public int Successes { get; private set; }
-    public int Failures { get; private set; }
 
   }
 

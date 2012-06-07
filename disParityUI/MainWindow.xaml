@@ -27,7 +27,7 @@
       <RowDefinition Height="25"/>
       <RowDefinition Height="25"/>
     </Grid.RowDefinitions>
-    <ListBox Name="DriveList" Margin="10,10,10,0" ItemsSource="{Binding Path=Drives}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" Background="#704000">
+    <ListBox Name="DriveList" Margin="10,10,10,0" ItemsSource="{Binding Path=Drives}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" Background="#BEAB83">
         <ListBox.ItemTemplate>
           <DataTemplate>
             <DataTemplate.Triggers>
@@ -54,19 +54,27 @@
                 <RowDefinition/>
                 <RowDefinition/>
               </Grid.RowDefinitions>
-              <TextBlock FontWeight="Bold" Margin="5,0,0,0" Text="{Binding Path=Root}"></TextBlock>
-              <Grid Grid.Row="1" Margin="5,0,5,5" >
+              <Grid Margin="5,0,5,5" >
                 <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="180"/>
+                  <ColumnDefinition Width="*"/>
                   <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                  <TextBlock Margin="0,0,5,0">Protected files:</TextBlock>
-                  <TextBlock Margin="0,0,10,0" Text="{Binding Path=FileCount}"></TextBlock>
-                </StackPanel>
+                <TextBlock FontWeight="Bold" Text="{Binding Path=Root}" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Column="1" Text="{Binding Path=AdditionalInfo}"/>
+              </Grid>
+              <Grid Grid.Row="1" Margin="5,0,5,5" >
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <!-- DockPanel is needed here for TextTrimming in the FileCount TextBlock to work properly -->
+                <DockPanel Grid.Column="0" Margin="0,0,3,0">
+                  <TextBlock DockPanel.Dock="Left" Margin="0,0,5,0">Protected files:</TextBlock>
+                  <TextBlock Text="{Binding Path=FileCount}" TextTrimming="CharacterEllipsis"></TextBlock>
+                </DockPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
-                  <TextBlock Margin="0,0,5,0">Status:</TextBlock>
-                  <TextBlock Margin="0,0,10,0" Text="{Binding Path=Status}"></TextBlock>
+                  <!-- <TextBlock Margin="0,0,5,0">Status:</TextBlock> -->
+                  <TextBlock Text="{Binding Path=Status}"></TextBlock>
                 </StackPanel>
               </Grid>
               <ProgressBar Margin="5,0,5,4" Grid.Row="2" Height="20" Minimum="0" Maximum="1" Value="{Binding Path=Progress}"/>

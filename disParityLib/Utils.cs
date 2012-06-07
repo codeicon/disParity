@@ -85,7 +85,7 @@ namespace disParity
         result = (double)size / TB;
         units = "TB";
       }
-      return String.Format("{0:F2} {1}", result, units);
+      return String.Format("{0:F1} {1}", result, units);
     }
 
   }
