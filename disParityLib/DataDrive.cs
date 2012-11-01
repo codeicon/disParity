@@ -322,8 +322,10 @@ namespace disParity
           if (kvp.Value.Length != n.Length) {
             deletes.Add(kvp.Value);
             adds.Add(n);
-          } 
-          else if (kvp.Value.CreationTime != n.CreationTime || kvp.Value.LastWriteTime != n.LastWriteTime)
+          }
+          // don't compare creation times; if you "upgrade" to a larger disk and just copy files over, it changes
+          // the creation time and then spends hours here needlessly checking for edits
+          else if (/*kvp.Value.CreationTime != n.CreationTime || */ kvp.Value.LastWriteTime != n.LastWriteTime)
             // probable edit, check hash code to be sure
             if (!HashCheck(kvp.Value)) {
               deletes.Add(kvp.Value);

@@ -22,18 +22,14 @@ namespace disParity
 
     public ParitySet(string configFilePath)
     {
-      if (!Directory.Exists(configFilePath))
-        throw new Exception(configFilePath + " not found");
-
-
       string logFileName = "disParity log " + DateTime.Now.ToString("yy-MM-dd HH.mm.ss");
       logFile = new LogFile(logFileName, true);
 
       busy = true;
-      string configPath = Path.Combine(configFilePath, "disparity.xml");
+      string configPath = Path.Combine(configFilePath, "config.xml");
       config = new Config(configPath);
       try {
-        string oldConfigPath = Path.Combine(configFilePath, "config.txt");
+        string oldConfigPath = @"\.config.txt";
         if (File.Exists(oldConfigPath)) {
           OldConfig oldConfig = new OldConfig(oldConfigPath);
           config.ParityDir = oldConfig.ParityDir;
@@ -56,26 +52,29 @@ namespace disParity
         throw new Exception("Could not load config file: " + e.Message);
       }
 
-      ValidateConfig();
+      drives = new List<DataDrive>();
 
-      try {
-        Directory.CreateDirectory(config.ParityDir);
-      }
-      catch (Exception e) {
-        throw new Exception("Could not create parity folder " + config.ParityDir + ": " + e.Message);
-      }
+      if (config.Exists) {
+        ValidateConfig();
 
-      Empty = true;
-      drives = new List<DataDrive>(config.Drives.Count);
-      for (int i = 0; i < config.Drives.Count; i++) {
-        string metaFile = Path.Combine(config.ParityDir, String.Format("files{0}.dat", i));
-        if (File.Exists(metaFile))
-          Empty = false;
-        drives.Add(new DataDrive(config.Drives[i], metaFile, config.IgnoreHidden, config.Ignores));
-      }
+        try {
+          Directory.CreateDirectory(config.ParityDir);
+        }
+        catch (Exception e) {
+          throw new Exception("Could not create parity folder " + config.ParityDir + ": " + e.Message);
+        }
 
-      parity = new Parity(config.ParityDir, config.TempDir, config.MaxTempRAM);
-      busy = false;
+        Empty = true;
+        for (int i = 0; i < config.Drives.Count; i++) {
+          string metaFile = Path.Combine(config.ParityDir, String.Format("files{0}.dat", i));
+          if (File.Exists(metaFile))
+            Empty = false;
+          drives.Add(new DataDrive(config.Drives[i], metaFile, config.IgnoreHidden, config.Ignores));
+        }
+
+        parity = new Parity(config.ParityDir, config.TempDir, config.MaxTempRAM);
+        busy = false;
+      }
     }
 
     /// <summary>

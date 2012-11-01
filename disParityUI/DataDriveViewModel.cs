@@ -8,6 +8,8 @@ using System.ComponentModel;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace disParityUI
@@ -17,6 +19,12 @@ namespace disParityUI
   {
 
     private DispatcherTimer updateStatusTimer;
+
+    private static Brush cautionBrush = new SolidColorBrush(Color.FromRgb(255, 210, 0));
+    private static ImageSource statusGood = new ImageSourceConverter().ConvertFromString("pack://application:,,,/StatusGood.ico") as ImageSource;
+    private static ImageSource statusCaution = new ImageSourceConverter().ConvertFromString("pack://application:,,,/StatusCaution.ico") as ImageSource;
+    private static ImageSource statusUnknown = new ImageSourceConverter().ConvertFromString("pack://application:,,,/StatusUnknown.ico") as ImageSource;
+    private static ImageSource statusUrgent = new ImageSourceConverter().ConvertFromString("pack://application:,,,/StatusUrgent.ico") as ImageSource;
 
     public event PropertyChangedEventHandler PropertyChanged;
 
@@ -31,7 +39,7 @@ namespace disParityUI
       FileCount = String.Format("{0} ({1})", DataDrive.FileCount, Utils.SmartSize(DataDrive.TotalFileSize));
       updateStatusTimer = new DispatcherTimer();
       updateStatusTimer.Interval = TimeSpan.FromSeconds(1);
-      updateStatusTimer.Tick += HandleUpdateStatus;
+      updateStatusTimer.Tick += HandleUpdateStatusTimerTick;
       updateStatusTimer.Stop();
     }
 
@@ -39,14 +47,19 @@ namespace disParityUI
     {
       Task.Factory.StartNew(() =>
       {
-        DataDrive.Scan();
+        try {
+          DataDrive.Scan();
+        }
+        catch {
+          // TODO: log exception here?
+        }
       }
       );      
     }
 
     public DataDrive DataDrive { get; private set; }
 
-    private void HandleUpdateStatus(object sender, EventArgs args)
+    private void HandleUpdateStatusTimerTick(object sender, EventArgs args)
     {
       UpdateStatus();
       updateStatusTimer.Stop();
@@ -70,7 +83,10 @@ namespace disParityUI
       if (args.Status == DriveStatus.UpdateRequired) {
         Status = String.Format("Update Required ({0} new, {1} deleted, {2} moved)",
           args.AddCount, args.DeleteCount, args.MoveCount);
-        WarningLevel = "Medium";
+        if (args.DeleteCount > 0 || args.MoveCount > 0)
+          StatusIcon = statusUrgent;
+        else
+          StatusIcon = statusCaution;
       } 
       else
         UpdateStatus();
@@ -99,6 +115,23 @@ namespace disParityUI
       }
     }
 
+    private ImageSource statusIcon;
+    public ImageSource StatusIcon
+    {
+      get 
+      { 
+        return statusIcon; 
+      }
+      set
+      {
+        if (statusIcon != value) 
+        {
+          statusIcon = value;
+          FirePropertyChanged("StatusIcon");
+        }
+      }
+    }
+
     public string AdditionalInfo
     {
       get
@@ -121,8 +154,10 @@ namespace disParityUI
       }
       set
       {
-        fileCount = value;
-        FirePropertyChanged("FileCount");
+        if (fileCount != value) {
+          fileCount = value;
+          FirePropertyChanged("FileCount");
+        }
       }
     }
 
@@ -151,22 +186,27 @@ namespace disParityUI
       }
       set
       {
-        progress = value;
-        FirePropertyChanged("Progress");
+        if (progress != value) {
+          progress = value;
+          FirePropertyChanged("Progress");
+        }
       }
     }
 
-    private string warningLevel;
-    public string WarningLevel
+
+    private Brush statusColor = Brushes.Black;
+    public Brush StatusColor
     {
       get
       {
-        return warningLevel;
+        return statusColor;
       }
       set
       {
-        warningLevel = value;
-        FirePropertyChanged("WarningLevel");
+        if (statusColor != value) {
+          statusColor = value;
+          FirePropertyChanged("StatusColor");
+        }
       }
     }
 
@@ -183,19 +223,23 @@ namespace disParityUI
       switch (DataDrive.Status) {
         case DriveStatus.ScanRequired:
           Status = "Unknown (scan required)";
-          WarningLevel = "High";
+          //StatusColor = Brushes.Red;
+          StatusIcon = statusUnknown;
           break;
         case DriveStatus.UpdateRequired:
           Status = "Update required";
-          WarningLevel = "Medium";
+          //StatusColor = cautionBrush;
+          StatusIcon = statusCaution;
           break;
         case DriveStatus.UpToDate:
           Status = "Up to date";
-          WarningLevel = "Low";
+          //StatusColor = Brushes.Green;
+          StatusIcon = statusGood;
           break;
         case DriveStatus.AccessError:
           Status = "Error: " + DataDrive.LastError;
-          WarningLevel = "High";
+          //StatusColor = Brushes.Red;
+          StatusIcon = statusUrgent;
           break;
       }
     }

@@ -10,9 +10,11 @@ namespace disParity
     static StreamWriter f = null;
     static bool verbose;
 
+    public static string LogPath { set; private get; }
+
     public LogFile(string name, bool verbose)
     {
-      string filename = name + ".txt";
+      string filename = Path.Combine(LogPath, name + ".txt");
       if (File.Exists(filename)) {
         int i = 1;
         while (File.Exists(filename)) {

@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.ComponentModel;
+using System.Windows.Shell; // for TaskbarItem stuff
 using disParity;
 
 namespace disParityUI
@@ -22,7 +24,17 @@ namespace disParityUI
 
     public MainWindowViewModel()
     {
-      paritySet = new ParitySet(@".\");
+
+      // Set up application data and log folders
+      string appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "disParity");
+      if (!Directory.Exists(appDataPath))
+        Directory.CreateDirectory(appDataPath);
+      string logPath = Path.Combine(appDataPath, "logs");
+      if (!Directory.Exists(logPath))
+        Directory.CreateDirectory(logPath);
+      LogFile.LogPath = logPath;
+
+      paritySet = new ParitySet(appDataPath);
       foreach (DataDrive d in paritySet.Drives) {
         d.ScanCompleted += HandleScanCompleted;
         drives.Add(new DataDriveViewModel(d));
@@ -38,6 +50,10 @@ namespace disParityUI
 
     public void ScanAll()
     {
+      if (drives.Count == 0) {
+        Status = "No drives added.  Add a new data drive by pressing 'Add Drive...'";
+        return;
+      }
       Busy = true;
       Status = "Scanning drives...";
       runningScans = drives.Count;
@@ -56,6 +72,7 @@ namespace disParityUI
 
     private void HandleUpdateProgress(object sender, UpdateProgressEventArgs args)
     {
+      ProgressState = TaskbarItemProgressState.Normal;
       Progress = args.Progress;
     }
 
@@ -74,8 +91,20 @@ namespace disParityUI
         if (anyDriveNeedsUpdate)
           Status = "Changes detected.  Update required.";
         else
-          Status = "All drives up to date.";
+          DisplayUpToDateStatus();
       }
+    }
+
+    private void DisplayUpToDateStatus()
+    {
+      long totalSize = 0;
+      int totalFiles = 1000;
+      foreach (DataDriveViewModel vm in drives) {
+        totalSize += vm.DataDrive.TotalFileSize;
+        totalFiles += vm.DataDrive.FileCount;
+      }
+      Status = String.Format("{1:N0} files ({0}) protected.  All drives up to date.",
+        Utils.SmartSize(totalSize), totalFiles);
     }
 
     public void UpdateAll()
@@ -86,13 +115,14 @@ namespace disParityUI
       {
         try {
           paritySet.Update();
-          Status = "All drives up to date.";
+          DisplayUpToDateStatus();
         }
         catch (Exception e) {
           Status = "Update failed: " + e.Message;
         }
         finally {
           Progress = 0;
+          ProgressState = TaskbarItemProgressState.None;
           Busy = false;
         }
       }
@@ -119,6 +149,7 @@ namespace disParityUI
         finally {
           Progress = 0;
           recoverDrive.UpdateStatus();
+          ProgressState = TaskbarItemProgressState.None;
           Busy = false;
         }
       }
@@ -171,8 +202,10 @@ namespace disParityUI
       }
       set
       {
-        status = value;
-        FirePropertyChanged("Status");
+        if (status != value) {
+          status = value;
+          FirePropertyChanged("Status");
+        }
       }
     }
 
@@ -185,8 +218,29 @@ namespace disParityUI
       }
       set
       {
-        progress = value;
-        FirePropertyChanged("Progress");
+        if (progress != value) {
+          progress = value;
+          FirePropertyChanged("Progress");
+        }
+      }
+    }
+
+    /// <summary>
+    /// This is for the taskbar icon's progress indicator
+    /// </summary>
+    private TaskbarItemProgressState progressState = TaskbarItemProgressState.None;
+    public TaskbarItemProgressState ProgressState
+    {
+      get
+      {
+        return progressState;
+      }
+      set
+      {
+        if (value != progressState) {
+          progressState = value;
+          FirePropertyChanged("ProgressState");
+        }
       }
     }
 

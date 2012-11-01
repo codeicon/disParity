@@ -4,6 +4,8 @@
         xmlns:ui="clr-namespace:disParityUI"
         BorderThickness="0" ResizeMode="CanResizeWithGrip"        
         Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"        
+        ShowInTaskbar="True"
+        Icon="Icon.ico"
         Title="disParity" 
         Height="480" 
         Width="640"
@@ -16,6 +18,9 @@
     <CommandBinding Command="ui:Commands.UpdateAll" CanExecute="UpdateAllCanExecute" Executed="UpdateAllExecuted"/>
     <CommandBinding Command="ui:Commands.RecoverDrive" CanExecute="RecoverDriveCanExecute" Executed="RecoverDriveExecuted"/>
   </Window.CommandBindings>
+  <Window.TaskbarItemInfo >
+    <TaskbarItemInfo ProgressState="{Binding Path=ProgressState}" ProgressValue="{Binding Path=Progress}" />
+  </Window.TaskbarItemInfo>
   <Grid Margin="0,0,0,10">
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="*"/>
@@ -30,31 +35,23 @@
     <ListBox Name="DriveList" Margin="10,10,10,0" ItemsSource="{Binding Path=Drives}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" Background="#BEAB83">
         <ListBox.ItemTemplate>
           <DataTemplate>
-            <DataTemplate.Triggers>
-            <DataTrigger Binding="{Binding Path=WarningLevel}" Value="High">
-              <Setter Property="Border.Background" Value="#FF5050" TargetName="DriveBorder"/>
-            </DataTrigger>
-            <DataTrigger Binding="{Binding Path=WarningLevel}" Value="Medium">
-              <Setter Property="Border.Background" Value="#FFFF66" TargetName="DriveBorder"/>
-            </DataTrigger>
-            <DataTrigger Binding="{Binding Path=WarningLevel}" Value="Low">
-              <Setter Property="Border.Background" Value="#99FF66" TargetName="DriveBorder"/>
-            </DataTrigger>
-          </DataTemplate.Triggers>
-            <Border Name="DriveBorder" Margin="0,1,1,1" BorderThickness="1" BorderBrush="Black" CornerRadius="5">
-            <!--<Border.Background>
+          <Border Name="DriveBorder" Margin="0,1,1,1" BorderThickness="1" BorderBrush="Black" CornerRadius="5">
+            <Border.Background>
               <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                <GradientStop Color="#FBFBFB" Offset="0"/>
-                <GradientStop Color="#9A9A9A" Offset="1"/>
+                <GradientStop Color="#FFFFFF" Offset="0.2"/>
+                <GradientStop Color="#AAAAAA" Offset="0.8"/>
+                <GradientStop Color="#777777" Offset="1"/>
               </LinearGradientBrush>
-            </Border.Background> -->
-              <Grid Margin="2">
+            </Border.Background>
+            <DockPanel Margin="2">
+              <Image DockPanel.Dock="Left" Width="54" Stretch="None" Source="{Binding Path=StatusIcon}"/>
+              <Grid>
               <Grid.RowDefinitions>
                 <RowDefinition/>
                 <RowDefinition/>
                 <RowDefinition/>
               </Grid.RowDefinitions>
-              <Grid Margin="5,0,5,5" >
+              <Grid Margin="5,0,5,1" >
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="*"/>
                   <ColumnDefinition Width="*"/>
@@ -62,27 +59,38 @@
                 <TextBlock FontWeight="Bold" Text="{Binding Path=Root}" TextTrimming="CharacterEllipsis"/>
                 <TextBlock Grid.Column="1" Text="{Binding Path=AdditionalInfo}"/>
               </Grid>
-              <Grid Grid.Row="1" Margin="5,0,5,5" >
+              <Grid Grid.Row="1" Margin="5,0,5,2" >
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="*"/>
                   <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <!-- DockPanel is needed here for TextTrimming in the FileCount TextBlock to work properly -->
-                <DockPanel Grid.Column="0" Margin="0,0,3,0">
+                <DockPanel Grid.Column="0" Margin="0,0,2,0">
                   <TextBlock DockPanel.Dock="Left" Margin="0,0,5,0">Protected files:</TextBlock>
                   <TextBlock Text="{Binding Path=FileCount}" TextTrimming="CharacterEllipsis"></TextBlock>
                 </DockPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                   <!-- <TextBlock Margin="0,0,5,0">Status:</TextBlock> -->
-                  <TextBlock Text="{Binding Path=Status}"></TextBlock>
+                  <TextBlock Text="{Binding Path=Status}" Foreground="{Binding Path=StatusColor}"></TextBlock>
                 </StackPanel>
               </Grid>
-              <ProgressBar Margin="5,0,5,4" Grid.Row="2" Height="20" Minimum="0" Maximum="1" Value="{Binding Path=Progress}"/>
+              <ProgressBar Margin="5,0,5,2" Grid.Row="2" Height="20" Minimum="0" Maximum="1" Value="{Binding Path=Progress}"/>
             </Grid>
-            </Border>
+            </DockPanel>
+          </Border>
           </DataTemplate>
         </ListBox.ItemTemplate>
-      </ListBox>
+      <ListBox.ItemContainerStyle>
+        <Style TargetType="{x:Type ListBoxItem}"  >
+          <Style.Triggers>
+            <Trigger Property="IsSelected" Value="true">
+              <Setter Property="Foreground" Value="Blue" />
+            </Trigger>
+
+          </Style.Triggers>
+        </Style>
+      </ListBox.ItemContainerStyle>
+    </ListBox>
     <DockPanel Margin="5,0,10,0" Grid.Row="1">
       <Label DockPanel.Dock="Left" Margin="0,0,6,0" VerticalAlignment="Center">Backup status:</Label>
       <TextBlock Margin="10,5,10,0" Text="{Binding Path=Status}"/>

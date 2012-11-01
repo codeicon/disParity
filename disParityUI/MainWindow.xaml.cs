@@ -35,6 +35,10 @@ namespace disParityUI
       timer.Tick += HandleTimer;
       timer.Interval = new TimeSpan(0, 0, 1);
       timer.Start();
+
+      //Uri uri = new Uri("pack://application:,,,/Icon.ico");
+      //Icon = BitmapFrame.Create(uri);
+
     }
 
     private void HandleTimer(object sender, EventArgs args)
@@ -89,12 +93,14 @@ namespace disParityUI
       if (viewModel.Busy)
         e.CanExecute = false;
       else
-        foreach (var d in viewModel.Drives)
-          if (d.NeedsUpdate) {
-            e.CanExecute = true;
-            return;
-          }
-      e.CanExecute = false;
+        e.CanExecute = true;
+      // Always allow update to be executed, even if no drives need an update 
+      //  foreach (var d in viewModel.Drives)
+      //    if (d.NeedsUpdate) {
+      //      e.CanExecute = true;
+      //      return;
+      //    }
+      //e.CanExecute = false;
     }
 
     void UpdateAllExecuted(object sender, ExecutedRoutedEventArgs e)

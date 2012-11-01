@@ -28,6 +28,14 @@ namespace disParity
       Drives = new List<string>();
     }
 
+    public bool Exists
+    {
+      get
+      {
+        return File.Exists(filename);
+      }
+    }
+
     public void Load()
     {
       if (!File.Exists(filename))
