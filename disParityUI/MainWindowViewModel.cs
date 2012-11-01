@@ -19,6 +19,7 @@ namespace disParityUI
     private ObservableCollection<DataDriveViewModel> drives = new ObservableCollection<DataDriveViewModel>();
     private int runningScans;
     private DataDriveViewModel recoverDrive; // current drive being recovered, if any
+    private bool updateAfterScan = false;
 
     public event PropertyChangedEventHandler PropertyChanged;
 
@@ -51,7 +52,7 @@ namespace disParityUI
     public void ScanAll()
     {
       if (drives.Count == 0) {
-        Status = "No drives added.  Add a new data drive by pressing 'Add Drive...'";
+        Status = "No drives added. Press 'Add Drive...' to add a new data drive.";
         return;
       }
       Busy = true;
@@ -59,15 +60,6 @@ namespace disParityUI
       runningScans = drives.Count;
       foreach (DataDriveViewModel vm in drives)
         vm.Scan();
-    }
-
-    public void ScanDrive(DataDriveViewModel drive)
-    {
-      Task.Factory.StartNew(() =>
-      {
-        drive.Scan();
-      }
-      );
     }
 
     private void HandleUpdateProgress(object sender, UpdateProgressEventArgs args)
@@ -89,7 +81,12 @@ namespace disParityUI
           } else if (d.Status == DriveStatus.UpdateRequired)
             anyDriveNeedsUpdate = true;
         if (anyDriveNeedsUpdate)
-          Status = "Changes detected.  Update required.";
+          if (updateAfterScan) {
+            updateAfterScan = false;
+            Update();
+          } 
+          else
+            Status = "Changes detected.  Update required.";
         else
           DisplayUpToDateStatus();
       }
@@ -108,6 +105,12 @@ namespace disParityUI
     }
 
     public void UpdateAll()
+    {
+      updateAfterScan = true;
+      ScanAll();
+    }
+
+    private void Update()
     {
       Busy = true;
       Status = "Update In Progress...";

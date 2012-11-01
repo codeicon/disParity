@@ -20,7 +20,6 @@ namespace disParityUI
 
     private DispatcherTimer updateStatusTimer;
 
-    private static Brush cautionBrush = new SolidColorBrush(Color.FromRgb(255, 210, 0));
     private static ImageSource statusGood = new ImageSourceConverter().ConvertFromString("pack://application:,,,/StatusGood.ico") as ImageSource;
     private static ImageSource statusCaution = new ImageSourceConverter().ConvertFromString("pack://application:,,,/StatusCaution.ico") as ImageSource;
     private static ImageSource statusUnknown = new ImageSourceConverter().ConvertFromString("pack://application:,,,/StatusUnknown.ico") as ImageSource;
