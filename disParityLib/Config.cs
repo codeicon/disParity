@@ -17,12 +17,20 @@ namespace disParity
     const string DEFAULT_TEMP_DIR = ".\\";
     const UInt32 DEFAULT_MAX_TEMP_RAM = 512;
     const bool DEFAULT_IGNORE_HIDDEN = true;
+    const int DEFAULT_MAIN_WINDOW_X = 200;
+    const int DEFAULT_MAIN_WINDOW_Y = 200;
+    const int DEFAULT_MAIN_WINDOW_WIDTH = 640;
+    const int DEFAULT_MAIN_WINDOW_HEIGHT = 480;
 
     public Config(string filename)
     {
       this.filename = filename;
       MaxTempRAM = DEFAULT_MAX_TEMP_RAM;
       IgnoreHidden = DEFAULT_IGNORE_HIDDEN;
+      MainWindowX = DEFAULT_MAIN_WINDOW_X;
+      MainWindowY = DEFAULT_MAIN_WINDOW_Y;
+      MainWindowWidth = DEFAULT_MAIN_WINDOW_WIDTH;
+      MainWindowHeight = DEFAULT_MAIN_WINDOW_HEIGHT;
       TempDir = DEFAULT_TEMP_DIR;
       Ignores = new List<string>();
       Drives = new List<string>();
@@ -88,6 +96,36 @@ namespace disParity
           }
           else if (reader.Name == "Parity")
             ParityDir = reader.GetAttribute("Path");
+          else if (reader.Name == "Layout" && reader.IsStartElement()) {
+            for (; ; ) {
+              if (!reader.Read() || reader.EOF)
+                break;
+              if (reader.NodeType == XmlNodeType.Whitespace)
+                continue;
+              else if (reader.NodeType == XmlNodeType.EndElement)
+                break;
+              else if (reader.Name == "MainWindowX") {
+                reader.Read();
+                MainWindowX = Convert.ToInt32(reader.Value);
+                reader.Read();
+              }
+              else if (reader.Name == "MainWindowY") {
+                reader.Read();
+                MainWindowY = Convert.ToInt32(reader.Value);
+                reader.Read();
+              }
+              else if (reader.Name == "MainWindowWidth") {
+                reader.Read();
+                MainWindowWidth = Convert.ToInt32(reader.Value);
+                reader.Read();
+              }
+              else if (reader.Name == "MainWindowHeight") {
+                reader.Read();
+                MainWindowHeight = Convert.ToInt32(reader.Value);
+                reader.Read();
+              }
+            }
+          }
           else if (reader.Name == "Drives" && reader.IsStartElement()) {
             for (; ; ) {
               if (!reader.Read() || reader.EOF)
@@ -132,6 +170,15 @@ namespace disParity
 
         writer.WriteEndElement(); // Options
 
+        writer.WriteStartElement("Layout");
+
+        writer.WriteElementString("MainWindowX", MainWindowX.ToString());
+        writer.WriteElementString("MainWindowY", MainWindowY.ToString());
+        writer.WriteElementString("MainWindowWidth", MainWindowWidth.ToString());
+        writer.WriteElementString("MainWindowHeight", MainWindowHeight.ToString());
+
+        writer.WriteEndElement(); // Layout
+
         writer.WriteStartElement("Parity");
         writer.WriteAttributeString("Path", ParityDir);
         writer.WriteEndElement();
@@ -172,6 +219,13 @@ namespace disParity
 
     public List<string> Ignores { get; set; }
 
+    public int MainWindowWidth { get; set; }
+
+    public int MainWindowHeight { get; set; }
+
+    public int MainWindowX { get; set; }
+
+    public int MainWindowY { get; set; }
   }
 
 }

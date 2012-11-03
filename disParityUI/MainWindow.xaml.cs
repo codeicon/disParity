@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Windows;
@@ -29,6 +30,8 @@ namespace disParityUI
       viewModel = new MainWindowViewModel();
       DataContext = viewModel;
       Loaded += HandleLoaded;
+      Closed += HandleClosed;
+      Closing += HandleClosing;
 
       InitializeComponent();
       timer = new DispatcherTimer();
@@ -52,9 +55,22 @@ namespace disParityUI
       viewModel.ScanAll();
     }
 
+    private void HandleClosing(object sender, CancelEventArgs args)
+    {
+      if (viewModel.Busy) 
+        // FIXME: prompt user here?
+        args.Cancel = true;
+    }
+
+    private void HandleClosed(object sender, EventArgs args)
+    {
+      viewModel.Shutdown();
+    }
+
+
     void AddDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = !viewModel.Busy;
+      e.CanExecute = !String.IsNullOrEmpty(viewModel.ParityLocation) && !viewModel.Busy;
     }
 
     void AddDriveExecuted(object sender, ExecutedRoutedEventArgs e)
@@ -89,18 +105,10 @@ namespace disParityUI
 
     void UpdateAllCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      // Console.WriteLine("ViewModel is {0}", viewModel.Busy ? "busy" : "NOT busy");
-      if (viewModel.Busy)
+      if (viewModel.Busy || viewModel.Drives.Count == 0)
         e.CanExecute = false;
       else
         e.CanExecute = true;
-      // Always allow update to be executed, even if no drives need an update 
-      //  foreach (var d in viewModel.Drives)
-      //    if (d.NeedsUpdate) {
-      //      e.CanExecute = true;
-      //      return;
-      //    }
-      //e.CanExecute = false;
     }
 
     void UpdateAllExecuted(object sender, ExecutedRoutedEventArgs e)
@@ -122,6 +130,18 @@ namespace disParityUI
         viewModel.RecoverDrive((DataDriveViewModel)DriveList.SelectedItem, d.SelectedPath);
     }
 
+    void OptionsCanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+      e.CanExecute = !viewModel.Busy;
+    }
+
+    void OptionsExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+      OptionsDialog dialog = new OptionsDialog(viewModel.GetOptionsDialogViewModel());
+      dialog.Owner = this;
+      if (dialog.ShowDialog() == true)
+        viewModel.OptionsChanged();
+    }
 
   }
 
@@ -132,6 +152,7 @@ namespace disParityUI
     public static RoutedUICommand ScanAll;
     public static RoutedUICommand UpdateAll;
     public static RoutedUICommand RecoverDrive;
+    public static RoutedUICommand Options;
 
     static Commands()
     {
@@ -140,6 +161,7 @@ namespace disParityUI
       ScanAll = new RoutedUICommand("Scan All", "ScanAll", typeof(MainWindow));
       UpdateAll = new RoutedUICommand("Update All", "UpdateAll", typeof(MainWindow));
       RecoverDrive = new RoutedUICommand("Recover Drive...", "RecoverDrive", typeof(MainWindow));
+      Options = new RoutedUICommand("Options...", "Options", typeof(MainWindow));
     }
   }
 

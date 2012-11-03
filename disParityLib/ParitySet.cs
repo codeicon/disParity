@@ -11,7 +11,6 @@ namespace disParity
   public class ParitySet
   {
 
-    private Config config;
     private List<DataDrive> drives;
     private Parity parity;
     private bool busy;
@@ -20,59 +19,62 @@ namespace disParity
     public event EventHandler<RecoverProgressEventArgs> RecoverProgress;
     public event EventHandler<UpdateProgressEventArgs> UpdateProgress;
 
-    public ParitySet(string configFilePath)
+    public ParitySet(string ConfigFilePath)
     {
       string logFileName = "disParity log " + DateTime.Now.ToString("yy-MM-dd HH.mm.ss");
       logFile = new LogFile(logFileName, true);
 
       busy = true;
-      string configPath = Path.Combine(configFilePath, "config.xml");
-      config = new Config(configPath);
+      string ConfigPath = Path.Combine(ConfigFilePath, "Config.xml");
+      Config = new Config(ConfigPath);
       try {
-        string oldConfigPath = @"\.config.txt";
+        string oldConfigPath = @"\.Config.txt";
         if (File.Exists(oldConfigPath)) {
           OldConfig oldConfig = new OldConfig(oldConfigPath);
-          config.ParityDir = oldConfig.ParityDir;
-          config.TempDir = oldConfig.TempDir;
-          config.MaxTempRAM = oldConfig.MaxTempRAM;
-          config.IgnoreHidden = oldConfig.IgnoreHidden;
-          config.Drives = new List<string>();
+          Config.ParityDir = oldConfig.ParityDir;
+          Config.TempDir = oldConfig.TempDir;
+          Config.MaxTempRAM = oldConfig.MaxTempRAM;
+          Config.IgnoreHidden = oldConfig.IgnoreHidden;
+          Config.Drives = new List<string>();
           foreach (string d in oldConfig.BackupDirs)
-            config.Drives.Add(d);
-          config.Ignores = new List<string>();
+            Config.Drives.Add(d);
+          Config.Ignores = new List<string>();
           foreach (string i in oldConfig.Ignores)
-            config.Ignores.Add(i);
-          config.Save();
+            Config.Ignores.Add(i);
+          Config.Save();
           File.Move(oldConfigPath, oldConfigPath + ".old");
         }
         else
-          config.Load();
+          Config.Load();
       }
       catch (Exception e) {
-        throw new Exception("Could not load config file: " + e.Message);
+        throw new Exception("Could not load Config file: " + e.Message);
       }
 
       drives = new List<DataDrive>();
 
-      if (config.Exists) {
+      if (Config.Exists) {
+
         ValidateConfig();
 
-        try {
-          Directory.CreateDirectory(config.ParityDir);
-        }
-        catch (Exception e) {
-          throw new Exception("Could not create parity folder " + config.ParityDir + ": " + e.Message);
-        }
+        if (!String.IsNullOrEmpty(Config.ParityDir)) {
+          try {
+            Directory.CreateDirectory(Config.ParityDir);
+          }
+          catch (Exception e) {
+            throw new Exception("Could not create parity folder " + Config.ParityDir + ": " + e.Message);
+          }
 
-        Empty = true;
-        for (int i = 0; i < config.Drives.Count; i++) {
-          string metaFile = Path.Combine(config.ParityDir, String.Format("files{0}.dat", i));
-          if (File.Exists(metaFile))
-            Empty = false;
-          drives.Add(new DataDrive(config.Drives[i], metaFile, config.IgnoreHidden, config.Ignores));
-        }
+          Empty = true;
+          for (int i = 0; i < Config.Drives.Count; i++) {
+            string metaFile = Path.Combine(Config.ParityDir, String.Format("files{0}.dat", i));
+            if (File.Exists(metaFile))
+              Empty = false;
+            drives.Add(new DataDrive(Config.Drives[i], metaFile, Config.IgnoreHidden, Config.Ignores));
+          }
 
-        parity = new Parity(config.ParityDir, config.TempDir, config.MaxTempRAM);
+          parity = new Parity(Config.ParityDir, Config.TempDir, Config.MaxTempRAM);
+        }
         busy = false;
       }
     }
@@ -87,6 +89,8 @@ namespace disParity
     /// </summary>
     public List<string> Ignore { get; private set; }
 
+    public Config Config { get; private set; }
+
     /// <summary>
     /// Returns the location of the parity data
     /// </summary>
@@ -94,7 +98,7 @@ namespace disParity
     {
       get
       {
-        return config.ParityDir;
+        return Config.ParityDir;
       }
     }
 
@@ -123,6 +127,14 @@ namespace disParity
       {
         return drives.ToArray();
       }
+    }
+
+    /// <summary>
+    /// Close a parity set in preparation for application shutdown
+    /// </summary>
+    public void Close()
+    {
+      Config.Save();
     }
 
     /// <summary>
@@ -244,12 +256,12 @@ namespace disParity
     /// </summary>
     public DataDrive AddDrive(string path)
     {
-      string metaFile = Path.Combine(config.ParityDir, String.Format("files{0}.dat", drives.Count));
-      DataDrive newDrive = new DataDrive(path, metaFile, config.IgnoreHidden, config.Ignores);
+      string metaFile = Path.Combine(Config.ParityDir, String.Format("files{0}.dat", drives.Count));
+      DataDrive newDrive = new DataDrive(path, metaFile, Config.IgnoreHidden, Config.Ignores);
       drives.Add(newDrive);
-      // update config and save
-      config.Drives.Add(path);
-      config.Save();
+      // update Config and save
+      Config.Drives.Add(path);
+      Config.Save();
       return newDrive;
     }
 
@@ -525,19 +537,20 @@ namespace disParity
 
     private void ValidateConfig()
     {
-      if (config.Drives.Count == 0)
-        throw new Exception("No drives found in " + config.Filename);
+      // this is now a valid condition
+      //if (Config.Drives.Count == 0)
+      //  throw new Exception("No drives found in " + Config.Filename);
 
       // Make sure all data paths are set and valid
-      for (int i = 0; i < config.Drives.Count; i++) {
-        if (config.Drives[i] == null)
-          throw new Exception(String.Format("Path {0} is not set (check {1})", i + 1, config.Filename));
-        if (!Path.IsPathRooted(config.Drives[i]))
-          throw new Exception(String.Format("Path {0} is not valid (must be absolute)", config.Drives[i]));
+      for (int i = 0; i < Config.Drives.Count; i++) {
+        if (Config.Drives[i] == null)
+          throw new Exception(String.Format("Path {0} is not set (check {1})", i + 1, Config.Filename));
+        if (!Path.IsPathRooted(Config.Drives[i]))
+          throw new Exception(String.Format("Path {0} is not valid (must be absolute)", Config.Drives[i]));
       }
 
-      if (!Path.IsPathRooted(config.ParityDir))
-        throw new Exception(String.Format("{0} is not a valid parity path (must be absolute)", config.ParityDir));
+      if (!String.IsNullOrEmpty(Config.ParityDir) && !Path.IsPathRooted(Config.ParityDir))
+        throw new Exception(String.Format("{0} is not a valid parity path (must be absolute)", Config.ParityDir));
 
     }
 

@@ -7,8 +7,15 @@ Before release:
   
 * Options dialog 
 
+* About dialog (w/ copyright, etc.)
+
+* Schedule automatic updates
 
 
+Other stuff:
+
+
+* Look for ways to speed up scans of Music drive
 
 * test what happens when a file is removed that doesn't overlap with any 
   other files (e.g. towards the end of the largest drive.)  Make sure all zeros

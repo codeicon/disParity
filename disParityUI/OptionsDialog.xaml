@@ -1,0 +1,28 @@
+﻿<Window x:Class="disParityUI.OptionsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        BorderThickness="0" ResizeMode="CanResizeWithGrip"        
+        WindowStyle="ToolWindow"
+        Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"        
+        Title="Options" Height="379" Width="419" ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+    <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="40"/>
+    </Grid.RowDefinitions>
+    <GroupBox Grid.Row="0" BorderThickness="1" Margin="5" Header="Parity Location">
+      <StackPanel Orientation="Vertical" Margin="5">
+        <TextBlock Margin="2" TextWrapping="Wrap">This is the location where parity data for your backup is stored.  It is strongly recommended that parity be stored on a dedicated drive that is not used for any other purpose.  Once set the location cannot be changed!</TextBlock>
+        <Grid Margin="0,5,0,0">
+          <Border HorizontalAlignment="Stretch" Margin="0,0,100,0" BorderThickness="1" BorderBrush="Black">
+            <TextBlock Margin="2" Text="{Binding Path=ParityDir}"/>
+          </Border>
+          <Button HorizontalAlignment="Right" Click="HandleSetLocationClick" IsEnabled="{Binding Path=CanSetLocation}" Width="94">Set Location...</Button>
+        </Grid>
+      </StackPanel>
+    </GroupBox>
+    <Button Grid.Row="2" Width="60" Height="25" Content="OK" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,5,12,5" IsDefault="True" Click="HandleOKClick"/>
+    <Button Grid.Row="2" Width="60" Height="25" Content="Cancel" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,5,100,5" IsCancel="True" />
+  </Grid>
+</Window>

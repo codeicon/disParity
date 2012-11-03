@@ -6,13 +6,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.ComponentModel;
+using System.Windows;
 using System.Windows.Shell; // for TaskbarItem stuff
 using disParity;
 
 namespace disParityUI
 {
 
-  class MainWindowViewModel : INotifyPropertyChanged
+  class MainWindowViewModel : ViewModel
   {
 
     private ParitySet paritySet;
@@ -20,8 +21,6 @@ namespace disParityUI
     private int runningScans;
     private DataDriveViewModel recoverDrive; // current drive being recovered, if any
     private bool updateAfterScan = false;
-
-    public event PropertyChangedEventHandler PropertyChanged;
 
     public MainWindowViewModel()
     {
@@ -42,19 +41,66 @@ namespace disParityUI
       }
       paritySet.RecoverProgress += HandleRecoverProgress;
       paritySet.UpdateProgress += HandleUpdateProgress;
+
+      Left = paritySet.Config.MainWindowX;
+      Top = paritySet.Config.MainWindowY;
+      Height = paritySet.Config.MainWindowHeight;
+      Width = paritySet.Config.MainWindowWidth;
+
+      UpdateStartupMessage();
+      ParityLocation = paritySet.Config.ParityDir;
+
     }
 
+    public void OptionsChanged()
+    {
+      UpdateStartupMessage();
+      ParityLocation = paritySet.Config.ParityDir;
+    }
+
+    private void UpdateStartupMessage()
+    {
+      if (String.IsNullOrEmpty(paritySet.Config.ParityDir))
+        StartupMessage = "Welcome to disParity!\r\n\r\n" +
+          "To use disParity you must first specify a location where the parity data will be stored.\r\n\r\n" +
+          "Press the 'Options...' button on the right.";
+      else if (drives.Count == 0)
+        StartupMessage = "Add one or more drives to be backed up by pressing the 'Add Drive' button.";
+      else
+        StartupMessage = "";
+    }
+
+    public OptionsDialogViewModel GetOptionsDialogViewModel()
+    {
+      return new OptionsDialogViewModel(paritySet.Config);
+    }
+
+    /// <summary>
+    /// Called from the view when the app is closing
+    /// </summary>
+    public void Shutdown()
+    {
+      // save the main window position and size so it can be restored on next tun
+      paritySet.Config.MainWindowX = (int)left;
+      paritySet.Config.MainWindowY = (int)top;
+      paritySet.Config.MainWindowWidth = (int)Width;
+      paritySet.Config.MainWindowHeight = (int)Height;
+      paritySet.Close();
+    }
+
+    /// <summary>
+    /// Adds a new drive with the given path to the parity set
+    /// </summary>
     public void AddDrive(string path)
     {
       drives.Add(new DataDriveViewModel(paritySet.AddDrive(path)));
+      UpdateStartupMessage();
     }
 
     public void ScanAll()
     {
-      if (drives.Count == 0) {
-        Status = "No drives added. Press 'Add Drive...' to add a new data drive.";
+      if (drives.Count == 0)
         return;
-      }
       Busy = true;
       Status = "Scanning drives...";
       runningScans = drives.Count;
@@ -174,11 +220,46 @@ namespace disParityUI
       }
     }
 
-    public string ParityPath
+    private string parityLocation;
+    public string ParityLocation
     {
       get
       {
-        return paritySet.ParityPath;
+        return parityLocation;
+      }
+      set
+      {
+        SetProperty(ref parityLocation, "ParityLocation", value);
+      }
+    }
+
+    private string startupMessage;
+    public string StartupMessage
+    {
+      get
+      {
+        return startupMessage;
+      }
+      set
+      {
+        SetProperty(ref startupMessage, "StartupMessage", value);
+        if (startupMessage != "")
+          StartupMessageVisibility = Visibility.Visible;
+        else
+          StartupMessageVisibility = Visibility.Hidden;
+      }
+    }
+
+    private Visibility startupMessageVisibility;
+    public Visibility StartupMessageVisibility
+    {
+      get
+      {
+        return startupMessageVisibility;
+      }
+      set
+      {
+        SetProperty(ref startupMessageVisibility, "StartupMessageVisibility", value);
       }
     }
 
@@ -191,8 +272,7 @@ namespace disParityUI
       }
       set
       {
-        busy = value;
-        FirePropertyChanged("Busy");
+        SetProperty(ref busy, "Busy", value);
       }
     }
 
@@ -205,10 +285,7 @@ namespace disParityUI
       }
       set
       {
-        if (status != value) {
-          status = value;
-          FirePropertyChanged("Status");
-        }
+        SetProperty(ref status, "Status", value);
       }
     }
 
@@ -221,10 +298,59 @@ namespace disParityUI
       }
       set
       {
-        if (progress != value) {
-          progress = value;
-          FirePropertyChanged("Progress");
-        }
+        SetProperty(ref progress, "Progress", value);
+      }
+    }
+
+    private double top;
+    public double Top
+    {
+      get
+      {
+        return top;
+      }
+      set
+      {
+        SetProperty(ref top, "Top", value);
+      }
+    }
+
+    private double left;
+    public double Left
+    {
+      get
+      {
+        return left;
+      }
+      set
+      {
+        SetProperty(ref left, "Left", value);
+      }
+    }
+
+    private double height;
+    public double Height
+    {
+      get
+      {
+        return height;
+      }
+      set
+      {
+        SetProperty(ref height, "Height", value);
+      }
+    }
+
+    private double width;
+    public double Width
+    {
+      get
+      {
+        return width;
+      }
+      set
+      {
+        SetProperty(ref width, "Width", value);
       }
     }
 
@@ -240,17 +366,8 @@ namespace disParityUI
       }
       set
       {
-        if (value != progressState) {
-          progressState = value;
-          FirePropertyChanged("ProgressState");
-        }
+        SetProperty(ref progressState, "ProgressState", value);
       }
-    }
-
-    private void FirePropertyChanged(string name)
-    {
-      if (PropertyChanged != null)
-        PropertyChanged(this, new PropertyChangedEventArgs(name));
     }
 
   }
