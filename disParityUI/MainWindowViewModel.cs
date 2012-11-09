@@ -35,10 +35,8 @@ namespace disParityUI
       LogFile.LogPath = logPath;
 
       paritySet = new ParitySet(appDataPath);
-      foreach (DataDrive d in paritySet.Drives) {
-        d.ScanCompleted += HandleScanCompleted;
-        drives.Add(new DataDriveViewModel(d));
-      }
+      foreach (DataDrive d in paritySet.Drives)
+        AddDrive(d);
       paritySet.RecoverProgress += HandleRecoverProgress;
       paritySet.UpdateProgress += HandleUpdateProgress;
 
@@ -80,7 +78,7 @@ namespace disParityUI
     /// </summary>
     public void Shutdown()
     {
-      // save the main window position and size so it can be restored on next tun
+      // save the main window position and size so it can be restored on next run
       paritySet.Config.MainWindowX = (int)left;
       paritySet.Config.MainWindowY = (int)top;
       paritySet.Config.MainWindowWidth = (int)Width;
@@ -93,8 +91,14 @@ namespace disParityUI
     /// </summary>
     public void AddDrive(string path)
     {
-      drives.Add(new DataDriveViewModel(paritySet.AddDrive(path)));
+      AddDrive(paritySet.AddDrive(path));
       UpdateStartupMessage();
+    }
+
+    private void AddDrive(DataDrive drive)
+    {
+      drive.ScanCompleted += HandleScanCompleted;
+      drives.Add(new DataDriveViewModel(drive));
     }
 
     public void ScanAll()
@@ -141,7 +145,7 @@ namespace disParityUI
     private void DisplayUpToDateStatus()
     {
       long totalSize = 0;
-      int totalFiles = 1000;
+      int totalFiles = 0;
       foreach (DataDriveViewModel vm in drives) {
         totalSize += vm.DataDrive.TotalFileSize;
         totalFiles += vm.DataDrive.FileCount;

@@ -23,11 +23,10 @@ namespace disParity
 
     private string root;
     private string metaFileName;
-    private Dictionary<string, FileRecord> files;     // Master list of protected files; should reflect what is currently in files.dat at all times
+    private Dictionary<string, FileRecord> files; // Master list of protected files; should reflect what is currently in files.dat at all times
     private List<FileRecord> scanFiles; // List of current files on the drive as seen this scan
     private MD5 hash;
-    private bool ignoreHidden;
-    private List<Regex> ignores;
+    private Config config;
     private ProgressReporter scanProgress;
 
     const UInt32 META_FILE_VERSION = 1;
@@ -38,7 +37,7 @@ namespace disParity
     public event EventHandler<EventArgs> ScanCompleted;
     public event EventHandler<ReadingFileEventArgs> ReadingFile;
 
-    public DataDrive(string root, string metaFileName, bool ignoreHidden, List<string> ignore)
+    public DataDrive(string root, string metaFileName, Config config)
     {
       this.root = root;
       this.metaFileName = metaFileName;
@@ -65,16 +64,9 @@ namespace disParity
         LoadFileList();
 
       hash = MD5.Create();
-      ignores = new List<Regex>();
       Status = DriveStatus.ScanRequired;
-      this.ignoreHidden = ignoreHidden;
-      ignores.Clear();
-      foreach (string i in ignore) {
-        string pattern = Regex.Escape(i.ToLower());       // Escape the original string
-        pattern = pattern.Replace(@"\?", ".");  // Replace all \? with .
-        pattern = pattern.Replace(@"\*", ".*"); // Replace all \* with .*
-        ignores.Add(new Regex(pattern));
-      }
+      this.config = config;
+
     }
 
     public string Root { get { return root; } }
@@ -102,7 +94,22 @@ namespace disParity
     /// <summary>
     /// Total size, in bytes, of all protected files on this drive
     /// </summary>
-    public long TotalFileSize { get; private set; } 
+    public long TotalFileSize { get; private set; }
+
+    /// <summary>
+    /// Returns the total size of all files in the scanFiles list, in blocks.
+    /// Currently only used for progress reporting during creates.
+    /// </summary>
+    public UInt32 TotalBlocks
+    {
+      get
+      {
+        UInt32 result = 0;
+        foreach (FileRecord r in scanFiles)
+          result += r.LengthInBlocks;
+        return result;
+      }
+    }
 
     /// <summary>
     /// Clears all state of the DataDrive, resetting to empty (deletes on-disk
@@ -126,11 +133,21 @@ namespace disParity
       Debug.Assert(!Busy);
       Busy = true;
       try {
+
+        // Convert list of ignores to a list of Regex
+        List<Regex> ignores = new List<Regex>();
+        foreach (string i in config.Ignores) {
+          string pattern = Regex.Escape(i.ToLower());       // Escape the original string
+          pattern = pattern.Replace(@"\?", ".");  // Replace all \? with .
+          pattern = pattern.Replace(@"\*", ".*"); // Replace all \* with .*
+          ignores.Add(new Regex(pattern));
+        }
+
         scanFiles = new List<FileRecord>();
         LogFile.Log("Scanning {0}...", root);
         scanProgress = null;
         try {
-          Scan(new DirectoryInfo(root));
+          Scan(new DirectoryInfo(root), ignores);
         }
         catch (Exception e) {
           LogFile.Log("Could not scan {0}: {1}", root, e.Message);
@@ -154,7 +171,7 @@ namespace disParity
       }
     }
 
-    private void Scan(DirectoryInfo dir, ProgressReporter progress = null)
+    private void Scan(DirectoryInfo dir, List<Regex> ignores, ProgressReporter progress = null)
     {
       if (scanProgress != null)
         FireProgressReport("Scanning " + dir.FullName + "...", scanProgress.Progress);
@@ -187,12 +204,12 @@ namespace disParity
         folderProgress = progress.BeginSubPhase(subDirs.Length);
 
       foreach (DirectoryInfo d in subDirs) {
-        if ((ignoreHidden && (d.Attributes & FileAttributes.Hidden) != 0) ||
+        if ((config.IgnoreHidden && (d.Attributes & FileAttributes.Hidden) != 0) ||
             ((d.Attributes & FileAttributes.System) != 0)) {
           folderProgress.EndPhase();
           continue;
         }
-        Scan(d, folderProgress);
+        Scan(d, ignores, folderProgress);
         folderProgress.EndPhase();
       }
       FireProgressReport("", scanProgress.Progress);
@@ -200,7 +217,7 @@ namespace disParity
       foreach (FileInfo f in fileInfos) {
         if (f.Attributes == (FileAttributes)(-1))
           continue;
-        if (ignoreHidden && (f.Attributes & FileAttributes.Hidden) != 0)
+        if (config.IgnoreHidden && (f.Attributes & FileAttributes.Hidden) != 0)
           continue;
         if ((f.Attributes & FileAttributes.System) != 0)
           continue;

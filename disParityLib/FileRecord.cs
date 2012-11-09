@@ -158,10 +158,7 @@ namespace disParity
     {
       get
       {
-        UInt32 result = (UInt32)(Length / Parity.BlockSize);
-        if (result * Parity.BlockSize < Length)
-          result++;
-        return result;
+        return Parity.LengthInBlocks(Length);
       }
     }
 

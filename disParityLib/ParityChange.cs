@@ -20,14 +20,14 @@ namespace disParity
     private string tempFileName;
     private MemoryMappedFile mmf;
 
-    public ParityChange(Parity parity, UInt32 startBlock, UInt32 lengthInBlocks)
+    public ParityChange(Parity parity, Config config, UInt32 startBlock, UInt32 lengthInBlocks)
     {
       this.parity = parity;
       this.startBlock = startBlock;
       mmf = null;
       tempParity = null;
-      tempFileName = Path.Combine(parity.TempDir, TEMP_PARITY_FILENAME);
-      if (lengthInBlocks < parity.MaxTempBlocks)
+      tempFileName = Path.Combine(config.TempDir, TEMP_PARITY_FILENAME);
+      if (lengthInBlocks < Parity.LengthInBlocks(config.MaxTempRAM))
         try {
           mmf = MemoryMappedFile.CreateNew("disparity.tmp", (long)lengthInBlocks * Parity.BlockSize);
           tempParity = mmf.CreateViewStream();

@@ -11,9 +11,13 @@ Before release:
 
 * Schedule automatic updates
 
+* License agreement!
+
 
 Other stuff:
 
+* Temporary storage should ALWAYS use tempRAM first and then overflow to disk
+  when necessary.
 
 * Look for ways to speed up scans of Music drive
 

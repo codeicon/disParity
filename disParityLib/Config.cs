@@ -31,7 +31,7 @@ namespace disParity
       MainWindowY = DEFAULT_MAIN_WINDOW_Y;
       MainWindowWidth = DEFAULT_MAIN_WINDOW_WIDTH;
       MainWindowHeight = DEFAULT_MAIN_WINDOW_HEIGHT;
-      TempDir = DEFAULT_TEMP_DIR;
+      TempDir = Path.Combine(Path.GetTempPath(), "disParity");
       Ignores = new List<string>();
       Drives = new List<string>();
     }
@@ -211,7 +211,7 @@ namespace disParity
 
     public string TempDir { get; set; }
 
-    public UInt32 MaxTempRAM { get; set; }
+    public UInt32 MaxTempRAM { get; set; } // in megabytes
 
     public bool IgnoreHidden { get; set; }
 

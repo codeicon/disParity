@@ -11,6 +11,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using Xceed.Wpf.Toolkit;
 
 namespace disParityUI
 {
@@ -34,6 +35,15 @@ namespace disParityUI
       DialogResult r = d.ShowDialog();
       if (r == System.Windows.Forms.DialogResult.OK)
         viewModel.SetNewParityLocation(d.SelectedPath);
+    }
+
+    public void HandleChangeTempDirClick(object Sender, RoutedEventArgs args)
+    {
+      FolderBrowserDialog d = new FolderBrowserDialog();
+      d.Description = "Choose a location to store temporary data during updates:";
+      DialogResult r = d.ShowDialog();
+      if (r == System.Windows.Forms.DialogResult.OK)
+        viewModel.SetNewTempDir(d.SelectedPath);
     }
 
     public void HandleOKClick(object Sender, RoutedEventArgs args)

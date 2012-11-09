@@ -11,43 +11,31 @@ namespace disParity
 
     const Int32 PARITY_BLOCK_SIZE = 65536; 
     const Int32 BLOCKS_PER_FILE = 16384;
-    const Int32 DEFAULT_MAX_TEMP_BLOCKS = 4096;
 
-    private string parityDir;
-    private string tempDir;
     private FileStream f = null;
     private UInt32 currentParityFile;
-    private UInt32 maxTempBlocks = DEFAULT_MAX_TEMP_BLOCKS;
+    private Config config;
 
-    public Parity(string dir, string tempDir, UInt32 maxTempRAM)
+    public Parity(Config config)
     {
-      parityDir = dir;
-      this.tempDir = tempDir;
-      SetMaxTempRAM(maxTempRAM);
+      this.config = config;
     }
 
     public static Int32 BlockSize { get { return PARITY_BLOCK_SIZE; } }
 
-    public string Dir { get { return parityDir; } }
-
-    public string TempDir { get { return tempDir; } }
-
-    public UInt32 MaxTempBlocks { get { return maxTempBlocks; } }
-
     public void DeleteAll()
     {
-      DirectoryInfo dirInfo = new DirectoryInfo(parityDir);
+      DirectoryInfo dirInfo = new DirectoryInfo(config.ParityDir);
       FileInfo[] files = dirInfo.GetFiles();
       foreach (FileInfo f in files)
-        if (f.Name.StartsWith("parity") &&
-          Path.GetExtension(f.Name) == ".dat")
+        if (f.Name.StartsWith("parity") && Path.GetExtension(f.Name) == ".dat")
           File.Delete(f.FullName);
     }
 
     private string ParityFileName(UInt32 block)
     {
       UInt32 partityFileNum = block / (UInt32)BLOCKS_PER_FILE;
-      return parityDir + "parity" + partityFileNum.ToString() + ".dat";
+      return Path.Combine(config.ParityDir, "parity" + partityFileNum.ToString() + ".dat");
     }
 
     private bool OpenParityFile(UInt32 block, bool readOnly)
@@ -62,10 +50,10 @@ namespace disParity
         return true;
       }
       Close();
-      string fileName = parityDir + "parity" + partityFileNum.ToString() + ".dat";
-      if (readOnly && !File.Exists(ParityFileName(block)))
+      string fileName = ParityFileName(block);
+      if (readOnly && !File.Exists(fileName))
         return false;
-      f = new FileStream(ParityFileName(block), FileMode.OpenOrCreate,  FileAccess.ReadWrite);
+      f = new FileStream(fileName, FileMode.OpenOrCreate,  FileAccess.ReadWrite);
       currentParityFile = partityFileNum;
       f.Position = FilePosition(block);
       return true;
@@ -110,14 +98,12 @@ namespace disParity
       return (block - (partityFileNum * BLOCKS_PER_FILE)) * PARITY_BLOCK_SIZE;
     }
 
-    private void SetMaxTempRAM(UInt32 mb)
+    public static UInt32 LengthInBlocks(long lengthInBytes)
     {
-      const int MAX_TEMP_RAM = 2047;
-      if (mb < 0)
-        return;
-      if (mb > MAX_TEMP_RAM)
-        mb = MAX_TEMP_RAM;
-      maxTempBlocks = ((mb * 1024 * 1024) / PARITY_BLOCK_SIZE) + 1;
+      UInt32 result = (UInt32)(lengthInBytes / PARITY_BLOCK_SIZE);
+      if (result * PARITY_BLOCK_SIZE < lengthInBytes)
+        result++;
+      return result;
     }
 
     /// <summary>
@@ -127,7 +113,7 @@ namespace disParity
     {
       get
       {
-        string parityDrive = Path.GetPathRoot(parityDir);
+        string parityDrive = Path.GetPathRoot(config.ParityDir);
         if (parityDrive != "") {
           DriveInfo driveInfo;
           try {

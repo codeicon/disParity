@@ -26,10 +26,21 @@ namespace disParityUI
         ParityDir = config.ParityDir;
         CanSetLocation = false;
       }
+      MaxTempRAM = (int)config.MaxTempRAM;
+      IgnoreHidden = config.IgnoreHidden;
+      TempDir = config.TempDir;
+      foreach (string i in config.Ignores)
+        if (String.IsNullOrEmpty(ignores))
+          ignores = i;
+        else
+          ignores += "\r\n" + i;
     }
 
     public void SetNewParityLocation(string path)
     {
+
+      // FIXME: What to do if there already is parity data here!?!
+
       // maybe do this someday if it's possible for non-existant paths to be passed in
       //if (!Directory.Exists(path)) {
       //  if (MessageBox.Show("Directory does not exist.  Create it?", "Directory does not exist", 
@@ -51,12 +62,29 @@ namespace disParityUI
       ParityDir = path;
     }
 
+    public void SetNewTempDir(string path)
+    {
+      TempDir = path;
+    }
+
     public void CommitChanges()
     {
       if (parityDir != PARITY_NOT_SET)
         config.ParityDir = parityDir;
+      config.MaxTempRAM = (uint)MaxTempRAM;
+      config.IgnoreHidden = IgnoreHidden;
+      config.TempDir = TempDir;
+      config.Ignores.Clear();
+      if (!String.IsNullOrEmpty(ignores)) {
+        string[] sep = { "\r\n" };
+        string[] s = ignores.Split(sep, StringSplitOptions.RemoveEmptyEntries);
+        foreach (string i in s)
+          config.Ignores.Add(i);
+      }
       config.Save();
     }
+
+    #region Properties
 
     private bool canSetLocation;
     public bool CanSetLocation
@@ -84,6 +112,85 @@ namespace disParityUI
       }
 
     }
+
+    private string tempDir;
+    public string TempDir
+    {
+      get
+      {
+        return tempDir;
+      }
+      set
+      {
+        SetProperty(ref tempDir, "TempDir", value);
+      }
+
+    }
+
+    private int maxTempRAM;
+    public int MaxTempRAM
+    {
+      get
+      {
+        return maxTempRAM;
+      }
+      set
+      {
+        SetProperty(ref maxTempRAM, "MaxTempRAM", value);
+      }
+    }
+
+    public int MaxTempRAMIncrement { get { return 256; } }
+
+    // TODO: Need to test out this value on an actual 32 bit OS
+    const int MAXIMUM_MAX_TEMP_RAM_32BIT = 1536;
+    public int MaximumMaxTempRam
+    {
+      get
+      {
+        int systemRAMInMB = (int)(Utils.TotalSystemRAM() / (1024 * 1024));
+        int max = systemRAMInMB / 2;
+
+        max = (max / MaxTempRAMIncrement) * MaxTempRAMIncrement;
+
+        if (Environment.Is64BitProcess)
+          return max;
+        else
+          // 32 bit process
+          if (max > MAXIMUM_MAX_TEMP_RAM_32BIT)
+            return MAXIMUM_MAX_TEMP_RAM_32BIT;
+          else
+            return max;
+      }
+    }
+
+    private bool ignoreHidden;
+    public bool IgnoreHidden
+    {
+      get
+      {
+        return ignoreHidden;
+      }
+      set
+      {
+        SetProperty(ref ignoreHidden, "IgnoreHidden", value);
+      }
+    }
+
+    private string ignores;
+    public string Ignores
+    {
+      get
+      {
+        return ignores;
+      }
+      set
+      {
+        SetProperty(ref ignores, "Ignores", value);
+      }
+    }
+
+    #endregion
 
   }
 }
