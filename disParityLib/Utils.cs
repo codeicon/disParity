@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
-using System.Runtime.InteropServices;
 
 namespace disParity
 {
@@ -89,35 +88,12 @@ namespace disParity
       return String.Format("{0:F1} {1}", result, units);
     }
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-    private class MEMORYSTATUSEX
-    {
-      public uint dwLength;
-      public uint dwMemoryLoad;
-      public ulong ullTotalPhys;
-      public ulong ullAvailPhys;
-      public ulong ullTotalPageFile;
-      public ulong ullAvailPageFile;
-      public ulong ullTotalVirtual;
-      public ulong ullAvailVirtual;
-      public ulong ullAvailExtendedVirtual;
-
-      public MEMORYSTATUSEX()
-      {
-        this.dwLength = (uint)Marshal.SizeOf(typeof(MEMORYSTATUSEX));
-      }
-    }
-
-    [return: MarshalAs(UnmanagedType.Bool)]
-    [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-    static extern bool GlobalMemoryStatusEx([In, Out] MEMORYSTATUSEX lpBuffer);
-
     private const ulong ONE_GB = 1073741824;
 
     public static ulong TotalSystemRAM()
     {
-      MEMORYSTATUSEX memStatus = new MEMORYSTATUSEX();
-      if (GlobalMemoryStatusEx(memStatus)) {
+      Win32.MEMORYSTATUSEX memStatus = new Win32.MEMORYSTATUSEX();
+      if (Win32.GlobalMemoryStatusEx(memStatus)) {
         // round up to nearest GB
         ulong RAM = memStatus.ullTotalPhys;
         ulong remainder = RAM % ONE_GB;

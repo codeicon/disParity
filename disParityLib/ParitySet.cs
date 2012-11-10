@@ -15,9 +15,11 @@ namespace disParity
     private Parity parity;
     private bool busy;
     private LogFile logFile;
+    private byte[] tempBuf = new byte[Parity.BlockSize];
 
     public event EventHandler<RecoverProgressEventArgs> RecoverProgress;
     public event EventHandler<UpdateProgressEventArgs> UpdateProgress;
+    public event EventHandler<RecoverErrorEventArgs> RecoverError;
 
     public ParitySet(string ConfigFilePath)
     {
@@ -134,7 +136,12 @@ namespace disParity
     /// </summary>
     public void Close()
     {
-      Config.Save();
+      try {
+        Config.Save();
+      }
+      catch {
+        // hide any errors saving config on shutdown
+      }
     }
 
     /// <summary>
@@ -300,43 +307,52 @@ namespace disParity
       string fullPath = Utils.MakeFullPath(path, r.Name);
       LogFile.Log("Recovering {0}...", r.Name);
       r.Drive.FireProgressReport("Recovering " + r.Name + " ...", 0);
-      FireRecoverProgress(r.Name, 0);
-      // make sure the destination directory exists
-      Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
-      MD5 hash = MD5.Create();
-      hash.Initialize();
-      using (FileStream f = new FileStream(fullPath, FileMode.Create, FileAccess.Write)) {
-        ParityBlock parityBlock = new ParityBlock(parity);
-        long leftToWrite = r.Length;
-        UInt32 block = r.StartBlock;
-        while (leftToWrite > 0) {
-          RecoverBlock(r.Drive, block, parityBlock);
-          int blockSize = leftToWrite > Parity.BlockSize ? Parity.BlockSize : (int)leftToWrite;
-          f.Write(parityBlock.Data, 0, blockSize);
-          hash.TransformBlock(parityBlock.Data, 0, blockSize, parityBlock.Data, 0);
-          leftToWrite -= Parity.BlockSize;
-          block++;
-          recoverBlocks++;
-          if ((block % 10) == 0) { // report progress every 10 blocks
-            r.Drive.FireProgressReport("", (double)(block - r.StartBlock) / r.LengthInBlocks);
-            FireRecoverProgress("", (double)recoverBlocks / recoverTotalBlocks);
+      try {
+        // make sure the destination directory exists
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
+        MD5 hash = MD5.Create();
+        hash.Initialize();
+        using (FileStream f = new FileStream(fullPath, FileMode.Create, FileAccess.Write)) {
+          ParityBlock parityBlock = new ParityBlock(parity);
+          long leftToWrite = r.Length;
+          UInt32 block = r.StartBlock;
+          while (leftToWrite > 0) {
+            RecoverBlock(r.Drive, block, parityBlock);
+            int blockSize = leftToWrite > Parity.BlockSize ? Parity.BlockSize : (int)leftToWrite;
+            f.Write(parityBlock.Data, 0, blockSize);
+            hash.TransformBlock(parityBlock.Data, 0, blockSize, parityBlock.Data, 0);
+            leftToWrite -= Parity.BlockSize;
+            block++;
+            if ((block % 10) == 0) { // report progress every 10 blocks
+              r.Drive.FireProgressReport("", (double)(block - r.StartBlock) / r.LengthInBlocks);
+              FireRecoverProgress("", (double)(recoverBlocks + (block - r.StartBlock)) / recoverTotalBlocks);
+            }
           }
+          hash.TransformFinalBlock(parityBlock.Data, 0, 0);
         }
-        hash.TransformFinalBlock(parityBlock.Data, 0, 0);
+        r.Drive.FireProgressReport("", 0);
+        File.SetCreationTime(fullPath, r.CreationTime);
+        File.SetLastWriteTime(fullPath, r.LastWriteTime);
+        File.SetAttributes(fullPath, r.Attributes);
+        if (r.Length > 0 && !Utils.HashCodesMatch(hash.Hash, r.HashCode)) {
+          LogFile.Log("ERROR: hash verify FAILED for {0}", fullPath);
+          FireRecoverError("Hash verify failed for \"" + fullPath + "\".  Recovered file is probably corrupt.");
+          return false;
+        }
+        else
+          return true;
       }
-      r.Drive.FireProgressReport("", 0);
-      File.SetCreationTime(fullPath, r.CreationTime);
-      File.SetLastWriteTime(fullPath, r.LastWriteTime);
-      File.SetAttributes(fullPath, r.Attributes);
-      if (r.Length > 0 && !Utils.HashCodesMatch(hash.Hash, r.HashCode)) {
-        LogFile.Log("ERROR: hash verify FAILED for {0}", fullPath);
+      catch (Exception e) {
+        LogFile.Log("ERROR recovering {0} : {1}", fullPath, e.Message);
+        FireRecoverError("Error recovering \"" + fullPath + "\": " + e.Message);
         return false;
       }
-      else
-        return true;
+      finally {
+        // no matter what happens, keep the progress bar advancing by the right amount
+        recoverBlocks += r.LengthInBlocks;
+        FireRecoverProgress("", (double)recoverBlocks / recoverTotalBlocks);
+      }
     }
-
-    private byte[] tempBuf = new byte[Parity.BlockSize];
 
     private void RecoverBlock(DataDrive drive, UInt32 block, ParityBlock parity)
     {
@@ -567,6 +583,12 @@ namespace disParity
         RecoverProgress(this, new RecoverProgressEventArgs(filename, progress));
     }
 
+    private void FireRecoverError(string message)
+    {
+      if (RecoverError != null)
+        RecoverError(this, new RecoverErrorEventArgs(message));
+    }
+
     private void FireUpdateProgress(double progress)
     {
       if (UpdateProgress != null)
@@ -586,6 +608,16 @@ namespace disParity
     public string Filename { get; private set; }
     public double Progress { get; private set; }
 
+  }
+
+  public class RecoverErrorEventArgs : EventArgs
+  {
+    public RecoverErrorEventArgs(string msg)
+    {
+      Message = msg;
+    }
+
+    public string Message { get; private set; }
   }
 
 }

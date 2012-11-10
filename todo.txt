@@ -9,12 +9,16 @@ Before release:
 
 * About dialog (w/ copyright, etc.)
 
+* Upgrade check on startup
+
 * Schedule automatic updates
 
 * License agreement!
 
 
 Other stuff:
+
+* Recover should prompt first before overwriting an existing file
 
 * Temporary storage should ALWAYS use tempRAM first and then overflow to disk
   when necessary.

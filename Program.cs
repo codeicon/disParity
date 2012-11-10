@@ -102,6 +102,11 @@ namespace disParity.CmdLine
         return;
       }
 
+      if (SingleInstance.AlreadyRunning()) {
+        Console.WriteLine("Another instance of disParity is currently running.");
+        return;
+      }
+
       string logFileName = "disParity log " + DateTime.Now.ToString("yy-MM-dd HH.mm.ss");
       logFile = new LogFile(logFileName, verbose);
       logFile.Write("Beginning \"{0}\" command at {1} on {2}\r\n", args[0].ToLower(),

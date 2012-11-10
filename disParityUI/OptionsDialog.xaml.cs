@@ -26,6 +26,13 @@ namespace disParityUI
       this.viewModel = viewModel;
       DataContext = viewModel;
       InitializeComponent();
+
+      Loaded += HandleLoaded;
+    }
+
+    private void HandleLoaded(object sender, EventArgs args)
+    {
+      WindowUtils.RemoveCloseButton(this);
     }
 
     public void HandleSetLocationClick(object Sender, RoutedEventArgs args)

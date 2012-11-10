@@ -20,11 +20,6 @@ namespace disParityUI
 
     private DispatcherTimer updateStatusTimer;
 
-    private static ImageSource statusGood = new ImageSourceConverter().ConvertFromString("pack://application:,,,/StatusGood.ico") as ImageSource;
-    private static ImageSource statusCaution = new ImageSourceConverter().ConvertFromString("pack://application:,,,/StatusCaution.ico") as ImageSource;
-    private static ImageSource statusUnknown = new ImageSourceConverter().ConvertFromString("pack://application:,,,/StatusUnknown.ico") as ImageSource;
-    private static ImageSource statusUrgent = new ImageSourceConverter().ConvertFromString("pack://application:,,,/StatusUrgent.ico") as ImageSource;
-
     public event PropertyChangedEventHandler PropertyChanged;
 
     public DataDriveViewModel(DataDrive dataDrive)
@@ -83,9 +78,9 @@ namespace disParityUI
         Status = String.Format("Update Required ({0} new, {1} deleted, {2} moved)",
           args.AddCount, args.DeleteCount, args.MoveCount);
         if (args.DeleteCount > 0 || args.MoveCount > 0)
-          StatusIcon = statusUrgent;
+          StatusIcon = Icons.Urgent;
         else
-          StatusIcon = statusCaution;
+          StatusIcon = Icons.Caution;
       } 
       else
         UpdateStatus();
@@ -223,22 +218,22 @@ namespace disParityUI
         case DriveStatus.ScanRequired:
           Status = "Unknown (scan required)";
           //StatusColor = Brushes.Red;
-          StatusIcon = statusUnknown;
+          StatusIcon = Icons.Unknown;
           break;
         case DriveStatus.UpdateRequired:
           Status = "Update required";
           //StatusColor = cautionBrush;
-          StatusIcon = statusCaution;
+          StatusIcon = Icons.Caution;
           break;
         case DriveStatus.UpToDate:
           Status = "Up to date";
           //StatusColor = Brushes.Green;
-          StatusIcon = statusGood;
+          StatusIcon = Icons.Good;
           break;
         case DriveStatus.AccessError:
           Status = "Error: " + DataDrive.LastError;
           //StatusColor = Brushes.Red;
-          StatusIcon = statusUrgent;
+          StatusIcon = Icons.Urgent;
           break;
       }
     }

@@ -559,8 +559,6 @@ namespace disParity
       if (r == null)
         return false;
       string fullPath = r.FullPath;
-      if (!File.Exists(fullPath))
-        return false;
       FireReadingFile(fullPath);
       // to do: what if the file has been edited?
       // Allow any I/O exceptions below to be caught by parent

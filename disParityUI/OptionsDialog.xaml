@@ -12,6 +12,7 @@
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
+      <RowDefinition Height="5*" />
     </Grid.RowDefinitions>
     <GroupBox Grid.Row="0" BorderThickness="1" Margin="5" Header="Parity Location">
       <StackPanel Orientation="Vertical" Margin="5">
@@ -53,7 +54,7 @@
         </StackPanel>
       </Grid>
     </GroupBox>
-    <Button Grid.Row="3" Width="60" Height="25" Content="OK" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,5,12,5" IsDefault="True" Click="HandleOKClick"/>
-    <Button Grid.Row="3" Width="60" Height="25" Content="Cancel" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,5,100,5" IsCancel="True" />
+    <Button Grid.Row="3" Width="72" Height="25" Content="OK" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="363,4,0,6" IsDefault="True" Click="HandleOKClick"/>
+    <Button Grid.Row="3" Width="70" Height="25" Content="Cancel" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,4,12,6" IsCancel="True" />
   </Grid>
 </Window>

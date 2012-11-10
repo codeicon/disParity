@@ -21,10 +21,12 @@ namespace disParityUI
     private int runningScans;
     private DataDriveViewModel recoverDrive; // current drive being recovered, if any
     private bool updateAfterScan = false;
+    private List<string> recoverErrors = new List<string>();
+    private Window owner;
 
-    public MainWindowViewModel()
+    public MainWindowViewModel(Window owner)
     {
-
+      this.owner = owner;
       // Set up application data and log folders
       string appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "disParity");
       if (!Directory.Exists(appDataPath))
@@ -38,6 +40,7 @@ namespace disParityUI
       foreach (DataDrive d in paritySet.Drives)
         AddDrive(d);
       paritySet.RecoverProgress += HandleRecoverProgress;
+      paritySet.RecoverError += HandleRecoverError;
       paritySet.UpdateProgress += HandleUpdateProgress;
 
       Left = paritySet.Config.MainWindowX;
@@ -187,21 +190,37 @@ namespace disParityUI
       Busy = true;
       Status = "Recovering " + drive.Root + " to " + path + "...";
       recoverDrive = drive;
+      recoverErrors.Clear();
+      // must run actual recover as a separate Task so UI can still update
       Task.Factory.StartNew(() =>
       {
         try {
           int successes;
           int failures;
           paritySet.Recover(drive.DataDrive, path, out successes, out failures);
+          if (failures == 0) {
+            string msg = String.Format("{0} file{1} successfully recovered!",
+              successes, successes == 1 ? "" : "s");
+            MessageWindow.Show(owner, "Recovery complete", msg);
+          }
+          else {
+            string msg =
+              String.Format("{0} file{1} recovered successfully.\r\n\r\n", successes, successes == 1 ? " was" : "s were") +
+              String.Format("{0} file{1} encountered errors during the recovery.", failures, failures == 1 ? "" : "s") +
+              "\r\n\r\nWould you like to see a list of errors?";
+            if (MessageWindow.Show(owner, "Recovery complete", msg, MessageWindowIcon.Error, MessageWindowButton.YesNo))
+              ReportWindow.Show(owner, recoverErrors);
+          }
           Status = String.Format("{0} file{1} recovered ({2} failure{3})",
             successes, successes == 1 ? "" : "s", failures, failures == 1 ? "" : "s");
         }
         catch (Exception e) {
-          Status = "Recover failed: " + e.Message;
+          MessageWindow.Show(owner, "Recover failed!", 
+            "Sorry, an unexpected error occurred while recovering the drive:\r\n\r\n" + e.Message);
         }
         finally {
           Progress = 0;
-          recoverDrive.UpdateStatus();
+          // recoverDrive.UpdateStatus(); what was this for?
           ProgressState = TaskbarItemProgressState.None;
           Busy = false;
         }
@@ -211,9 +230,15 @@ namespace disParityUI
 
     private void HandleRecoverProgress(object sender, RecoverProgressEventArgs args)
     {
+      ProgressState = TaskbarItemProgressState.Normal;
       Progress = args.Progress;
       if (!String.IsNullOrEmpty(args.Filename))
         recoverDrive.Status = "Recovering " + args.Filename + "...";
+    }
+
+    private void HandleRecoverError(object sender, RecoverErrorEventArgs args)
+    {
+      recoverErrors.Add(args.Message);
     }
 
     public ObservableCollection<DataDriveViewModel> Drives
@@ -223,6 +248,8 @@ namespace disParityUI
         return drives;
       }
     }
+
+    #region Properties
 
     private string parityLocation;
     public string ParityLocation
@@ -373,6 +400,8 @@ namespace disParityUI
         SetProperty(ref progressState, "ProgressState", value);
       }
     }
+
+    #endregion
 
   }
 

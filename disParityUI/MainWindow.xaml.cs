@@ -27,8 +27,9 @@ namespace disParityUI
 
     public MainWindow()
     {
-      viewModel = new MainWindowViewModel();
+      viewModel = new MainWindowViewModel(this);
       DataContext = viewModel;
+      Initialized += HandleInitialized;
       Loaded += HandleLoaded;
       Closed += HandleClosed;
       Closing += HandleClosing;
@@ -44,6 +45,14 @@ namespace disParityUI
 
     }
 
+    private void HandleInitialized(object sender, EventArgs args)
+    {
+      if (SingleInstance.AlreadyRunning()) {
+        MessageWindow.Show(null, "Already running", "Another instance of disParity is already running", MessageWindowIcon.Error, MessageWindowButton.OK);
+        Close();
+      }
+    }
+
     private void HandleTimer(object sender, EventArgs args)
     {
       // Console.WriteLine("InvalidateRequerySuggested");
@@ -52,6 +61,7 @@ namespace disParityUI
 
     private void HandleLoaded(object sender, EventArgs args)
     {
+
       viewModel.ScanAll();
     }
 
@@ -67,6 +77,7 @@ namespace disParityUI
       viewModel.Shutdown();
     }
 
+    #region Command CanExecute/Executed methods
 
     void AddDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
@@ -142,6 +153,8 @@ namespace disParityUI
       if (dialog.ShowDialog() == true)
         viewModel.OptionsChanged();
     }
+
+    #endregion
 
   }
 

@@ -1,0 +1,26 @@
+﻿<Window x:Class="disParityUI.MessageWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        ResizeMode="NoResize"
+        BorderThickness="0" 
+        WindowStyle="ToolWindow"
+        
+        Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"        
+        Title="{Binding Path=Caption}" Height="150" Width="300" SizeToContent="Height" Topmost="True" WindowStartupLocation="CenterOwner">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="50"/>
+      </Grid.RowDefinitions>
+      <DockPanel Margin="5">
+        <Image DockPanel.Dock="Left" Width="54" Stretch="None" Source="{Binding Path=Icon}"/>
+        <TextBlock Text="{Binding Path=Message}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"></TextBlock>
+      </DockPanel>
+    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center">
+      <Button Width="60" Height="25" Content="Yes" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5" Click="HandleYesClick" Visibility="{Binding Path=YesButtonVisibility}"/>
+      <Button Width="60" Height="25" Content="No" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5" Click="HandleNoClick" Visibility="{Binding Path=NoButtonVisibility}"/>
+      <Button Width="60" Height="25" Content="OK" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5" IsDefault="True" Click="HandleOKClick" Visibility="{Binding Path=OKButtonVisibility}"/>
+      <Button Width="60" Height="25" Content="Cancel" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5" Click="HandleCancelClick" Visibility="{Binding Path=CancelButtonVisibility}"/>
+    </StackPanel>
+  </Grid>
+</Window>
