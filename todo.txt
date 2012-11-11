@@ -2,11 +2,6 @@ Before release:
 
 * Process of setting up new array should be smooth
 
-* Recover should continue even if errors are encountered; if there are errors,
-  there should be a window listing all of them.
-  
-* Options dialog 
-
 * About dialog (w/ copyright, etc.)
 
 * Upgrade check on startup
@@ -18,6 +13,9 @@ Before release:
 
 Other stuff:
 
+* Long running operations (update, cancel, etc.) should be cancellable w/o
+  corrupting anything.
+  
 * Recover should prompt first before overwriting an existing file
 
 * Temporary storage should ALWAYS use tempRAM first and then overflow to disk

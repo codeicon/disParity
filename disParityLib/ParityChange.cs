@@ -26,8 +26,7 @@ namespace disParity
       this.startBlock = startBlock;
       mmf = null;
       tempParity = null;
-      tempFileName = Path.Combine(config.TempDir, TEMP_PARITY_FILENAME);
-      if (lengthInBlocks < Parity.LengthInBlocks(config.MaxTempRAM))
+      if (lengthInBlocks < Parity.LengthInBlocks((long)config.MaxTempRAM * 1024 * 1024))
         try {
           mmf = MemoryMappedFile.CreateNew("disparity.tmp", (long)lengthInBlocks * Parity.BlockSize);
           tempParity = mmf.CreateViewStream();
@@ -36,8 +35,13 @@ namespace disParity
           // Fall back to the temp file
           tempParity = null;
         }
-      if (tempParity == null)
-        tempParity = new FileStream(tempFileName, FileMode.Create, FileAccess.ReadWrite); 
+      if (tempParity == null) {
+        // make sure temp directory exists
+        if (!Directory.Exists(config.TempDir))
+          Directory.CreateDirectory(config.TempDir);
+        tempFileName = Path.Combine(config.TempDir, TEMP_PARITY_FILENAME);
+        tempParity = new FileStream(tempFileName, FileMode.Create, FileAccess.ReadWrite);
+      }
       parityBlock = new ParityBlock(parity);
       block = startBlock;
     }
@@ -91,7 +95,7 @@ namespace disParity
       tempParity.Dispose();
       if (mmf != null)
         mmf.Dispose();
-      if (File.Exists(tempFileName))
+      if (!String.IsNullOrEmpty(tempFileName) && File.Exists(tempFileName))
         File.Delete(tempFileName);
     }
 
