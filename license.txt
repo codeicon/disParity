@@ -1,0 +1,23 @@
+End User License Agreement (EULA)
+
+By installing disParity (the "Software") and accepting this agreement, you signify that you have read, understood, and agree to the following terms.  If you disagree with any of the terms below, please click "Exit" below and uninstall the software immediately.
+
+LICENSE
+
+Subject to your compliance with these terms, Disparity Solutions, LLC grants you a royalty-free, non-exclusive, non-transferable license to use the Software, solely for your personal, non-commercial purpoes.  Disparity Solutions, LLC reserves all rights in the Software not expressly granted to you here.
+
+RESTRICTIONS
+
+The source code, design, and structure of the Software are trade secrets. You will not disassemble, decompile, or reverse engineer it, in whole or in part, except to the extent expressly permitted by law, or distribute it. You will not use the Software for illegal purposes. You will comply with all export laws. The Software is licensed, not sold.
+                                                     
+DISCLAIMER OF WARRANTY
+
+Disparity Solutions, LLC makes no warranty as to the fitness of The software for any purpose.  The software is provided as is, with no warranties expressed or implied.  
+
+LIMITATION OF LIABILITY
+
+YOU ASSUME ALL RISKS THAT MAY ARISE FROM USE OF THE SOFTWARE.  You acknowledge that the Software may malfunction and cause loss of data, system instability, or other technical problems or losses.  Disparity Solutions, LLC disclaims any responsibility for harm resulting from use of the Software.  In no event will Disparity Solutions, LLC be liable to you for any damages arising out of use of this software.  
+                                                     
+SUPPORT
+
+Use of this software does not grant you any rights to service, support, or future upgrades.    

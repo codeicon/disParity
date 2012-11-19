@@ -34,8 +34,7 @@ namespace disParity.CmdLine
     static string parityDir;
     static string tempDir = ".\\";
     static Int32 driveNum = -1;
-
-    public const string VERSION = "0.23";
+    static string shutdownMsg;
 
     static void Main(string[] args)
     {
@@ -107,6 +106,8 @@ namespace disParity.CmdLine
         return;
       }
 
+      disParity.Version.DoUpgradeCheck(HandleNewVersionAvailable);
+
       string logFileName = "disParity log " + DateTime.Now.ToString("yy-MM-dd HH.mm.ss");
       logFile = new LogFile(logFileName, verbose);
       logFile.Write("Beginning \"{0}\" command at {1} on {2}\r\n", args[0].ToLower(),
@@ -139,10 +140,17 @@ namespace disParity.CmdLine
         LogFile.Log("Stack trace: {0}", e.StackTrace);
       }
       finally {
-        Usage.Close();
+        if (!String.IsNullOrEmpty(shutdownMsg))
+          logFile.Write(shutdownMsg);
         logFile.Close();
       }
 
+    }
+
+    private static void HandleNewVersionAvailable(string newVersion)
+    {
+      shutdownMsg = "Note: Version " + newVersion +
+        " of disParity is now available for download from www.vilett.com/disParity/\r\n";
     }
 
     static bool ReadDriveNum(string[] args)
@@ -163,7 +171,7 @@ namespace disParity.CmdLine
 
     static void PrintUsage()
     {
-      Console.WriteLine("disParity Snapshot Parity Utility Version " + VERSION +
+      Console.WriteLine("disParity Snapshot Parity Utility Version " + Version.VersionString +
         "\r\n\r\n" +
         "Usage:\r\n\r\n" +
         "  disparity update [-v]          Create or update parity to reflect latest file data\r\n" +

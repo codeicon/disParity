@@ -15,6 +15,8 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using disParity;
+using System.Reflection;
+using disParity;
 
 namespace disParityUI
 {
@@ -39,10 +41,6 @@ namespace disParityUI
       timer.Tick += HandleTimer;
       timer.Interval = new TimeSpan(0, 0, 1);
       timer.Start();
-
-      //Uri uri = new Uri("pack://application:,,,/Icon.ico");
-      //Icon = BitmapFrame.Create(uri);
-
     }
 
     private void HandleInitialized(object sender, EventArgs args)
@@ -55,14 +53,12 @@ namespace disParityUI
 
     private void HandleTimer(object sender, EventArgs args)
     {
-      // Console.WriteLine("InvalidateRequerySuggested");
       CommandManager.InvalidateRequerySuggested();
     }
 
     private void HandleLoaded(object sender, EventArgs args)
     {
-
-      viewModel.ScanAll();
+      viewModel.Loaded();
     }
 
     private void HandleClosing(object sender, CancelEventArgs args)

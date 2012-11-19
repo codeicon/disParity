@@ -1,0 +1,21 @@
+﻿<Window x:Class="disParityUI.LicenseWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        ResizeMode="CanResizeWithGrip"
+        WindowStartupLocation="CenterOwner"
+        BorderThickness="0" 
+        WindowStyle="ToolWindow"
+        
+        Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"           Title="License Agreement"
+        Height="580" Width="522">
+    <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="50"/>
+    </Grid.RowDefinitions>
+      <xctk:RichTextBox x:Name="LicenseText" Grid.Row="0" Margin="5" VerticalScrollBarVisibility="Visible" IsReadOnly="True"/>
+      <Button Grid.Row="1" Width="70" Height="25" Content="Exit" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5" Click="HandleDontAcceptClick" />
+    <Button Grid.Row="1" Width="90" Height="25" Content="I Accept" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,5,100,5" IsDefault="True" Click="HandleAcceptClick" />
+  </Grid>
+</Window>

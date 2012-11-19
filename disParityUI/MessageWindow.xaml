@@ -14,7 +14,7 @@
       </Grid.RowDefinitions>
       <DockPanel Margin="5">
         <Image DockPanel.Dock="Left" Width="54" Stretch="None" Source="{Binding Path=Icon}"/>
-        <TextBlock Text="{Binding Path=Message}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"></TextBlock>
+        <TextBlock Name="message" Margin="10,0,0,0" Text="{Binding Path=Message}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"></TextBlock>
       </DockPanel>
     <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center">
       <Button Width="60" Height="25" Content="Yes" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5" Click="HandleYesClick" Visibility="{Binding Path=YesButtonVisibility}"/>

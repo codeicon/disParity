@@ -4,14 +4,23 @@ Before release:
 
 * About dialog (w/ copyright, etc.)
 
-* Upgrade check on startup
+* Test command line
 
-* Schedule automatic updates
+* Installer
 
-* License agreement!
+* Clean up config file stuff
+  
+* Handle out-of-parity space issues robustly (should update detect and report 
+  when there is not enough room on the parity drive?)
 
 
 Other stuff:
+
+* Recover should check if the destination drive has enough room first.
+
+* Schedule automatic updates
+
+* Test new version message from command line
 
 * Long running operations (update, cancel, etc.) should be cancellable w/o
   corrupting anything.

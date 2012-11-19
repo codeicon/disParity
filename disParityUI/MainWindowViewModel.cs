@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Shell; // for TaskbarItem stuff
 using disParity;
@@ -51,6 +52,42 @@ namespace disParityUI
       UpdateStartupMessage();
       ParityLocation = paritySet.Config.ParityDir;
 
+    }
+
+    /// <summary>
+    /// Called from View when main window has loaded
+    /// </summary>
+    public void Loaded()
+    {
+      if (!disParity.License.Accepted) {
+        if (!ShowLicenseAgreement()) {
+          owner.Close();
+          return;
+        }
+        disParity.License.Accepted = true;
+      }
+
+      disParity.Version.DoUpgradeCheck(HandleNewVersionAvailable);
+      ScanAll();
+    }
+
+    private bool ShowLicenseAgreement()
+    {
+      LicenseWindow window = new LicenseWindow(owner, new LicenseWindowViewModel());
+      bool? result = window.ShowDialog();
+      return result ?? false;
+    }
+
+    private void HandleNewVersionAvailable(string newVersion)
+    {
+      if (MessageWindow.Show(owner, "New version available", "There is a new version of disParity available.\r\n\r\n" +
+        "Would you like to download the latest version now?", MessageWindowIcon.Caution, MessageWindowButton.YesNo)) {
+        Process.Start("http://www.vilett.com/disParity/beta.html");
+        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+          {
+            Application.Current.MainWindow.Close();
+          }));
+      }
     }
 
     public void OptionsChanged()

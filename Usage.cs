@@ -4,6 +4,7 @@ using System.Net;
 using System.Text;
 using Microsoft.Win32;
 using System.Threading;
+using disParity;
 
 namespace disParity.CmdLine
 {
@@ -22,7 +23,7 @@ namespace disParity.CmdLine
       UInt32 id = GetID(out firstRun);
       url = @"http://www.vilett.com/disParity/ping.php?cmd=" + msg + "&id=" +
         id.ToString() + "&firstRun=" + (firstRun ? "1" : "0") +
-        "&ver=" + Program.VERSION;
+        "&ver=" + Version.VersionString;
       thread = new Thread(GetURL);
       thread.Start();
     }
@@ -32,7 +33,7 @@ namespace disParity.CmdLine
       try {
         WebClient webClient = new WebClient();
         byte[] buf = webClient.DownloadData(new System.Uri(url));
-        double currentVersion = Convert.ToDouble(Program.VERSION);
+        double currentVersion = Convert.ToDouble(Version.VersionNum);
         double latestVersion = Convert.ToDouble(Encoding.ASCII.GetString(buf));
         if (latestVersion > 0 && latestVersion > currentVersion)
           shutdownMsg = "Note: Version " + Encoding.ASCII.GetString(buf) +
