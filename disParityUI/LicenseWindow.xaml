@@ -6,8 +6,8 @@
         WindowStartupLocation="CenterOwner"
         BorderThickness="0" 
         WindowStyle="ToolWindow"
-        
-        Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"           Title="License Agreement"
+        Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"           
+        Title="License Agreement"
         Height="580" Width="522">
     <Grid>
     <Grid.RowDefinitions>

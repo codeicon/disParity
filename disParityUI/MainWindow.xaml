@@ -20,6 +20,7 @@
     <CommandBinding Command="ui:Commands.UpdateAll" CanExecute="UpdateAllCanExecute" Executed="UpdateAllExecuted"/>
     <CommandBinding Command="ui:Commands.RecoverDrive" CanExecute="RecoverDriveCanExecute" Executed="RecoverDriveExecuted"/>
     <CommandBinding Command="ui:Commands.Options" CanExecute="OptionsCanExecute" Executed="OptionsExecuted"/>
+    <CommandBinding Command="ui:Commands.About" Executed="AboutExecuted"/>
   </Window.CommandBindings>
   <Window.TaskbarItemInfo >
     <TaskbarItemInfo ProgressState="{Binding Path=ProgressState}" ProgressValue="{Binding Path=Progress}" />
@@ -116,6 +117,7 @@
       <Button Margin="0,10,0,0" Command="ui:Commands.UpdateAll" Content="Update All"/>
       <Button Margin="0,10,0,0" Command="ui:Commands.RecoverDrive" Content="Recover Drive..."/>
       <Button Margin="0,10,0,0" Command="ui:Commands.Options" Content="Options..."/>
+      <Button Margin="0,10,0,0" Command="ui:Commands.About" Content="About..."/>
     </StackPanel>
   </Grid>
 </Window>

@@ -142,6 +142,8 @@ namespace disParityUI
       e.CanExecute = !viewModel.Busy;
     }
 
+    public static RoutedUICommand AddDrive;
+
     void OptionsExecuted(object sender, ExecutedRoutedEventArgs e)
     {
       OptionsDialog dialog = new OptionsDialog(viewModel.GetOptionsDialogViewModel());
@@ -150,28 +152,14 @@ namespace disParityUI
         viewModel.OptionsChanged();
     }
 
+    void AboutExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+      new AboutWindow(this, new AboutWindowViewModel()).ShowDialog();
+    }
+
     #endregion
 
   }
 
-  public class Commands
-  {
-    public static RoutedUICommand AddDrive;
-    public static RoutedUICommand ScanDrive;
-    public static RoutedUICommand ScanAll;
-    public static RoutedUICommand UpdateAll;
-    public static RoutedUICommand RecoverDrive;
-    public static RoutedUICommand Options;
-
-    static Commands()
-    {
-      AddDrive = new RoutedUICommand("Add Drive...", "AddDrive", typeof(MainWindow));
-      ScanDrive = new RoutedUICommand("Scan Drive", "ScanDrive", typeof(MainWindow));
-      ScanAll = new RoutedUICommand("Scan All", "ScanAll", typeof(MainWindow));
-      UpdateAll = new RoutedUICommand("Update All", "UpdateAll", typeof(MainWindow));
-      RecoverDrive = new RoutedUICommand("Recover Drive...", "RecoverDrive", typeof(MainWindow));
-      Options = new RoutedUICommand("Options...", "Options", typeof(MainWindow));
-    }
-  }
 
 }
