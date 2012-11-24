@@ -14,7 +14,6 @@ namespace disParity
     private List<DataDrive> drives;
     private Parity parity;
     private bool busy;
-    private LogFile logFile;
     private byte[] tempBuf = new byte[Parity.BlockSize];
 
     public event EventHandler<RecoverProgressEventArgs> RecoverProgress;
@@ -23,31 +22,11 @@ namespace disParity
 
     public ParitySet(string ConfigFilePath)
     {
-      string logFileName = "disParity log " + DateTime.Now.ToString("yy-MM-dd HH.mm.ss");
-      logFile = new LogFile(logFileName, true);
-
       busy = true;
       string ConfigPath = Path.Combine(ConfigFilePath, "Config.xml");
-      Config = new Config(ConfigPath);
       try {
-        string oldConfigPath = @"\.Config.txt";
-        if (File.Exists(oldConfigPath)) {
-          OldConfig oldConfig = new OldConfig(oldConfigPath);
-          Config.ParityDir = oldConfig.ParityDir;
-          Config.TempDir = oldConfig.TempDir;
-          Config.MaxTempRAM = oldConfig.MaxTempRAM;
-          Config.IgnoreHidden = oldConfig.IgnoreHidden;
-          Config.Drives = new List<string>();
-          foreach (string d in oldConfig.BackupDirs)
-            Config.Drives.Add(d);
-          Config.Ignores = new List<string>();
-          foreach (string i in oldConfig.Ignores)
-            Config.Ignores.Add(i);
-          Config.Save();
-          File.Move(oldConfigPath, oldConfigPath + ".old");
-        }
-        else
-          Config.Load();
+        Config = new Config(ConfigPath);
+        Config.Load();
       }
       catch (Exception e) {
         throw new Exception("Could not load Config file: " + e.Message);
@@ -68,11 +47,10 @@ namespace disParity
           }
 
           Empty = true;
-          for (int i = 0; i < Config.Drives.Count; i++) {
-            string metaFile = Path.Combine(Config.ParityDir, String.Format("files{0}.dat", i));
-            if (File.Exists(metaFile))
+          foreach (Drive d in Config.Drives) {
+            if (File.Exists(Path.Combine(Config.ParityDir, d.Metafile)))
               Empty = false;
-            drives.Add(new DataDrive(Config.Drives[i], metaFile, Config));
+            drives.Add(new DataDrive(d.Path, d.Metafile, Config));
           }
 
           parity = new Parity(Config);
@@ -263,13 +241,40 @@ namespace disParity
     /// </summary>
     public DataDrive AddDrive(string path)
     {
-      string metaFile = Path.Combine(Config.ParityDir, String.Format("files{0}.dat", drives.Count));
+      // to do: Check here that this drive is not alredy in the list!
+      string metaFile = FindAvailableMetafileName();
+
+      // make sure there isn't already a file there with this name, if there is, rename it
+      string fullPath = Path.Combine(Config.ParityDir, metaFile);
+      if (File.Exists(fullPath))
+        File.Move(fullPath, Path.ChangeExtension(fullPath, ".old"));
+
       DataDrive newDrive = new DataDrive(path, metaFile, Config);
       drives.Add(newDrive);
+
       // update Config and save
-      Config.Drives.Add(path);
+      Config.Drives.Add(new Drive(path, metaFile));
       Config.Save();
+
       return newDrive;
+    }
+
+    private string FindAvailableMetafileName()
+    {
+      int fileNo = 0;
+      bool found = true;
+      string metaFile = "";
+      while (found) {
+        fileNo++;
+        metaFile = String.Format("files{0}.dat", fileNo);
+        found = false;
+        foreach (Drive d in Config.Drives)
+          if (d.Metafile == metaFile) {
+            found = true;
+            break;
+          }
+      }
+      return metaFile;
     }
 
     // Recover state variables
@@ -568,13 +573,12 @@ namespace disParity
       for (int i = 0; i < Config.Drives.Count; i++) {
         if (Config.Drives[i] == null)
           throw new Exception(String.Format("Path {0} is not set (check {1})", i + 1, Config.Filename));
-        if (!Path.IsPathRooted(Config.Drives[i]))
+        if (!Path.IsPathRooted(Config.Drives[i].Path))
           throw new Exception(String.Format("Path {0} is not valid (must be absolute)", Config.Drives[i]));
       }
 
       if (!String.IsNullOrEmpty(Config.ParityDir) && !Path.IsPathRooted(Config.ParityDir))
         throw new Exception(String.Format("{0} is not a valid parity path (must be absolute)", Config.ParityDir));
-
     }
 
     private void FireRecoverProgress(string filename, double progress)

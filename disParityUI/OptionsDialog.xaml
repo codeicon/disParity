@@ -5,18 +5,18 @@
         BorderThickness="0" ResizeMode="NoResize"        
         WindowStyle="ToolWindow"
         Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"        
-        Title="disParity Options" Height="437" Width="558" ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+        SizeToContent="Height"
+        Title="disParity Options" Width="558" ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
     <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="5*" />
+      <RowDefinition Height="45"/>
     </Grid.RowDefinitions>
     <GroupBox Grid.Row="0" BorderThickness="1" Margin="5" Header="Parity Location">
       <StackPanel Orientation="Vertical" Margin="5">
-        <TextBlock Margin="2" TextWrapping="Wrap">This is the location where parity data for your backup is stored.  It is strongly recommended that parity be stored on a dedicated drive that is not used for any other purpose.  Once set the location cannot be changed!</TextBlock>
+        <TextBlock Margin="2" TextWrapping="Wrap">This is the location where parity data for your backup is stored.  It is strongly recommended that parity be stored on a dedicated drive that is not used for any other purpose.</TextBlock>
         <Grid Margin="0,5,0,0">
           <Border HorizontalAlignment="Stretch" Margin="0,0,100,0" BorderThickness="1" BorderBrush="Black" SnapsToDevicePixels="True">
             <TextBlock Margin="2" Text="{Binding Path=ParityDir}"/>

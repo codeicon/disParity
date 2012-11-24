@@ -47,7 +47,7 @@ namespace disParity.CmdLine
     public static void Close()
     {
       if (shutdownMsg != "")
-        Program.logFile.Write(shutdownMsg);
+        LogFile.Write(shutdownMsg);
       if (thread != null && thread.IsAlive)
         thread.Abort();
     }

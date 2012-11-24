@@ -16,7 +16,6 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using disParity;
 using System.Reflection;
-using disParity;
 
 namespace disParityUI
 {

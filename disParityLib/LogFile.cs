@@ -3,43 +3,49 @@ using System.Collections.Generic;
 using System.Text;
 using System.IO;
 
+
 namespace disParity
 {
-  public class LogFile
+  public static class LogFile
   {
     static StreamWriter f = null;
     static bool verbose;
 
+    const int MAX_FILE_SIZE = 1000000;
+
     public static string LogPath { set; private get; }
 
-    public LogFile(string name, bool verbose)
+    public static void Open(string filename, bool verbose)
     {
-      string filename = Path.Combine(LogPath, name + ".txt");
       if (File.Exists(filename)) {
-        int i = 1;
-        while (File.Exists(filename)) {
-          filename = name + "." + i.ToString() + ".txt";
-          i++;
+        FileInfo info = new FileInfo(filename);
+        if (info.Length > MAX_FILE_SIZE) {
+          string newName = filename + ".old";
+          if (File.Exists(newName))
+            File.Delete(newName);
+          File.Move(filename, newName);
         }
       }
-      f = new StreamWriter(filename);
+      f = new StreamWriter(filename, true);
       Verbose = verbose;
     }
 
-    public void Write(string msg)
+    public static void Write(string msg)
     {
-      lock (f) {
-        Console.Write(msg);
-        f.Write(msg);
-      }
+      if (f != null)
+        lock (f) {
+          Console.Write(msg);
+          f.Write(msg);
+        }
     }
 
-    public void Write(string msg, params object[] args)
+    public static void Write(string msg, params object[] args)
     {
-      lock (f) {
-        Console.Write(msg, args);
-        f.Write(msg, args);
-      }
+      if (f != null)
+        lock (f) {
+          Console.Write(msg, args);
+          f.Write(msg, args);
+        }
     }
 
     public static void Log(string msg, params object[] args)
@@ -62,14 +68,19 @@ namespace disParity
         }
     }
 
-    public void Flush()
+    public static void Flush()
     {
-      f.Flush();
+      if (f != null)
+        lock (f)
+          f.Flush();
     }
 
-    public void Close()
+    public static void Close()
     {
-      f.Close();
+      if (f != null) {
+        f.Dispose();
+        f = null;
+      }        
     }
 
     public static bool Verbose

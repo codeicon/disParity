@@ -28,11 +28,8 @@ namespace disParity.CmdLine
 
   class Program
   { 
-    public static LogFile logFile;
     public static bool ignoreHidden = false;
 
-    static string parityDir;
-    static string tempDir = ".\\";
     static Int32 driveNum = -1;
     static string shutdownMsg;
 
@@ -109,8 +106,8 @@ namespace disParity.CmdLine
       disParity.Version.DoUpgradeCheck(HandleNewVersionAvailable);
 
       string logFileName = "disParity log " + DateTime.Now.ToString("yy-MM-dd HH.mm.ss");
-      logFile = new LogFile(logFileName, verbose);
-      logFile.Write("Beginning \"{0}\" command at {1} on {2}\r\n", args[0].ToLower(),
+      LogFile.Open(logFileName, verbose);
+      LogFile.Write("Beginning \"{0}\" command at {1} on {2}\r\n", args[0].ToLower(),
         DateTime.Now.ToShortTimeString(), DateTime.Today.ToLongDateString());
 
       try {
@@ -141,8 +138,8 @@ namespace disParity.CmdLine
       }
       finally {
         if (!String.IsNullOrEmpty(shutdownMsg))
-          logFile.Write(shutdownMsg);
-        logFile.Close();
+          LogFile.Write(shutdownMsg);
+        LogFile.Close();
       }
 
     }

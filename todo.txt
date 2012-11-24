@@ -2,20 +2,23 @@ Before release:
 
 * Process of setting up new array should be smooth
 
-* About dialog (w/ copyright, etc.)
-
 * Test command line
-
-* Installer
 
 * Clean up config file stuff
   
 * Handle out-of-parity space issues robustly (should update detect and report 
   when there is not enough room on the parity drive?)
+  
+* Allow changing of Parity drive location
 
+* Log file handling (UI vs. command line)
 
 Other stuff:
 
+* File update progress should included time to flush temp parity
+
+* "Ignore files smaller than" option
+  
 * Recover should check if the destination drive has enough room first.
 
 * Schedule automatic updates
@@ -38,4 +41,5 @@ Other stuff:
 
 * update scan should handle case where file attributes only have changed -
   no parity change occurs but the updated attributes should be saved to the meta data
+  
 * thread safety

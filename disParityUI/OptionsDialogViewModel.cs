@@ -15,17 +15,14 @@ namespace disParityUI
     private Config config;
     private const string PARITY_NOT_SET = "<Not set>";
 
-    public OptionsDialogViewModel(Config config)
+    public OptionsDialogViewModel(ParitySet paritySet)
     {
-      this.config = config;
-      if (String.IsNullOrEmpty(config.ParityDir)) {
+      config = paritySet.Config;
+      if (String.IsNullOrEmpty(config.ParityDir))
         ParityDir = PARITY_NOT_SET;
-        CanSetLocation = true;
-      }
-      else {
+      else
         ParityDir = config.ParityDir;
-        CanSetLocation = false;
-      }
+      CanSetLocation = paritySet.Empty;
       MaxTempRAM = (int)config.MaxTempRAM;
       IgnoreHidden = config.IgnoreHidden;
       TempDir = config.TempDir;

@@ -40,7 +40,7 @@ namespace disParity
     public DataDrive(string root, string metaFileName, Config config)
     {
       this.root = root;
-      this.metaFileName = metaFileName;
+      this.metaFileName = Path.Combine(config.ParityDir, metaFileName);
 
       if (!root.StartsWith(@"\\")) {
         string drive = Path.GetPathRoot(root);

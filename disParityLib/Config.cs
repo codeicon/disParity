@@ -14,7 +14,6 @@ namespace disParity
     private string filename;
 
     const Int32 VERSION = 1;
-    const string DEFAULT_TEMP_DIR = ".\\";
     const UInt32 DEFAULT_MAX_TEMP_RAM = 512;
     const bool DEFAULT_IGNORE_HIDDEN = true;
     const int DEFAULT_MAIN_WINDOW_X = 200;
@@ -31,9 +30,31 @@ namespace disParity
       MainWindowY = DEFAULT_MAIN_WINDOW_Y;
       MainWindowWidth = DEFAULT_MAIN_WINDOW_WIDTH;
       MainWindowHeight = DEFAULT_MAIN_WINDOW_HEIGHT;
-      TempDir = Path.Combine(Path.GetTempPath(), "disParity");
       Ignores = new List<string>();
-      Drives = new List<string>();
+      Drives = new List<Drive>();
+      MaybeLoadOldConfig(Path.GetDirectoryName(filename));
+    }
+
+    private void MaybeLoadOldConfig(string folder)
+    {
+      try {
+        string oldConfigPath = Path.Combine(folder, "Config.txt");
+        if (File.Exists(oldConfigPath)) {
+          OldConfig oldConfig = new OldConfig(oldConfigPath);
+          ParityDir = oldConfig.ParityDir;
+          TempDir = oldConfig.TempDir;
+          MaxTempRAM = oldConfig.MaxTempRAM;
+          IgnoreHidden = oldConfig.IgnoreHidden;
+          for (int i = 0; i < oldConfig.BackupDirs.Length; i++)
+            Drives.Add(new Drive(oldConfig.BackupDirs[i], String.Format("files{0}.dat", i+1)));
+          foreach (string i in oldConfig.Ignores)
+            Ignores.Add(i);
+          Save();
+          File.Move(oldConfigPath, oldConfigPath + ".old");
+        }
+      } catch {
+        // ignore any problems loading old config
+      }
     }
 
     public bool Exists
@@ -135,7 +156,7 @@ namespace disParity
               else if (reader.NodeType == XmlNodeType.EndElement)
                 break;
               if (reader.Name == "Drive")
-                Drives.Add(reader.GetAttribute("Path"));
+                Drives.Add(new Drive(reader.GetAttribute("Path"), reader.GetAttribute("meta")));
             }
           }
         }
@@ -152,8 +173,8 @@ namespace disParity
         writer.WriteAttributeString("Version", VERSION.ToString());
         writer.WriteStartElement("Options");
 
-        if (!String.Equals(TempDir, DEFAULT_TEMP_DIR))
-          writer.WriteElementString("TempDir", TempDir);
+        if (!String.IsNullOrEmpty(tempDir))
+          writer.WriteElementString("TempDir", tempDir);
 
         if (MaxTempRAM != DEFAULT_MAX_TEMP_RAM)
           writer.WriteElementString("MaxTempRAM", MaxTempRAM.ToString());
@@ -184,9 +205,10 @@ namespace disParity
         writer.WriteEndElement();
 
         writer.WriteStartElement("Drives");
-        foreach (string s in Drives) {
+        foreach (Drive d in Drives) {
           writer.WriteStartElement("Drive");
-          writer.WriteAttributeString("Path", s);
+          writer.WriteAttributeString("Path", d.Path);
+          writer.WriteAttributeString("Meta", d.Metafile);
           writer.WriteEndElement();
         }
         writer.WriteEndElement();
@@ -209,13 +231,27 @@ namespace disParity
 
     public string ParityDir { get; set; }
 
-    public string TempDir { get; set; }
+    private string tempDir;
+    public string TempDir 
+    {
+      get
+      {
+        if (String.IsNullOrEmpty(tempDir))
+          return Path.Combine(Path.GetTempPath(), "disParity");
+        else
+          return tempDir;
+      }
+      set
+      {
+        tempDir = value;
+      }
+    }
 
     public UInt32 MaxTempRAM { get; set; } // in megabytes
 
     public bool IgnoreHidden { get; set; }
 
-    public List<string> Drives { get; set; }
+    public List<Drive> Drives { get; set; }
 
     public List<string> Ignores { get; set; }
 
@@ -226,6 +262,18 @@ namespace disParity
     public int MainWindowX { get; set; }
 
     public int MainWindowY { get; set; }
+  }
+
+  public class Drive
+  {
+    public Drive(string path, string metafile)
+    {
+      Path = path;
+      Metafile = metafile;
+    }
+
+    public string Path { get; set; }
+    public string Metafile { get; set; }
   }
 
 }

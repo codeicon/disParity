@@ -14,10 +14,11 @@ namespace disParityUI
 
     public LicenseWindowViewModel()
     {
-      //string exeFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().CodeBase);
-      //LicenseText = File.ReadAllText(Path.Combine(exeFolder, "License.txt"));
-      // Assume working directory has been set to install dir
-      LicenseText = File.ReadAllText("License.txt");
+      string exeFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().CodeBase);
+      string licenseFile = Path.Combine(exeFolder, "License.txt");
+      if (!File.Exists(licenseFile))
+        licenseFile = @"C:\projects\disParity\license.txt";
+      LicenseText = File.ReadAllText(licenseFile);
 
     }
 

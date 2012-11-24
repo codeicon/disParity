@@ -35,7 +35,7 @@ namespace disParityUI
       string logPath = Path.Combine(appDataPath, "logs");
       if (!Directory.Exists(logPath))
         Directory.CreateDirectory(logPath);
-      LogFile.LogPath = logPath;
+      LogFile.Open(Path.Combine(logPath, "disParity.log"), false);
 
       paritySet = new ParitySet(appDataPath);
       foreach (DataDrive d in paritySet.Drives)
@@ -110,7 +110,7 @@ namespace disParityUI
 
     public OptionsDialogViewModel GetOptionsDialogViewModel()
     {
-      return new OptionsDialogViewModel(paritySet.Config);
+      return new OptionsDialogViewModel(paritySet);
     }
 
     /// <summary>
@@ -124,6 +124,7 @@ namespace disParityUI
       paritySet.Config.MainWindowWidth = (int)Width;
       paritySet.Config.MainWindowHeight = (int)Height;
       paritySet.Close();
+      LogFile.Close();
     }
 
     /// <summary>
