@@ -12,6 +12,7 @@
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
       <RowDefinition Height="45"/>
     </Grid.RowDefinitions>
     <GroupBox Grid.Row="0" BorderThickness="1" Margin="5" Header="Parity Location">
@@ -43,7 +44,13 @@
         </Grid>
       </StackPanel>
     </GroupBox>
-    <GroupBox Grid.Row="2" BorderThickness="1" Margin="5" Header="Ignore Filter">
+    <GroupBox Grid.Row="2" BorderThickness="1" Margin="5" Header="Import">
+      <Grid>
+      <TextBlock Margin="5">If you are upgrading from an older version you can import your configuration:</TextBlock>
+      <Button Width="100" Content="Import..." HorizontalAlignment="Right" VerticalAlignment="Center" Click="HandleImportClick"/>
+      </Grid>
+    </GroupBox>
+    <GroupBox Grid.Row="3" BorderThickness="1" Margin="5" Header="Ignore Filter">
       <Grid Margin="5">
         <CheckBox IsChecked="{Binding Path=IgnoreHidden}" HorizontalAlignment="Left">Ignore hidden folders and files</CheckBox>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -54,7 +61,7 @@
         </StackPanel>
       </Grid>
     </GroupBox>
-    <Button Grid.Row="3" Width="72" Height="25" Content="OK" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="363,4,0,6" IsDefault="True" Click="HandleOKClick"/>
-    <Button Grid.Row="3" Width="70" Height="25" Content="Cancel" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,4,12,6" IsCancel="True" />
+    <Button Grid.Row="4" Width="72" Height="25" Content="OK" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="363,4,0,6" IsDefault="True" Click="HandleOKClick"/>
+    <Button Grid.Row="4" Width="70" Height="25" Content="Cancel" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,4,12,6" IsCancel="True" />
   </Grid>
 </Window>

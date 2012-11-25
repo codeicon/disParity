@@ -20,21 +20,13 @@ namespace disParity
     public event EventHandler<UpdateProgressEventArgs> UpdateProgress;
     public event EventHandler<RecoverErrorEventArgs> RecoverError;
 
-    public ParitySet(string ConfigFilePath)
+    public ParitySet(Config config)
     {
       busy = true;
-      string ConfigPath = Path.Combine(ConfigFilePath, "Config.xml");
-      try {
-        Config = new Config(ConfigPath);
-        Config.Load();
-      }
-      catch (Exception e) {
-        throw new Exception("Could not load Config file: " + e.Message);
-      }
-
       drives = new List<DataDrive>();
+      Config = config;
 
-      if (Config.Exists) {
+      if (config.Exists) {
 
         ValidateConfig();
 
@@ -47,15 +39,21 @@ namespace disParity
           }
 
           Empty = true;
-          foreach (Drive d in Config.Drives) {
-            if (File.Exists(Path.Combine(Config.ParityDir, d.Metafile)))
-              Empty = false;
-            drives.Add(new DataDrive(d.Path, d.Metafile, Config));
-          }
+          ReloadDrives();
 
           parity = new Parity(Config);
         }
         busy = false;
+      }
+    }
+
+    public void ReloadDrives()
+    {
+      drives.Clear();
+      foreach (Drive d in Config.Drives) {
+        if (File.Exists(Path.Combine(Config.ParityDir, d.Metafile)))
+          Empty = false;
+        drives.Add(new DataDrive(d.Path, d.Metafile, Config));
       }
     }
 
@@ -69,18 +67,10 @@ namespace disParity
     /// </summary>
     public List<string> Ignore { get; private set; }
 
-    public Config Config { get; private set; }
-
     /// <summary>
-    /// Returns the location of the parity data
+    /// The config file in use by this parity set.
     /// </summary>
-    public string ParityPath
-    {
-      get
-      {
-        return Config.ParityDir;
-      }
-    }
+    public Config Config { get; private set; }
 
     /// <summary>
     /// Returns whether or not one or more drives are busy doing a parity operation
@@ -110,11 +100,22 @@ namespace disParity
     }
 
     /// <summary>
+    /// Closes any open parity files (called when parity folder is about to move)
+    /// </summary>
+    public void CloseParity()
+    {
+      if (parity != null)
+        parity.Close();
+    }
+
+    /// <summary>
     /// Close a parity set in preparation for application shutdown
     /// </summary>
     public void Close()
     {
       try {
+        if (parity != null)
+          parity.Close();
         Config.Save();
       }
       catch {
@@ -123,7 +124,16 @@ namespace disParity
     }
 
     /// <summary>
-    /// Erase a previously created parity set
+    /// Resets all data drives to state reflected in meta data
+    /// </summary>
+    public void Reset()
+    {
+      foreach (DataDrive d in drives)
+        d.Reset();
+    }
+
+    /// <summary>
+    /// Erase a previously created parity set.  Not currently used.
     /// </summary>
     public void Erase()
     {

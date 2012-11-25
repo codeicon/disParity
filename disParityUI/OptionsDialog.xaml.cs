@@ -24,6 +24,7 @@ namespace disParityUI
     public OptionsDialog(OptionsDialogViewModel viewModel)
     {
       this.viewModel = viewModel;
+      viewModel.Owner = this;
       DataContext = viewModel;
       InitializeComponent();
 
@@ -44,6 +45,18 @@ namespace disParityUI
         viewModel.SetNewParityLocation(d.SelectedPath);
     }
 
+    public void HandleImportClick(object sender, RoutedEventArgs args)
+    {
+      Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
+      dlg.Title = "Choose a configuration file to import";
+      dlg.DefaultExt = ".txt";
+      dlg.FileName = "config.txt";
+      dlg.Filter = "Config files (config.txt)|*.txt";
+      dlg.CheckFileExists = true;
+      if (dlg.ShowDialog() == true)
+        viewModel.ImportOldConfiguration(dlg.FileName);
+    }
+
     public void HandleChangeTempDirClick(object Sender, RoutedEventArgs args)
     {
       FolderBrowserDialog d = new FolderBrowserDialog();
@@ -55,8 +68,8 @@ namespace disParityUI
 
     public void HandleOKClick(object Sender, RoutedEventArgs args)
     {
-      viewModel.CommitChanges();
-      DialogResult = true;
+      if (viewModel.CommitChanges())
+        DialogResult = true;
     }
 
   }

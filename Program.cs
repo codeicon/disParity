@@ -32,6 +32,7 @@ namespace disParity.CmdLine
 
     static Int32 driveNum = -1;
     static string shutdownMsg;
+    static Config config;
 
     static void Main(string[] args)
     {
@@ -105,13 +106,30 @@ namespace disParity.CmdLine
 
       disParity.Version.DoUpgradeCheck(HandleNewVersionAvailable);
 
-      string logFileName = "disParity log " + DateTime.Now.ToString("yy-MM-dd HH.mm.ss");
+      string appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "disParity");
+      if (!Directory.Exists(appDataPath))
+        Directory.CreateDirectory(appDataPath);
+      string logPath = Path.Combine(appDataPath, "logs");
+      if (!Directory.Exists(logPath))
+        Directory.CreateDirectory(logPath);
+
+      string logFileName = Path.Combine(logPath, "disParity " + DateTime.Now.ToString("yy-MM-dd HH.mm.ss"));
       LogFile.Open(logFileName, verbose);
       LogFile.Write("Beginning \"{0}\" command at {1} on {2}\r\n", args[0].ToLower(),
         DateTime.Now.ToShortTimeString(), DateTime.Today.ToLongDateString());
 
+      string ConfigPath = Path.Combine(appDataPath, "Config.xml");
       try {
-        ParitySet set = new ParitySet(@".\");
+        config = new Config(ConfigPath);
+        config.Load();
+      }
+      catch (Exception e) {
+        LogFile.Write("Could not load Config file: " + e.Message);
+        return;
+      }
+
+      try {
+        ParitySet set = new ParitySet(config);
         switch (cmd) {
           case Command.Update:
             set.Update(true);

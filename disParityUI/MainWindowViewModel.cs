@@ -24,6 +24,8 @@ namespace disParityUI
     private bool updateAfterScan = false;
     private List<string> recoverErrors = new List<string>();
     private Window owner;
+    private OptionsDialogViewModel optionsViewModel;
+    private Config config;
 
     public MainWindowViewModel(Window owner)
     {
@@ -37,21 +39,34 @@ namespace disParityUI
         Directory.CreateDirectory(logPath);
       LogFile.Open(Path.Combine(logPath, "disParity.log"), false);
 
-      paritySet = new ParitySet(appDataPath);
-      foreach (DataDrive d in paritySet.Drives)
-        AddDrive(d);
+      LoadConfig(appDataPath);
+
+      paritySet = new ParitySet(config);
+      AddDrives();
       paritySet.RecoverProgress += HandleRecoverProgress;
       paritySet.RecoverError += HandleRecoverError;
       paritySet.UpdateProgress += HandleUpdateProgress;
 
-      Left = paritySet.Config.MainWindowX;
-      Top = paritySet.Config.MainWindowY;
-      Height = paritySet.Config.MainWindowHeight;
-      Width = paritySet.Config.MainWindowWidth;
+      Left = config.MainWindowX;
+      Top = config.MainWindowY;
+      Height = config.MainWindowHeight;
+      Width = config.MainWindowWidth;
 
       UpdateStartupMessage();
-      ParityLocation = paritySet.Config.ParityDir;
+      ParityLocation = config.ParityDir;
 
+    }
+
+    private void LoadConfig(string appDataPath)
+    {
+      string ConfigPath = Path.Combine(appDataPath, "Config.xml");
+      try {
+        config = new Config(ConfigPath);
+        config.Load();
+      }
+      catch (Exception e) {
+        throw new Exception("Could not load Config file: " + e.Message);
+      }
     }
 
     /// <summary>
@@ -81,7 +96,7 @@ namespace disParityUI
     private void HandleNewVersionAvailable(string newVersion)
     {
       if (MessageWindow.Show(owner, "New version available", "There is a new version of disParity available.\r\n\r\n" +
-        "Would you like to download the latest version now?", MessageWindowIcon.Caution, MessageWindowButton.YesNo)) {
+        "Would you like to download the latest version now?", MessageWindowIcon.Caution, MessageWindowButton.YesNo) == true) {
         Process.Start("http://www.vilett.com/disParity/beta.html");
         Application.Current.Dispatcher.BeginInvoke(new Action(() =>
           {
@@ -92,13 +107,22 @@ namespace disParityUI
 
     public void OptionsChanged()
     {
+      ParityLocation = config.ParityDir;
+
+      if (optionsViewModel.ConfigImported) {
+        paritySet.ReloadDrives();
+        AddDrives();
+        optionsViewModel.ConfigImported = false;
+      }
+
       UpdateStartupMessage();
-      ParityLocation = paritySet.Config.ParityDir;
+      if (StartupMessage == "")
+        ScanAll();
     }
 
     private void UpdateStartupMessage()
     {
-      if (String.IsNullOrEmpty(paritySet.Config.ParityDir))
+      if (String.IsNullOrEmpty(config.ParityDir))
         StartupMessage = "Welcome to disParity!\r\n\r\n" +
           "To use disParity you must first specify a location where the parity data will be stored.\r\n\r\n" +
           "Press the 'Options...' button on the right.";
@@ -110,7 +134,9 @@ namespace disParityUI
 
     public OptionsDialogViewModel GetOptionsDialogViewModel()
     {
-      return new OptionsDialogViewModel(paritySet);
+      if (optionsViewModel == null)
+        optionsViewModel = new OptionsDialogViewModel(paritySet);
+      return optionsViewModel;
     }
 
     /// <summary>
@@ -119,10 +145,10 @@ namespace disParityUI
     public void Shutdown()
     {
       // save the main window position and size so it can be restored on next run
-      paritySet.Config.MainWindowX = (int)left;
-      paritySet.Config.MainWindowY = (int)top;
-      paritySet.Config.MainWindowWidth = (int)Width;
-      paritySet.Config.MainWindowHeight = (int)Height;
+      config.MainWindowX = (int)left;
+      config.MainWindowY = (int)top;
+      config.MainWindowWidth = (int)Width;
+      config.MainWindowHeight = (int)Height;
       paritySet.Close();
       LogFile.Close();
     }
@@ -134,6 +160,13 @@ namespace disParityUI
     {
       AddDrive(paritySet.AddDrive(path));
       UpdateStartupMessage();
+    }
+
+    private void AddDrives()
+    {
+      drives.Clear();
+      foreach (DataDrive d in paritySet.Drives)
+        AddDrive(d);
     }
 
     private void AddDrive(DataDrive drive)
@@ -246,7 +279,7 @@ namespace disParityUI
               String.Format("{0} file{1} recovered successfully.\r\n\r\n", successes, successes == 1 ? " was" : "s were") +
               String.Format("{0} file{1} encountered errors during the recovery.", failures, failures == 1 ? "" : "s") +
               "\r\n\r\nWould you like to see a list of errors?";
-            if (MessageWindow.Show(owner, "Recovery complete", msg, MessageWindowIcon.Error, MessageWindowButton.YesNo))
+            if (MessageWindow.Show(owner, "Recovery complete", msg, MessageWindowIcon.Error, MessageWindowButton.YesNo) == true)
               ReportWindow.Show(owner, recoverErrors);
           }
           Status = String.Format("{0} file{1} recovered ({2} failure{3})",

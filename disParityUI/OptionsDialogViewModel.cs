@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using disParity;
@@ -13,16 +14,23 @@ namespace disParityUI
   {
 
     private Config config;
+    private ParitySet paritySet;
     private const string PARITY_NOT_SET = "<Not set>";
 
     public OptionsDialogViewModel(ParitySet paritySet)
     {
+      this.paritySet = paritySet;
       config = paritySet.Config;
+      SetProperties();
+    }
+
+    private void SetProperties()
+    {
       if (String.IsNullOrEmpty(config.ParityDir))
         ParityDir = PARITY_NOT_SET;
       else
         ParityDir = config.ParityDir;
-      CanSetLocation = paritySet.Empty;
+      CanSetLocation = true;
       MaxTempRAM = (int)config.MaxTempRAM;
       IgnoreHidden = config.IgnoreHidden;
       TempDir = config.TempDir;
@@ -35,28 +43,60 @@ namespace disParityUI
 
     public void SetNewParityLocation(string path)
     {
-
-      // FIXME: What to do if there already is parity data here!?!
-
-      // maybe do this someday if it's possible for non-existant paths to be passed in
-      //if (!Directory.Exists(path)) {
-      //  if (MessageBox.Show("Directory does not exist.  Create it?", "Directory does not exist", 
-      //    MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes) {
       DirectoryInfo dirInfo;
       bool empty;
       try {
         dirInfo = new DirectoryInfo(path);
-        empty = (dirInfo.GetDirectories().Length == 0) || (dirInfo.GetFiles().Length == 0);
+        dirInfo.GetFiles("files*.dat");
+        empty = (dirInfo.GetFiles("files*.dat").Length == 0) && (dirInfo.GetFiles("parity*.dat").Length == 0);
       }
       catch (Exception e) {
-        MessageBox.Show("Could not access directory: " + e.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        MessageWindow.Show(Owner, "Error", "Could not access directory: " + e.Message, MessageWindowIcon.Error, MessageWindowButton.OK);
         return;
       }
       if (!empty) {
-        MessageBox.Show("Directory is not empty.  Please choose a different location.", "Parity location not empty", MessageBoxButton.OK, MessageBoxImage.Exclamation);
-        return;
+        if (MessageWindow.Show(Owner, "Directory not empty", "This directory appears to contain existing parity data.  Are you sure you want to change to this location?", MessageWindowIcon.Question, MessageWindowButton.YesNo) == false)
+          return;
       }
+
       ParityDir = path;
+    }
+
+    private bool MoveParityData(string dest)
+    {
+      bool? result = MessageWindow.Show(Owner, "Move parity data?", "Would you like to move your existing parity data to the new location?", MessageWindowIcon.Question, MessageWindowButton.YesNoCancel);
+      if (result == null)
+        return false; // they cancelled
+
+      // close open parity file (if any)
+      paritySet.CloseParity();
+
+      if (result == true) {
+        Win32.SHFILEOPSTRUCT fileOpStruct = new Win32.SHFILEOPSTRUCT();
+
+        fileOpStruct.wFunc = 1; // FO_MOVE
+        fileOpStruct.pFrom = Marshal.StringToHGlobalUni(config.ParityDir + @"\files*.dat" + '\0' + config.ParityDir + @"\parity*.dat" + '\0' + '\0');
+        fileOpStruct.pTo = Marshal.StringToHGlobalUni(dest + '\0' + '\0');
+        fileOpStruct.fAnyOperationsAborted = false;
+        fileOpStruct.lpszProgressTitle = "Relocating parity data";
+        int moveResult = Win32.SHFileOperation(ref fileOpStruct);
+        Marshal.FreeHGlobal(fileOpStruct.pFrom);
+        Marshal.FreeHGlobal(fileOpStruct.pTo);
+
+        if (moveResult != 0 || fileOpStruct.fAnyOperationsAborted) {
+          MessageWindow.Show(Owner, "Could not move parity data", "Warning!  Not all parity files were moved.  Your backup is now in an indeterminate state.  It is strongly recommended that you rebuild your backup from scratch. ", MessageWindowIcon.Error, MessageWindowButton.OK);
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    public void ImportOldConfiguration(string path)
+    {
+      config.ImportOld(path);
+      SetProperties();
+      ConfigImported = true;
     }
 
     public void SetNewTempDir(string path)
@@ -64,10 +104,17 @@ namespace disParityUI
       TempDir = path;
     }
 
-    public void CommitChanges()
+    public bool CommitChanges()
     {
-      if (parityDir != PARITY_NOT_SET)
+      bool parityDirMoved = false;
+      if (parityDir != PARITY_NOT_SET) {
+        if ((String.Compare(parityDir, config.ParityDir, true) != 0) && !paritySet.Empty) {
+          if (!MoveParityData(parityDir))
+            return false;
+        }
         config.ParityDir = parityDir;
+        parityDirMoved = true;
+      }
       config.MaxTempRAM = (uint)MaxTempRAM;
       config.IgnoreHidden = IgnoreHidden;
       config.TempDir = TempDir;
@@ -79,9 +126,16 @@ namespace disParityUI
           config.Ignores.Add(i);
       }
       config.Save();
+      if (parityDirMoved)
+        paritySet.Reset();
+      return true;
     }
 
     #region Properties
+
+    public bool ConfigImported { get; set; }
+
+    public Window Owner { get; set; }
 
     private bool canSetLocation;
     public bool CanSetLocation

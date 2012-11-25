@@ -43,7 +43,8 @@ namespace disParityUI
 
     public void HandleCancelClick(object Sender, RoutedEventArgs args)
     {
-      DialogResult = false;
+      DialogResult = null;
+      Close();
     }
 
     public void HandleNoClick(object Sender, RoutedEventArgs args)
@@ -51,17 +52,17 @@ namespace disParityUI
       DialogResult = false;
     }
 
-    internal static bool Show(Window owner, string caption, string message, MessageWindowIcon icon = MessageWindowIcon.OK, MessageWindowButton buttons = MessageWindowButton.OK)
+    internal static bool? Show(Window owner, string caption, string message, MessageWindowIcon icon = MessageWindowIcon.OK, MessageWindowButton buttons = MessageWindowButton.OK)
     {
       bool? result = null;
       Application.Current.Dispatcher.Invoke(new Action(() =>
         {
           MessageWindow window = new MessageWindow();
-          window.Owner = owner;
           window.DataContext = new MessageWindowViewModel(caption, message, icon, buttons);
+          window.Owner = owner;
           result = window.ShowDialog();
         }));
-      return (result == null) ? false : (bool)result;
+      return result;
     }
 
   }

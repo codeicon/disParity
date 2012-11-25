@@ -39,6 +39,23 @@ namespace disParity
     [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     public static extern bool GlobalMemoryStatusEx([In, Out] MEMORYSTATUSEX lpBuffer);
 
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct SHFILEOPSTRUCT
+    {
+      public IntPtr hwnd;
+      public UInt32 wFunc;
+      public IntPtr pFrom;
+      public IntPtr pTo;
+      public UInt16 fFlags;
+      [MarshalAs(UnmanagedType.Bool)]
+      public bool fAnyOperationsAborted;
+      public IntPtr hNameMappings;
+      [MarshalAs(UnmanagedType.LPWStr)]
+      public string lpszProgressTitle;
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern Int32 SHFileOperation(ref SHFILEOPSTRUCT lpFileOp);
   }
 
 }

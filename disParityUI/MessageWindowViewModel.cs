@@ -50,6 +50,12 @@ namespace disParityUI
           CancelButtonVisibility = Visibility.Collapsed;
           OKButtonVisibility = Visibility.Collapsed;
           break;
+        case MessageWindowButton.YesNoCancel:
+          YesButtonVisibility = Visibility.Visible;
+          NoButtonVisibility = Visibility.Visible;
+          CancelButtonVisibility = Visibility.Visible;
+          OKButtonVisibility = Visibility.Collapsed;
+          break;
       }
     }
 
@@ -162,7 +168,8 @@ namespace disParityUI
   {
     OK,
     OKCancel,
-    YesNo
+    YesNo,
+    YesNoCancel
   }
 
 }

@@ -22,7 +22,7 @@ namespace disParity
   {
 
     private string root;
-    private string metaFileName;
+    private string metaFile;
     private Dictionary<string, FileRecord> files; // Master list of protected files; should reflect what is currently in files.dat at all times
     private List<FileRecord> scanFiles; // List of current files on the drive as seen this scan
     private MD5 hash;
@@ -37,10 +37,11 @@ namespace disParity
     public event EventHandler<EventArgs> ScanCompleted;
     public event EventHandler<ReadingFileEventArgs> ReadingFile;
 
-    public DataDrive(string root, string metaFileName, Config config)
+    public DataDrive(string root, string metaFile, Config config)
     {
       this.root = root;
-      this.metaFileName = Path.Combine(config.ParityDir, metaFileName);
+      this.metaFile = metaFile;
+      this.config = config;
 
       if (!root.StartsWith(@"\\")) {
         string drive = Path.GetPathRoot(root);
@@ -59,14 +60,15 @@ namespace disParity
       else
         DriveType = DriveType.Network;
 
-      files = new Dictionary<string, FileRecord>();
-      if (File.Exists(metaFileName))
-        LoadFileList();
-
       hash = MD5.Create();
-      Status = DriveStatus.ScanRequired;
-      this.config = config;
+      files = new Dictionary<string, FileRecord>();
+      Reset();
 
+    }
+
+    private string MetaFilePath
+    {
+      get { return Path.Combine(config.ParityDir, metaFile); }
     }
 
     public string Root { get { return root; } }
@@ -112,16 +114,25 @@ namespace disParity
     }
 
     /// <summary>
-    /// Clears all state of the DataDrive, resetting to empty (deletes on-disk
-    /// meta data as well.)
+    /// Clears all state of the DataDrive, resetting to empty (deletes on-disk meta data as well.)
     /// </summary>
     public void Clear()
+    {
+      if (File.Exists(MetaFilePath))
+        File.Delete(MetaFilePath);
+    }
+
+    /// <summary>
+    /// Resets state to on-disk meta data
+    /// </summary>
+    public void Reset()
     {
       files.Clear();
       scanFiles = null;
       MaxBlock = 0;
-      if (File.Exists(metaFileName))
-        File.Delete(metaFileName);
+      if (File.Exists(MetaFilePath))
+        LoadFileList();
+      Status = DriveStatus.ScanRequired;
     }
 
     /// <summary>
@@ -603,13 +614,13 @@ namespace disParity
     /// </summary>
     private void LoadFileList()
     {
-      using (FileStream metaData = new FileStream(metaFileName, FileMode.Open, FileAccess.Read)) {
+      using (FileStream metaData = new FileStream(MetaFilePath, FileMode.Open, FileAccess.Read)) {
         UInt32 version = FileRecord.ReadUInt32(metaData);
         if (version == 1)
           // skip past unused count field
           FileRecord.ReadUInt32(metaData);
         else if (version != META_FILE_VERSION)
-          throw new Exception("file version mismatch: " + metaFileName);
+          throw new Exception("file version mismatch: " + MetaFilePath);
         files.Clear();
         while (metaData.Position < metaData.Length) {
           FileRecord r = FileRecord.LoadFromFile(metaData, this);
@@ -624,11 +635,11 @@ namespace disParity
       DateTime start = DateTime.Now;
       LogFile.VerboseLog("Saving file data for {0}...", root);
       string backup = "";
-      if (File.Exists(metaFileName)) {
-        backup = metaFileName + ".BAK";
-        File.Move(metaFileName, backup);
+      if (File.Exists(MetaFilePath)) {
+        backup = Path.ChangeExtension(MetaFilePath, ".BAK");
+        File.Move(MetaFilePath, backup);
       }
-      using (FileStream f = new FileStream(metaFileName, FileMode.Create, FileAccess.Write)) {
+      using (FileStream f = new FileStream(MetaFilePath, FileMode.Create, FileAccess.Write)) {
         FileRecord.WriteUInt32(f, META_FILE_VERSION);
         FileRecord.WriteUInt32(f, (UInt32)files.Count);
         foreach (FileRecord r in files.Values)
@@ -644,12 +655,12 @@ namespace disParity
 
     private void AppendFileRecord(FileRecord r)
     {
-      if (!File.Exists(metaFileName))
-        using (FileStream fNew = new FileStream(metaFileName, FileMode.Create, FileAccess.Write)) {
+      if (!File.Exists(MetaFilePath))
+        using (FileStream fNew = new FileStream(MetaFilePath, FileMode.Create, FileAccess.Write)) {
           FileRecord.WriteUInt32(fNew, META_FILE_VERSION);
           FileRecord.WriteUInt32(fNew, 0); // unknown count
         }
-      using (FileStream f = new FileStream(metaFileName, FileMode.Append, FileAccess.Write))
+      using (FileStream f = new FileStream(MetaFilePath, FileMode.Append, FileAccess.Write))
         r.WriteToFile(f); 
     }
     

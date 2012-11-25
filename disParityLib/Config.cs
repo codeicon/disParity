@@ -32,28 +32,21 @@ namespace disParity
       MainWindowHeight = DEFAULT_MAIN_WINDOW_HEIGHT;
       Ignores = new List<string>();
       Drives = new List<Drive>();
-      MaybeLoadOldConfig(Path.GetDirectoryName(filename));
     }
 
-    private void MaybeLoadOldConfig(string folder)
+    public void ImportOld(string path)
     {
-      try {
-        string oldConfigPath = Path.Combine(folder, "Config.txt");
-        if (File.Exists(oldConfigPath)) {
-          OldConfig oldConfig = new OldConfig(oldConfigPath);
-          ParityDir = oldConfig.ParityDir;
-          TempDir = oldConfig.TempDir;
-          MaxTempRAM = oldConfig.MaxTempRAM;
-          IgnoreHidden = oldConfig.IgnoreHidden;
-          for (int i = 0; i < oldConfig.BackupDirs.Length; i++)
-            Drives.Add(new Drive(oldConfig.BackupDirs[i], String.Format("files{0}.dat", i+1)));
-          foreach (string i in oldConfig.Ignores)
-            Ignores.Add(i);
-          Save();
-          File.Move(oldConfigPath, oldConfigPath + ".old");
-        }
-      } catch {
-        // ignore any problems loading old config
+      if (File.Exists(path)) {
+        OldConfig oldConfig = new OldConfig(path);
+        ParityDir = oldConfig.ParityDir;
+        TempDir = oldConfig.TempDir;
+        MaxTempRAM = oldConfig.MaxTempRAM;
+        IgnoreHidden = oldConfig.IgnoreHidden;
+        for (int i = 0; i < oldConfig.BackupDirs.Length; i++)
+          Drives.Add(new Drive(oldConfig.BackupDirs[i], String.Format("files{0}.dat", i)));
+        foreach (string i in oldConfig.Ignores)
+          Ignores.Add(i);
+        Save();
       }
     }
 
@@ -156,7 +149,7 @@ namespace disParity
               else if (reader.NodeType == XmlNodeType.EndElement)
                 break;
               if (reader.Name == "Drive")
-                Drives.Add(new Drive(reader.GetAttribute("Path"), reader.GetAttribute("meta")));
+                Drives.Add(new Drive(reader.GetAttribute("Path"), reader.GetAttribute("Meta")));
             }
           }
         }

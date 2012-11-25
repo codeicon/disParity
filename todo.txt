@@ -1,20 +1,18 @@
 Before release:
 
 * Process of setting up new array should be smooth
-
-* Test command line
-
-* Clean up config file stuff
   
 * Handle out-of-parity space issues robustly (should update detect and report 
   when there is not enough room on the parity drive?)
   
-* Allow changing of Parity drive location
-
 * Log file handling (UI vs. command line)
 
 Other stuff:
 
+* Bring back command line
+
+* All long running operations need a Cancel button
+ 
 * File update progress should included time to flush temp parity
 
 * "Ignore files smaller than" option

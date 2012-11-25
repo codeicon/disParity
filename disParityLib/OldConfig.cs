@@ -9,11 +9,9 @@ namespace disParity
   internal class OldConfig
   {
 
-    const string DEFAULT_TEMP_DIR = ".\\";
-
     public OldConfig(string path)
     {
-      TempDir = DEFAULT_TEMP_DIR;
+      TempDir = "";
       Ignores = new string[0];
       using (StreamReader f = new StreamReader(path)) {
         string s;
