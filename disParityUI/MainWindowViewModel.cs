@@ -124,7 +124,7 @@ namespace disParityUI
     {
       if (String.IsNullOrEmpty(config.ParityDir))
         StartupMessage = "Welcome to disParity!\r\n\r\n" +
-          "To use disParity you must first specify a location where the parity data will be stored.\r\n\r\n" +
+          "To use disParity you must first specify a location where the parity data will be stored.  This location should be a dedicated drive which is at least as large as the largest drive you want to protect.\r\n\r\n" +
           "Press the 'Options...' button on the right.";
       else if (drives.Count == 0)
         StartupMessage = "Add one or more drives to be backed up by pressing the 'Add Drive' button.";

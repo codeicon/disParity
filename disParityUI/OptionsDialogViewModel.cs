@@ -201,7 +201,7 @@ namespace disParityUI
       {
         int systemRAMInMB = (int)(Utils.TotalSystemRAM() / (1024 * 1024));
 
-        // don't let the set the max higher than 80% of physical RAM, rounded
+        // don't let them set the max higher than 80% of physical RAM, rounded
         // to the next multiple of the increment
         int max = (int)(0.8 * systemRAMInMB);
         max = (max / MaxTempRAMIncrement) * MaxTempRAMIncrement;

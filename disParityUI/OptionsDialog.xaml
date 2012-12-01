@@ -44,10 +44,10 @@
         </Grid>
       </StackPanel>
     </GroupBox>
-    <GroupBox Grid.Row="2" BorderThickness="1" Margin="5" Header="Import">
+    <GroupBox Grid.Row="2" BorderThickness="1" Margin="5" Header="Import Settings">
       <Grid>
       <TextBlock Margin="5">If you are upgrading from an older version you can import your configuration:</TextBlock>
-      <Button Width="100" Content="Import..." HorizontalAlignment="Right" VerticalAlignment="Center" Click="HandleImportClick"/>
+      <Button Width="90" Content="Import..." HorizontalAlignment="Right" VerticalAlignment="Center" Click="HandleImportClick"/>
       </Grid>
     </GroupBox>
     <GroupBox Grid.Row="3" BorderThickness="1" Margin="5" Header="Ignore Filter">

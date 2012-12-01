@@ -77,9 +77,9 @@
             {
             "Enabled" = "11:TRUE"
             "PromptEnabled" = "11:TRUE"
-            "PrerequisitesLocation" = "2:1"
+            "PrerequisitesLocation" = "2:3"
             "Url" = "8:"
-            "ComponentsUrl" = "8:"
+            "ComponentsUrl" = "8:http://www.microsoft.com/en-us/download/details.aspx?id=17851"
                 "Items"
                 {
                     "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.0"
@@ -117,6 +117,19 @@
             "PrerequisitesLocation" = "2:1"
             "Url" = "8:"
             "ComponentsUrl" = "8:"
+                "Items"
+                {
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.0,Profile=Client"
+                    {
+                    "Name" = "8:Microsoft .NET Framework 4 Client Profile (x86 and x64)"
+                    "ProductCode" = "8:.NETFramework,Version=v4.0,Profile=Client"
+                    }
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:Microsoft.Windows.Installer.3.1"
+                    {
+                    "Name" = "8:Windows Installer 3.1"
+                    "ProductCode" = "8:Microsoft.Windows.Installer.3.1"
+                    }
+                }
             }
         }
     }
@@ -141,7 +154,7 @@
                 "Message" = "8:[VSDNETMSG]"
                 "FrameworkVersion" = "8:.NETFramework,Version=v4.0"
                 "AllowLaterVersions" = "11:FALSE"
-                "InstallUrl" = "8:http://go.microsoft.com/fwlink/?LinkId=131000"
+                "InstallUrl" = "8:http://www.microsoft.com/en-us/download/details.aspx?id=17851"
                 }
             }
         }
@@ -286,7 +299,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:disParity"
         "ProductCode" = "8:{98EB4D73-A79C-4442-BC71-C9D5E44DB36C}"
-        "PackageCode" = "8:{5A7ED577-620E-4EEF-9CB1-7BD66188365B}"
+        "PackageCode" = "8:{97863C1E-BC55-4365-9B93-A7ECE87F4B07}"
         "UpgradeCode" = "8:{CF2FFBAB-7739-4CA3-B957-57B47B451B67}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
