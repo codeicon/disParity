@@ -26,6 +26,9 @@ namespace disParityUI
     private Window owner;
     private OptionsDialogViewModel optionsViewModel;
     private Config config;
+    private bool scanInProgress;
+    private bool updateInProgress;
+    private bool recoverInProgress;
 
     public MainWindowViewModel(Window owner)
     {
@@ -43,9 +46,8 @@ namespace disParityUI
 
       paritySet = new ParitySet(config);
       AddDrives();
-      paritySet.RecoverProgress += HandleRecoverProgress;
+      paritySet.ProgressReport += HandleProgressReport;
       paritySet.RecoverError += HandleRecoverError;
-      paritySet.UpdateProgress += HandleUpdateProgress;
 
       Left = config.MainWindowX;
       Top = config.MainWindowY;
@@ -172,24 +174,20 @@ namespace disParityUI
     private void AddDrive(DataDrive drive)
     {
       drive.ScanCompleted += HandleScanCompleted;
-      drives.Add(new DataDriveViewModel(drive));
+      DataDriveViewModel vm = new DataDriveViewModel(drive);
+      vm.PropertyChanged += HandleDataDrivePropertyChanged;
+      drives.Add(vm);
     }
 
     public void ScanAll()
     {
       if (drives.Count == 0)
         return;
-      Busy = true;
+      scanInProgress = true;
       Status = "Scanning drives...";
       runningScans = drives.Count;
       foreach (DataDriveViewModel vm in drives)
         vm.Scan();
-    }
-
-    private void HandleUpdateProgress(object sender, UpdateProgressEventArgs args)
-    {
-      ProgressState = TaskbarItemProgressState.Normal;
-      Progress = args.Progress;
     }
 
     private void HandleScanCompleted(object sender, EventArgs args)
@@ -197,7 +195,7 @@ namespace disParityUI
       runningScans--;
       if (runningScans == 0) {
         bool anyDriveNeedsUpdate = false;
-        Busy = false;
+        scanInProgress = false;
         foreach (DataDrive d in paritySet.Drives)
           if (d.Status == DriveStatus.AccessError) {
             Status = "Error(s) encountered during scan!";
@@ -213,6 +211,7 @@ namespace disParityUI
             Status = "Changes detected.  Update required.";
         else
           DisplayUpToDateStatus();
+        ProgressState = TaskbarItemProgressState.None;
       }
     }
 
@@ -236,7 +235,7 @@ namespace disParityUI
 
     private void Update()
     {
-      Busy = true;
+      updateInProgress = true;
       Status = "Update In Progress...";
       Task.Factory.StartNew(() =>
       {
@@ -250,7 +249,7 @@ namespace disParityUI
         finally {
           Progress = 0;
           ProgressState = TaskbarItemProgressState.None;
-          Busy = false;
+          updateInProgress = false;
         }
       }
       );
@@ -258,7 +257,7 @@ namespace disParityUI
 
     public void RecoverDrive(DataDriveViewModel drive, string path)
     {
-      Busy = true;
+      recoverInProgress = true;
       Status = "Recovering " + drive.Root + " to " + path + "...";
       recoverDrive = drive;
       recoverErrors.Clear();
@@ -293,23 +292,49 @@ namespace disParityUI
           Progress = 0;
           // recoverDrive.UpdateStatus(); what was this for?
           ProgressState = TaskbarItemProgressState.None;
-          Busy = false;
+          recoverInProgress = false;
         }
       }
       );
     }
 
-    private void HandleRecoverProgress(object sender, RecoverProgressEventArgs args)
+    private void HandleProgressReport(object sender, ProgressReportEventArgs args)
     {
       ProgressState = TaskbarItemProgressState.Normal;
       Progress = args.Progress;
-      if (!String.IsNullOrEmpty(args.Filename))
-        recoverDrive.Status = "Recovering " + args.Filename + "...";
     }
+
 
     private void HandleRecoverError(object sender, RecoverErrorEventArgs args)
     {
       recoverErrors.Add(args.Message);
+    }
+
+    // for updating overall progress bar during a scan
+    private void HandleDataDrivePropertyChanged(object sender, PropertyChangedEventArgs args)
+    {
+      if (scanInProgress && args.PropertyName == "Progress") {
+        double progress = 0;
+        foreach (DataDriveViewModel vm in drives)
+          progress += vm.Progress;
+        ProgressState = TaskbarItemProgressState.Normal;
+        Progress = progress;
+      }
+    }
+
+
+    public void Cancel()
+    {
+      if (scanInProgress) {
+        foreach (DataDriveViewModel vm in drives)
+          vm.DataDrive.CancelScan();
+      }
+      else if (updateInProgress) {
+        // TO DO: cancel update here
+      }
+      else if (recoverInProgress) {
+        // TO DO: cancel recover here
+      }
     }
 
     public ObservableCollection<DataDriveViewModel> Drives
@@ -365,16 +390,11 @@ namespace disParityUI
       }
     }
 
-    private bool busy;
     public bool Busy
     {
       get
       {
-        return busy;
-      }
-      set
-      {
-        SetProperty(ref busy, "Busy", value);
+        return scanInProgress || updateInProgress || recoverInProgress;
       }
     }
 

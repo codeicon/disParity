@@ -15,12 +15,10 @@ using System.Windows.Threading;
 namespace disParityUI
 {
 
-  class DataDriveViewModel : INotifyPropertyChanged
+  class DataDriveViewModel : ViewModel
   {
 
     private DispatcherTimer updateStatusTimer;
-
-    public event PropertyChangedEventHandler PropertyChanged;
 
     public DataDriveViewModel(DataDrive dataDrive)
     {
@@ -44,8 +42,8 @@ namespace disParityUI
         try {
           DataDrive.Scan();
         }
-        catch {
-          // TODO: log exception here?
+        catch (Exception e) {
+          LogFile.Log("Error occurred during scan of {0}: {1}", DataDrive.Root, e.Message);
         }
       }
       );      
@@ -67,8 +65,8 @@ namespace disParityUI
 
     private void HandleProgressReport(object sender, ProgressReportEventArgs args)
     {
-      if (!String.IsNullOrEmpty(args.Status))
-        Status = args.Status;
+      if (!String.IsNullOrEmpty(args.Message))
+        Status = args.Message;
       Progress = args.Progress;
     }
 
@@ -97,6 +95,8 @@ namespace disParityUI
       Progress = args.Progress;
     }
 
+    #region Properties
+
     public string Root
     {
       get
@@ -118,11 +118,7 @@ namespace disParityUI
       }
       set
       {
-        if (statusIcon != value) 
-        {
-          statusIcon = value;
-          FirePropertyChanged("StatusIcon");
-        }
+        SetProperty(ref statusIcon, "StatusIcon", value);
       }
     }
 
@@ -148,10 +144,7 @@ namespace disParityUI
       }
       set
       {
-        if (fileCount != value) {
-          fileCount = value;
-          FirePropertyChanged("FileCount");
-        }
+        SetProperty(ref fileCount, "FileCount", value);
       }
     }
 
@@ -164,10 +157,7 @@ namespace disParityUI
       }
       set
       {
-        if (status != value) {
-          status = value;
-          FirePropertyChanged("Status");
-        }
+        SetProperty(ref status, "Status", value);
       }
     }
 
@@ -180,10 +170,7 @@ namespace disParityUI
       }
       set
       {
-        if (progress != value) {
-          progress = value;
-          FirePropertyChanged("Progress");
-        }
+        SetProperty(ref progress, "Progress", value);
       }
     }
 
@@ -197,10 +184,7 @@ namespace disParityUI
       }
       set
       {
-        if (statusColor != value) {
-          statusColor = value;
-          FirePropertyChanged("StatusColor");
-        }
+        SetProperty(ref statusColor, "StatusColor", value);
       }
     }
 
@@ -211,6 +195,8 @@ namespace disParityUI
         return (DataDrive.Status == DriveStatus.UpdateRequired);
       }
     }
+
+    #endregion
 
     public void UpdateStatus()
     {
@@ -238,11 +224,6 @@ namespace disParityUI
       }
     }
 
-    private void FirePropertyChanged(string name)
-    {
-      if (PropertyChanged != null)
-        PropertyChanged(this, new PropertyChangedEventArgs(name));
-    }
   }
 
 }

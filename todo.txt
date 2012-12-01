@@ -1,13 +1,11 @@
-Before release:
-
-* Process of setting up new array should be smooth
+* Update main progress correctly during scan of single drive
   
 * Handle out-of-parity space issues robustly (should update detect and report 
   when there is not enough room on the parity drive?)
   
 * Log file handling (UI vs. command line)
 
-Other stuff:
+* Closing the app while operation in progress needs to be handled better
 
 * Bring back command line
 

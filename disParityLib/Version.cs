@@ -29,6 +29,7 @@ namespace disParity
 
     public static void DoUpgradeCheck(NewVersionAvailablekDelegate callback)
     {
+#if !DEBUG
       Task.Factory.StartNew(() =>
       {
         try {
@@ -46,6 +47,7 @@ namespace disParity
         catch {
         }
       });
+#endif
     }
 
     private static UInt32 GetID(out bool firstRun)

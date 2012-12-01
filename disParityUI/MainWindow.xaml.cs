@@ -86,6 +86,7 @@ namespace disParityUI
       DialogResult r = d.ShowDialog();
       if (r == System.Windows.Forms.DialogResult.OK)
         viewModel.AddDrive(d.SelectedPath);
+      e.Handled = true;
     }
 
     void ScanDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
@@ -97,6 +98,7 @@ namespace disParityUI
     {
       if (DriveList.SelectedItems.Count == 1)  // sanity check
         ((DataDriveViewModel)DriveList.SelectedItem).Scan();
+      e.Handled = true;
     }
 
     void ScanAllCanExecute(object sender, CanExecuteRoutedEventArgs e)
@@ -107,6 +109,7 @@ namespace disParityUI
     void ScanAllExecuted(object sender, ExecutedRoutedEventArgs e)
     {
       viewModel.ScanAll();
+      e.Handled = true;
     }
 
     void UpdateAllCanExecute(object sender, CanExecuteRoutedEventArgs e)
@@ -120,6 +123,7 @@ namespace disParityUI
     void UpdateAllExecuted(object sender, ExecutedRoutedEventArgs e)
     {
       viewModel.UpdateAll();
+      e.Handled = true;
     }
 
     void RecoverDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
@@ -134,6 +138,7 @@ namespace disParityUI
       DialogResult r = d.ShowDialog();
       if (r == System.Windows.Forms.DialogResult.OK)
         viewModel.RecoverDrive((DataDriveViewModel)DriveList.SelectedItem, d.SelectedPath);
+      e.Handled = true;
     }
 
     void OptionsCanExecute(object sender, CanExecuteRoutedEventArgs e)
@@ -141,19 +146,29 @@ namespace disParityUI
       e.CanExecute = !viewModel.Busy;
     }
 
-    public static RoutedUICommand AddDrive;
-
     void OptionsExecuted(object sender, ExecutedRoutedEventArgs e)
     {
       OptionsDialog dialog = new OptionsDialog(viewModel.GetOptionsDialogViewModel());
       dialog.Owner = this;
       if (dialog.ShowDialog() == true)
         viewModel.OptionsChanged();
+      e.Handled = true;
     }
 
     void AboutExecuted(object sender, ExecutedRoutedEventArgs e)
     {
       new AboutWindow(this, new AboutWindowViewModel()).ShowDialog();
+    }
+
+    void CancelCanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+      e.CanExecute = viewModel.Busy;
+    }
+
+    void CancelExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+      viewModel.Cancel();
+      e.Handled = true;
     }
 
     #endregion

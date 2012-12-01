@@ -28,6 +28,7 @@ namespace disParity
     private MD5 hash;
     private Config config;
     private ProgressReporter scanProgress;
+    private bool cancelScan;
 
     const UInt32 META_FILE_VERSION = 1;
 
@@ -143,6 +144,7 @@ namespace disParity
     {
       Debug.Assert(!Busy);
       Busy = true;
+      cancelScan = false;
       try {
 
         // Convert list of ignores to a list of Regex
@@ -167,14 +169,16 @@ namespace disParity
           FireStatusChanged();
           return;
         }
-        long totalSize = 0;
-        foreach (FileRecord f in scanFiles)
-          totalSize += f.Length;
-        LogFile.Log("Found {0} file{1} ({2} total)", scanFiles.Count,
-          scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize));
-        FireProgressReport("Scan complete. Analyzing results...", 100.0);
-        Compare();
-        UpdateStatus();
+        if (!cancelScan) {
+          long totalSize = 0;
+          foreach (FileRecord f in scanFiles)
+            totalSize += f.Length;
+          LogFile.Log("Found {0} file{1} ({2} total)", scanFiles.Count,
+            scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize));
+          FireProgressReport("Scan complete. Analyzing results...", 100.0);
+          Compare();
+          UpdateStatus();
+        }
       }
       finally {
         FireScanCompleted();
@@ -184,6 +188,8 @@ namespace disParity
 
     private void Scan(DirectoryInfo dir, List<Regex> ignores, ProgressReporter progress = null)
     {
+      if (cancelScan)
+        return;
       if (scanProgress != null)
         FireProgressReport("Scanning " + dir.FullName + "...", scanProgress.Progress);
       DirectoryInfo[] subDirs;
@@ -215,6 +221,8 @@ namespace disParity
         folderProgress = progress.BeginSubPhase(subDirs.Length);
 
       foreach (DirectoryInfo d in subDirs) {
+        if (cancelScan)
+          return;
         if ((config.IgnoreHidden && (d.Attributes & FileAttributes.Hidden) != 0) ||
             ((d.Attributes & FileAttributes.System) != 0)) {
           folderProgress.EndPhase();
@@ -226,6 +234,8 @@ namespace disParity
       FireProgressReport("", scanProgress.Progress);
       string relativePath = Utils.StripRoot(root, dir.FullName);
       foreach (FileInfo f in fileInfos) {
+        if (cancelScan)
+          return;
         if (f.Attributes == (FileAttributes)(-1))
           continue;
         if (config.IgnoreHidden && (f.Attributes & FileAttributes.Hidden) != 0)
@@ -246,10 +256,15 @@ namespace disParity
       }
     }
 
+    public void CancelScan()
+    {
+      cancelScan = true;
+    }
+
     public void FireProgressReport(string status, double progress)
     {
       if (ProgressReport != null)
-        ProgressReport(this, new ProgressReportEventArgs(status, progress));
+        ProgressReport(this, new ProgressReportEventArgs(progress, status));
     }
 
     private void FireStatusChanged()
@@ -744,18 +759,6 @@ namespace disParity
       return result;
     }
 
-  }
-
-  public class ProgressReportEventArgs : EventArgs
-  {
-    public ProgressReportEventArgs(string status, double progress)
-    {
-      Status = status;
-      Progress = progress;
-    }
-
-    public string Status { get; private set; }
-    public double Progress { get; private set; }
   }
 
   public class StatusChangedEventArgs : EventArgs

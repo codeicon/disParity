@@ -17,6 +17,7 @@ namespace disParityUI
     public static RoutedUICommand RecoverDrive;
     public static RoutedUICommand Options;
     public static RoutedUICommand About;
+    public static RoutedUICommand CancelOperation;
 
     static Commands()
     {
@@ -27,6 +28,7 @@ namespace disParityUI
       RecoverDrive = new RoutedUICommand("Recover Drive...", "RecoverDrive", typeof(MainWindow));
       Options = new RoutedUICommand("Options...", "Options", typeof(MainWindow));
       About = new RoutedUICommand("About...", "About", typeof(MainWindow));
+      CancelOperation = new RoutedUICommand("Cancel", "Cancel", typeof(MainWindow));
     }
 
   }

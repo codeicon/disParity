@@ -298,15 +298,15 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:disParity"
-        "ProductCode" = "8:{0C6DFEA0-FAE6-4E91-99E0-C281DDEC1B5C}"
-        "PackageCode" = "8:{22463C8C-B335-4BDC-8C2C-B7101CE8AD63}"
+        "ProductCode" = "8:{CA55BA62-B93F-422D-B043-6AD19380A17A}"
+        "PackageCode" = "8:{AFDBFB78-2356-4234-8E53-BB20E91991AD}"
         "UpgradeCode" = "8:{CF2FFBAB-7739-4CA3-B957-57B47B451B67}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:FALSE"
-        "ProductVersion" = "8:0.24"
+        "ProductVersion" = "8:0.25"
         "Manufacturer" = "8:Disparity Solutions, LLC"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
@@ -834,7 +834,7 @@
         {
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_9E017EBCC22447D4AF74DA354E33715A"
             {
-            "SourcePath" = "8:..\\disParityUI\\obj\\Release\\disParityUI.exe"
+            "SourcePath" = "8:..\\disParityUI\\obj\\Debug\\disParityUI.exe"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_1FA80A27F7A446E59CB7432A2878A4D5"

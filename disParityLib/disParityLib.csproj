@@ -53,6 +53,7 @@
     <Compile Include="ParityChange.cs" />
     <Compile Include="ParitySet.cs" />
     <Compile Include="ProgressReporter.cs" />
+    <Compile Include="ProgressReportEventArgs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SingleInstance.cs" />
     <Compile Include="Utils.cs" />
