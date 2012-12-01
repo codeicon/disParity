@@ -1,0 +1,96 @@
+<html>
+<head>
+<title>disParity</title>
+<STYLE>BODY {
+	BACKGROUND: #ffffff
+}
+P {
+	FONT-SIZE: 10pt; 
+  FONT-FAMILY: verdana,arial,geneva,helvetica;
+  MARGIN: 2em;
+}
+P.head {
+	FONT-SIZE: 14pt; COLOR: #ffffff; FONT-FAMILY: verdana,arial,geneva,helvetica
+}
+P.head1 {
+	FONT-WEIGHT: bold; FONT-SIZE: 10pt; COLOR: #005000; FONT-FAMILY: verdana,arial,geneva,helvetica
+}
+UL {
+	FONT-SIZE: 10pt; FONT-FAMILY: verdana,arial,geneva,helvetica
+}
+OL {
+	FONT-SIZE: 10pt; FONT-FAMILY: verdana,arial,geneva,helvetica
+}
+A:link {
+	COLOR: #7b91f2
+}
+A:visited {
+	COLOR: #5362a3
+}
+</STYLE>
+<body>
+<p>
+<br>
+<p align=center>
+<img src=bits.png>
+<p align=center>
+<br>
+<font size="+2">
+Welcome to disParity
+</font>
+<br><br>
+<p align=left>
+DisParity is a free backup utility that calculates
+<a href="http://en.wikipedia.org/wiki/Parity_bit#Parity_block">parity</a> from
+data on multiple hard drives.  If one of the drives fails, disParity can use
+the previously calculated parity data, in combination with the remaining drives,
+to recover the contents of the lost drive.  It's a
+fast, free and easy way to protect yourself against data loss caused by hard drive 
+failures on home media servers.
+<p>
+The concept is similar to RAID, but no specialized hardware is required.  Unlike
+traditional hardware RAID solutions, there is no limit on the number of drives
+that can be protected, and no requirement that all drives be the same size, or
+even on the same PC.  The approach used by disParity is sometimes 
+referred to as "software RAID" or
+"snapshot RAID", because the utility operates on a fixed snapshot of the hard 
+drive data taken at a particular time.  Because of this, it is not suitable for use
+on drives where files are changing frequently, such as database servers.  It
+is perfect, however, for applications such as multi-terabyte home media servers,
+where files change infrequently.
+<p>
+Once the initial parity snapshot has been created, disParity can quickly 
+update the snapshot to reflect changes made to the data, such as the addition
+of new files, removal of old files, etc.
+<p>
+The only requirements for running disParity are Windows and 
+the <a href="http://www.microsoft.com/en-us/download/details.aspx?displaylang=en&id=17851">.NET Framework 2.0</a>.
+<p>
+The latest version can be downloaded <a href="./disParity0.21.zip">here</a>.  The
+download includes a readme with instructions.
+<p>
+Support for disParity is provided via the <a href="./forum/">forum</a>.
+<p>
+<br>
+<br>
+Some user testimonials about disParity:
+<blockquote>
+<p>
+<i>"DisParity was a snap!! Its so easy its sick!!"</i> - GarenT
+<p>
+<i>"I am amazed at the worry-free nature in which your software allows us to backup and recover our files."</i> - rust0r
+<p>
+<i>"A BIG thank you to Roland for his continued support of this awesome application."</i> - Neostim
+<p>
+<i>"A shining star in a sea of crap."</i> - Chris
+</blockquote>
+<p align=center>
+<br>
+<br>
+<font size="-2">
+&copy; Copyright 2012 <a href="http://www.disparitysolutions.com">Disparity Solutions, LLC</a>
+<br>
+All Rights Reserved
+</font>
+</body>
+</html>

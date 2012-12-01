@@ -15,7 +15,7 @@
     {
         "Entry"
         {
-        "MsmKey" = "8:_4F96CA41D5A1D9A5248375277F804BAB"
+        "MsmKey" = "8:_1303DA4219DA8EEFB8B30C2FBCCA2E08"
         "OwnerKey" = "8:_9E017EBCC22447D4AF74DA354E33715A"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -46,13 +46,13 @@
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_9C01643FC97E31887769B97C4DDF0D7A"
+        "OwnerKey" = "8:_1303DA4219DA8EEFB8B30C2FBCCA2E08"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_4F96CA41D5A1D9A5248375277F804BAB"
+        "OwnerKey" = "8:_9C01643FC97E31887769B97C4DDF0D7A"
         "MsmSig" = "8:_UNDEFINED"
         }
     }
@@ -119,10 +119,10 @@
             "ComponentsUrl" = "8:"
                 "Items"
                 {
-                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.0,Profile=Client"
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.0"
                     {
-                    "Name" = "8:Microsoft .NET Framework 4 Client Profile (x86 and x64)"
-                    "ProductCode" = "8:.NETFramework,Version=v4.0,Profile=Client"
+                    "Name" = "8:Microsoft .NET Framework 4 (x86 and x64)"
+                    "ProductCode" = "8:.NETFramework,Version=v4.0"
                     }
                     "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:Microsoft.Windows.Installer.3.1"
                     {
@@ -160,14 +160,14 @@
         }
         "File"
         {
-            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_4F96CA41D5A1D9A5248375277F804BAB"
+            "{9F6F8455-1EF1-4B85-886A-4223BCC8E7F7}:_1303DA4219DA8EEFB8B30C2FBCCA2E08"
             {
             "AssemblyRegister" = "3:1"
             "AssemblyIsInGAC" = "11:FALSE"
             "AssemblyAsmDisplayName" = "8:disParityLib, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL"
                 "ScatterAssemblies"
                 {
-                    "_4F96CA41D5A1D9A5248375277F804BAB"
+                    "_1303DA4219DA8EEFB8B30C2FBCCA2E08"
                     {
                     "Name" = "8:disParityLib.dll"
                     "Attributes" = "3:512"
@@ -299,11 +299,11 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:disParity"
         "ProductCode" = "8:{98EB4D73-A79C-4442-BC71-C9D5E44DB36C}"
-        "PackageCode" = "8:{97863C1E-BC55-4365-9B93-A7ECE87F4B07}"
+        "PackageCode" = "8:{48692DF6-02E7-4129-B860-8E63702A675D}"
         "UpgradeCode" = "8:{CF2FFBAB-7739-4CA3-B957-57B47B451B67}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
-        "RemovePreviousVersions" = "11:FALSE"
+        "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:FALSE"
         "ProductVersion" = "8:0.24"
@@ -834,7 +834,7 @@
         {
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_9E017EBCC22447D4AF74DA354E33715A"
             {
-            "SourcePath" = "8:..\\disParityUI\\obj\\Debug\\disParityUI.exe"
+            "SourcePath" = "8:..\\disParityUI\\obj\\Release\\disParityUI.exe"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_1FA80A27F7A446E59CB7432A2878A4D5"
