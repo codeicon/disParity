@@ -97,7 +97,7 @@ namespace disParityUI
     void ScanDriveExecuted(object sender, ExecutedRoutedEventArgs e)
     {
       if (DriveList.SelectedItems.Count == 1)  // sanity check
-        ((DataDriveViewModel)DriveList.SelectedItem).Scan();
+        viewModel.ScanDrive((DataDriveViewModel)DriveList.SelectedItem);
       e.Handled = true;
     }
 

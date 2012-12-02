@@ -173,12 +173,14 @@ namespace disParity
           long totalSize = 0;
           foreach (FileRecord f in scanFiles)
             totalSize += f.Length;
-          LogFile.Log("Found {0} file{1} ({2} total)", scanFiles.Count,
+          LogFile.Log("{0}: Found {1} file{2} ({3} total)", Root, scanFiles.Count,
             scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize));
           FireProgressReport("Scan complete. Analyzing results...", 100.0);
           Compare();
           UpdateStatus();
         }
+        else
+          LogFile.Log("{0}: Scan cancelled", Root);
       }
       finally {
         FireScanCompleted();

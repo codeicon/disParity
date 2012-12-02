@@ -45,6 +45,9 @@ namespace disParityUI
         catch (Exception e) {
           LogFile.Log("Error occurred during scan of {0}: {1}", DataDrive.Root, e.Message);
         }
+        finally {
+          Progress = 0;
+        }
       }
       );      
     }

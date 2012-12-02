@@ -29,6 +29,7 @@ namespace disParityUI
     private bool scanInProgress;
     private bool updateInProgress;
     private bool recoverInProgress;
+    private bool singleDriveScan;
 
     public MainWindowViewModel(Window owner)
     {
@@ -179,15 +180,31 @@ namespace disParityUI
       drives.Add(vm);
     }
 
+    /// <summary>
+    /// Scan all drives for changes.  Called when user presses "Scan All" button or "Update All" button.
+    /// </summary>
     public void ScanAll()
     {
       if (drives.Count == 0)
         return;
       scanInProgress = true;
+      singleDriveScan = false;
       Status = "Scanning drives...";
       runningScans = drives.Count;
       foreach (DataDriveViewModel vm in drives)
         vm.Scan();
+    }
+
+    /// <summary>
+    /// Scan an individual drive for changes.  Called when user presses "Scan Drive" button.
+    /// </summary>
+    public void ScanDrive(DataDriveViewModel vm)
+    {
+      scanInProgress = true;
+      singleDriveScan = true;
+      Status = "Scanning " + vm.DataDrive.Root + "...";
+      runningScans = 1;
+      vm.Scan();
     }
 
     private void HandleScanCompleted(object sender, EventArgs args)
@@ -211,6 +228,7 @@ namespace disParityUI
             Status = "Changes detected.  Update required.";
         else
           DisplayUpToDateStatus();
+        Progress = 0;
         ProgressState = TaskbarItemProgressState.None;
       }
     }
@@ -316,12 +334,18 @@ namespace disParityUI
       if (scanInProgress && args.PropertyName == "Progress") {
         double progress = 0;
         foreach (DataDriveViewModel vm in drives)
-          progress += vm.Progress;
+          if (vm.DataDrive.Busy)
+            if (singleDriveScan) {
+              progress = vm.Progress;
+              break;
+            } else
+              progress += vm.Progress;
+          else
+            progress += 1;
         ProgressState = TaskbarItemProgressState.Normal;
         Progress = progress;
       }
     }
-
 
     public void Cancel()
     {

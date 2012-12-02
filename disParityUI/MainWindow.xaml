@@ -106,11 +106,11 @@
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="100"/>
         <ColumnDefinition Width="*"/>
-        <ColumnDefinition Width="80"/>
+        <ColumnDefinition Width="90"/>
       </Grid.ColumnDefinitions>
       <Label Grid.Column="0" Margin="0,0,2,0" VerticalAlignment="Center">Overall progress:</Label>
       <ProgressBar Grid.Column="1" Height="20" Minimum="0" Maximum="1" Value="{Binding Path=Progress}" VerticalAlignment="Center" />
-      <Button Grid.Column="2" Width="70" Height="23" Command="ui:Commands.CancelOperation" HorizontalAlignment="Right">Cancel</Button>
+      <Button Grid.Column="2" Width="80" Height="23" Command="ui:Commands.CancelOperation" HorizontalAlignment="Right">Cancel</Button>
     </Grid>
     <DockPanel Margin="5,0,10,0" Grid.Row="3">
       <Label DockPanel.Dock="Left" Margin="0,0,10,0" VerticalAlignment="Center">Parity Location:</Label>
