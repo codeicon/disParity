@@ -80,7 +80,7 @@ namespace disParity
 
     public DriveStatus Status { get; private set; }
 
-    public bool Busy { get; private set; }
+    public bool Scanning { get; private set; }
 
     public int FileCount { get { return files.Count; } }
 
@@ -121,6 +121,8 @@ namespace disParity
     {
       if (File.Exists(MetaFilePath))
         File.Delete(MetaFilePath);
+      files.Clear();
+      Status = DriveStatus.ScanRequired;
     }
 
     /// <summary>
@@ -129,7 +131,7 @@ namespace disParity
     public void Reset()
     {
       files.Clear();
-      scanFiles = null;
+      scanFiles = null; // this seems risky, could cause a crash if  Scan is running right now?
       MaxBlock = 0;
       if (File.Exists(MetaFilePath))
         LoadFileList();
@@ -142,8 +144,8 @@ namespace disParity
     /// </summary>
     public void Scan()
     {
-      Debug.Assert(!Busy);
-      Busy = true;
+      Debug.Assert(!Scanning);
+      Scanning = true;
       cancelScan = false;
       try {
 
@@ -184,7 +186,7 @@ namespace disParity
       }
       finally {
         FireScanCompleted();
-        Busy = false;
+        Scanning = false;
       }
     }
 
@@ -258,6 +260,7 @@ namespace disParity
       }
     }
 
+    // Caution: Keep this thread safe!
     public void CancelScan()
     {
       cancelScan = true;
@@ -433,19 +436,13 @@ namespace disParity
       SaveFileList();
     }
 
-    public void ClearDeletes()
-    {
-      deletes.Clear();
-      UpdateStatus();
-    }
-
     public void ClearAdds()
     {
       adds.Clear();
       UpdateStatus();
     }
 
-    private void UpdateStatus()
+    public void UpdateStatus()
     {
       if (adds.Count > 0 || moves.Count > 0 || deletes.Count > 0)
         Status = DriveStatus.UpdateRequired;
@@ -459,26 +456,19 @@ namespace disParity
     /// </summary>
     public int HashCheck()
     {
-      Busy = true;
-      try {
-        int failures = 0;
-        foreach (FileRecord r in files.Values)
-          try {
-            LogFile.Log("Checking hash for {0}...", r.FullPath);
-            if (!HashCheck(r)) {
-              LogFile.Log("Hash check FAILED");
-              failures++;
-            }
+      int failures = 0;
+      foreach (FileRecord r in files.Values)
+        try {
+          LogFile.Log("Checking hash for {0}...", r.FullPath);
+          if (!HashCheck(r)) {
+            LogFile.Log("Hash check FAILED");
+            failures++;
           }
-          catch (Exception e) {
-            LogFile.Log("Error opening {0} for hash check: {1}", r.FullPath, e.Message);
-          }
-        return failures;
-
-      }
-      finally {
-        Busy = false;
-      }
+        }
+        catch (Exception e) {
+          LogFile.Log("Error opening {0} for hash check: {1}", r.FullPath, e.Message);
+        }
+      return failures;
     }
 
     /// <summary>
@@ -521,7 +511,6 @@ namespace disParity
       enumerator = scanFiles.GetEnumerator();
       enumCount = 0;
       enumSize = 0;
-      Busy = true;
     }
 
     public bool GetNextBlock(byte[] buf)
@@ -532,12 +521,11 @@ namespace disParity
         if (enumComplete)
           return false;
         if (!enumerator.MoveNext()) {
-          enumerator.Dispose();
+          EndFileEnum();
           enumComplete = true;
           LoadFileList(); // this loads completed filesX.dat back into the master files list
           Status = DriveStatus.UpToDate;
           FireStatusChanged();
-          Busy = false;
           return false;
         }
         // TODO: Handle zero-length file here?
@@ -579,6 +567,10 @@ namespace disParity
     public void EndFileEnum()
     {
       enumerator.Dispose();
+      if (enumFile != null) {
+        enumFile.Dispose();
+        enumFile = null;
+      }
     }
 
     public bool ReadBlock(UInt32 block, byte[] data)

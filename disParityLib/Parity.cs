@@ -78,9 +78,7 @@ namespace disParity
       }
       catch (Exception e) {
         LogFile.Log("FATAL ERROR: {0}", e.Message);
-        LogFile.Log("WARNING: parity data appears to be damaged. " +
-          "It is strongly advised that you regenerate the snapshot using the " +
-          "\"create\" command.");
+        LogFile.Log("WARNING: parity data appears to be damaged.  It is strongly advised that you recreate the snapshot from scratch.");
         return false;
       }
       return true;

@@ -13,15 +13,15 @@ namespace disParity
 
     private List<DataDrive> drives;
     private Parity parity;
-    private bool busy;
     private byte[] tempBuf = new byte[Parity.BlockSize];
+    private bool cancelUpdate;
+    private bool cancelRecover;
 
     public event EventHandler<ProgressReportEventArgs> ProgressReport;
     public event EventHandler<RecoverErrorEventArgs> RecoverError;
 
     public ParitySet(Config config)
     {
-      busy = true;
       drives = new List<DataDrive>();
       Config = config;
 
@@ -42,7 +42,6 @@ namespace disParity
 
           parity = new Parity(Config);
         }
-        busy = false;
       }
     }
 
@@ -70,22 +69,6 @@ namespace disParity
     /// The config file in use by this parity set.
     /// </summary>
     public Config Config { get; private set; }
-
-    /// <summary>
-    /// Returns whether or not one or more drives are busy doing a parity operation
-    /// </summary>
-    public bool Busy
-    {
-      get
-      {
-        if (busy)
-          return true;
-        foreach (DataDrive d in drives)
-          if (d.Busy)
-            return true;
-        return false;
-      }
-    }
 
     /// <summary>
     /// Returns a copy of the master list of drives in this ParitySet.
@@ -151,22 +134,28 @@ namespace disParity
     /// </summary>
     public void Update(bool scanFirst = false)
     {
+      cancelUpdate = false;
       if (Empty) {
         LogFile.Log("No existing parity data found.  Creating new snapshot.");
         Create();
         return;
       }
 
-      busy = true;
       try {
         if (scanFirst)
           // get the current list of files on each drive and compare to old state
           ScanAll();
 
+        if (cancelUpdate)
+          return;
+
         // process all moves for all drives first, since that doesn't require changing
         // any parity data, only the meta data
         foreach (DataDrive d in drives)
           d.ProcessMoves();
+
+        if (cancelUpdate)
+          return;
 
         // count total blocks for this update, for progress reporting
         currentUpdateBlocks = 0;
@@ -183,12 +172,18 @@ namespace disParity
         long deleteSize = 0;
         DateTime start = DateTime.Now;
         foreach (DataDrive d in drives) {
-          foreach (FileRecord r in d.Deletes)
+          FileRecord[] deleteList = new FileRecord[d.Deletes.Count];
+          d.Deletes.CopyTo(deleteList);
+          foreach (FileRecord r in deleteList) {
             if (RemoveFromParity(r)) {
               deleteCount++;
               deleteSize += r.Length;
+              d.Deletes.Remove(r);
             }
-          d.ClearDeletes();
+            if (cancelUpdate)
+              return;
+          }
+          d.UpdateStatus();
         }
         if (deleteCount > 0) {
           TimeSpan elapsed = DateTime.Now - start;
@@ -201,12 +196,18 @@ namespace disParity
         long addSize = 0;
         start = DateTime.Now;
         foreach (DataDrive d in drives) {
-          foreach (FileRecord r in d.Adds)
+          FileRecord[] addList = new FileRecord[d.Adds.Count];
+          d.Adds.CopyTo(addList);
+          foreach (FileRecord r in addList) {
             if (AddToParity(r)) {
               addCount++;
               addSize += r.Length;
+              d.Adds.Remove(r);
             }
-          d.ClearAdds();
+            if (cancelUpdate)
+              return;
+          }
+          d.UpdateStatus();
         }
         if (addCount > 0) {
           TimeSpan elapsed = DateTime.Now - start;
@@ -214,12 +215,32 @@ namespace disParity
             addCount == 1 ? "" : "s", Utils.SmartSize(addSize), elapsed.TotalSeconds);
         }
 
-        parity.Close();
       }
       finally {
-        busy = false;
+        if (cancelUpdate)
+          // make sure all progress bars are reset
+          foreach (DataDrive d in drives)
+            d.UpdateStatus();
+        parity.Close();
       }
 
+    }
+
+    // Caution: Keep this thread safe!
+    public void CancelUpdate()
+    {
+      LogFile.Log("Update cancelled");
+      cancelUpdate = true;
+      // in case we are still doing the pre-update scan
+      foreach (DataDrive d in drives)
+        d.CancelScan();
+    }
+
+    // Caution: Keep this thread safe!
+    public void CancelRecover()
+    {
+      LogFile.Log("Recover cancelled");
+      cancelRecover = true;
     }
 
     private bool ValidDrive(DataDrive drive)
@@ -295,25 +316,25 @@ namespace disParity
     /// </summary>
     public void Recover(DataDrive drive, string path, out int successes, out int failures)
     {
+      cancelRecover = false;
       if (!ValidDrive(drive))
         throw new Exception("Invalid drive passed to Recover");
       successes = 0;
       failures = 0;
-      busy = true;
       recoverTotalBlocks = 0;
       foreach (FileRecord f in drive.Files)
         recoverTotalBlocks += f.LengthInBlocks;
       recoverBlocks = 0;
-      try {
-        foreach (FileRecord f in drive.Files)
-          if (RecoverFile(f, path))
-            successes++;
-          else
-            failures++;
-      }
-      finally {
-        busy = false;
-      }
+      foreach (FileRecord f in drive.Files)
+        if (RecoverFile(f, path))
+          successes++;
+        else {
+          if (cancelRecover) {
+            drive.FireProgressReport("", 0);
+            return;
+          }
+          failures++;
+        }
     }
 
     private bool RecoverFile(FileRecord r, string path)
@@ -340,6 +361,11 @@ namespace disParity
             if ((block % 10) == 0) { // report progress every 10 blocks
               r.Drive.FireProgressReport("", (double)(block - r.StartBlock) / r.LengthInBlocks);
               FireProgressReport((double)(recoverBlocks + (block - r.StartBlock)) / recoverTotalBlocks);
+            }
+            if (cancelRecover) {
+              f.Close();
+              File.Delete(fullPath);
+              return false;
             }
           }
           hash.TransformFinalBlock(parityBlock.Data, 0, 0);
@@ -447,6 +473,8 @@ namespace disParity
                 r.Drive.FireUpdateProgress("", r.Drive.FileCount, r.Drive.TotalFileSize, (double)(b - startBlock) / (double)(endBlock - startBlock));
                 FireProgressReport((double)currentUpdateBlocks / totalUpdateBlocks);
               }
+              if (cancelUpdate)
+                return false;
             }
           change.Save();
         }
@@ -497,7 +525,8 @@ namespace disParity
                 (double)(b - startBlock) / (double)(endBlock - startBlock));
               FireProgressReport((double)currentUpdateBlocks / totalUpdateBlocks);
             }
-
+            if (cancelUpdate)
+              return false;
           }
           change.Save();
         }
@@ -526,6 +555,9 @@ namespace disParity
       return maxBlock;
     }
 
+    /// <summary>
+    /// Scan all the drives.  Only called right before an update.
+    /// </summary>
     private void ScanAll()
     {
       foreach (DataDrive d in drives)
@@ -548,27 +580,47 @@ namespace disParity
           totalBlocks = scanBlocks;
       }
 
-      ParityBlock parityBlock = new ParityBlock(parity);
-      byte[] dataBuf = new byte[Parity.BlockSize];
-      UInt32 block = 0;
+      try {
+        ParityBlock parityBlock = new ParityBlock(parity);
+        byte[] dataBuf = new byte[Parity.BlockSize];
+        UInt32 block = 0;
 
-      bool done = false;
-      while (!done) {
-        done = true;
-        foreach (DataDrive d in drives)
-          if (d.GetNextBlock(done ? parityBlock.Data : dataBuf))
-            if (done)
-              done = false;
-            else
-              parityBlock.Add(dataBuf);
-        if (!done)
-          parityBlock.Write(block);
-        // only report once every 10 blocks
-        if ((block % 10) == 0)
-          FireProgressReport((double)block / totalBlocks);
-        block++;
+        bool done = false;
+        while (!done) {
+
+          done = true;
+          foreach (DataDrive d in drives)
+            if (d.GetNextBlock(done ? parityBlock.Data : dataBuf))
+              if (done)
+                done = false;
+              else
+                parityBlock.Add(dataBuf);
+          if (!done)
+            parityBlock.Write(block);
+          // only report once every 10 blocks
+          if ((block % 10) == 0)
+            FireProgressReport((double)block / totalBlocks);
+          block++;
+
+          if (cancelUpdate) {
+            // we can't salvage an initial update that was cancelled so we'll have to start again from scratch next time.
+            LogFile.Log("Initial update cancelled.  Resetting parity to empty.");
+            parity.Close();
+            parity.DeleteAll();
+            foreach (DataDrive d in drives) {
+              d.Clear();
+              d.UpdateStatus();
+            }
+            return;
+          }
+
+        }
       }
-      parity.Close();
+      finally {
+        foreach (DataDrive d in drives)
+          d.EndFileEnum();
+        parity.Close();
+      }
 
     }
 

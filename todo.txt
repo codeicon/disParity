@@ -3,15 +3,17 @@
 * Handle out-of-parity space issues robustly (should update detect and report 
   when there is not enough room on the parity drive?)
   
+* Warning when adding new drives that are already in the array.
+
 * Log file handling (UI vs. command line)
 
-* Closing the app while operation in progress needs to be handled better
+* Need to be able to delete/reset entire backup set
+
+* Need to be able to remove drives from the array
 
 * Bring back command line
-
-* All long running operations need a Cancel button
  
-* File update progress should included time to flush temp parity
+* File update progress should include time to flush temp parity
 
 * "Ignore files smaller than" option
   
@@ -21,8 +23,7 @@
 
 * Test new version message from command line
 
-* Long running operations (update, cancel, etc.) should be cancellable w/o
-  corrupting anything.
+* Update operations should report MB/sec statistics
   
 * Recover should prompt first before overwriting an existing file
 
@@ -38,4 +39,4 @@
 * update scan should handle case where file attributes only have changed -
   no parity change occurs but the updated attributes should be saved to the meta data
   
-* thread safety
+  

@@ -30,6 +30,8 @@ namespace disParityUI
     private bool updateInProgress;
     private bool recoverInProgress;
     private bool singleDriveScan;
+    private bool updateCancelled;
+    private bool recoverCancelled;
 
     public MainWindowViewModel(Window owner)
     {
@@ -254,12 +256,16 @@ namespace disParityUI
     private void Update()
     {
       updateInProgress = true;
+      updateCancelled = false;
       Status = "Update In Progress...";
       Task.Factory.StartNew(() =>
       {
         try {
           paritySet.Update();
-          DisplayUpToDateStatus();
+          if (updateCancelled)
+            Status = "Update cancelled";
+          else
+            DisplayUpToDateStatus();
         }
         catch (Exception e) {
           Status = "Update failed: " + e.Message;
@@ -275,6 +281,7 @@ namespace disParityUI
 
     public void RecoverDrive(DataDriveViewModel drive, string path)
     {
+      recoverCancelled = false;
       recoverInProgress = true;
       Status = "Recovering " + drive.Root + " to " + path + "...";
       recoverDrive = drive;
@@ -286,6 +293,10 @@ namespace disParityUI
           int successes;
           int failures;
           paritySet.Recover(drive.DataDrive, path, out successes, out failures);
+          if (recoverCancelled) {
+            Status = "Recover cancelled";
+            return;
+          }
           if (failures == 0) {
             string msg = String.Format("{0} file{1} successfully recovered!",
               successes, successes == 1 ? "" : "s");
@@ -308,7 +319,6 @@ namespace disParityUI
         }
         finally {
           Progress = 0;
-          // recoverDrive.UpdateStatus(); what was this for?
           ProgressState = TaskbarItemProgressState.None;
           recoverInProgress = false;
         }
@@ -333,15 +343,18 @@ namespace disParityUI
     {
       if (scanInProgress && args.PropertyName == "Progress") {
         double progress = 0;
+        double progressPerDrive = 1.0 / drives.Count;
         foreach (DataDriveViewModel vm in drives)
-          if (vm.DataDrive.Busy)
+          if (vm.DataDrive.Scanning) {
             if (singleDriveScan) {
               progress = vm.Progress;
               break;
-            } else
-              progress += vm.Progress;
+            }
+            else
+              progress += vm.Progress * progressPerDrive;
+          }
           else
-            progress += 1;
+            progress += progressPerDrive;
         ProgressState = TaskbarItemProgressState.Normal;
         Progress = progress;
       }
@@ -350,14 +363,19 @@ namespace disParityUI
     public void Cancel()
     {
       if (scanInProgress) {
+        Status = "Cancelling scan...";
         foreach (DataDriveViewModel vm in drives)
           vm.DataDrive.CancelScan();
       }
       else if (updateInProgress) {
-        // TO DO: cancel update here
+        Status = "Cancelling update...";
+        updateCancelled = true;
+        paritySet.CancelUpdate();
       }
       else if (recoverInProgress) {
-        // TO DO: cancel recover here
+        Status = "Cancelling recover...";
+        recoverCancelled = true;
+        paritySet.CancelRecover();
       }
     }
 
