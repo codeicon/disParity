@@ -6,52 +6,42 @@ using System.Text;
 namespace disParity
 {
 
-  internal class ProgressReporter
+  /// <summary>
+  /// Base class for classes that can report progress on lengthy operations
+  /// </summary>
+  public class ProgressReporter
   {
-    private double progress;
-    private double progressPerPhase;
-    private ProgressReporter phaseProgress;
-    private int numPhases;
-    private int currentPhase;
 
-    public void Reset(int phases)
-    {
-      progress = 0.0f;
-      numPhases = phases;
-      if (phases > 0)
-        progressPerPhase = 1.0 / phases;
-      else
-        progressPerPhase = 0.0;
-      currentPhase = 0;
-      phaseProgress = null;
-    }
+    private double lastProgress;
+    private const double MIN_PROGRESS_DELTA = 0.001;
 
-    public double Progress
+    public event EventHandler<ProgressReportEventArgs> ProgressReport;
+
+    public void ReportProgress(double progress, string message = "")
     {
-      get
-      {
-        if (phaseProgress == null)
-          return progress;
-        else
-          return progress + progressPerPhase * phaseProgress.Progress;
+      if (ProgressReport != null) {
+        // only fire the event if the messages is non-empty or if the progress has advanced
+        // by MIN_PROGRESS_DELTA
+        if (message != "" || progress == 0.0 || (progress - lastProgress) >= MIN_PROGRESS_DELTA) {
+          ProgressReport(this, new ProgressReportEventArgs(progress, message));
+          lastProgress = progress;
+        }
       }
     }
 
-    public void EndPhase()
+  }
+
+  public class ProgressReportEventArgs : EventArgs
+  {
+
+    public ProgressReportEventArgs(double progress, string message = "")
     {
-      currentPhase++;
-      if (currentPhase <= numPhases)
-        progress = (double)currentPhase / (double)numPhases;
-      if (phaseProgress != null)
-        phaseProgress = null;
+      Message = message;
+      Progress = progress;
     }
 
-    public ProgressReporter BeginSubPhase(int phases)
-    {
-      phaseProgress = new ProgressReporter();
-      phaseProgress.Reset(phases);
-      return phaseProgress;
-    }
+    public string Message { get; private set; }
+    public double Progress { get; private set; }
 
   }
 

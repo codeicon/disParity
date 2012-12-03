@@ -8,7 +8,7 @@ using System.Security.Cryptography;
 namespace disParity
 {
 
-  public class ParitySet
+  public class ParitySet : ProgressReporter
   {
 
     private List<DataDrive> drives;
@@ -17,7 +17,6 @@ namespace disParity
     private bool cancelUpdate;
     private bool cancelRecover;
 
-    public event EventHandler<ProgressReportEventArgs> ProgressReport;
     public event EventHandler<RecoverErrorEventArgs> RecoverError;
 
     public ParitySet(Config config)
@@ -330,7 +329,7 @@ namespace disParity
           successes++;
         else {
           if (cancelRecover) {
-            drive.FireProgressReport("", 0);
+            drive.ReportProgress(0, "");
             return;
           }
           failures++;
@@ -341,7 +340,7 @@ namespace disParity
     {
       string fullPath = Utils.MakeFullPath(path, r.Name);
       LogFile.Log("Recovering {0}...", r.Name);
-      r.Drive.FireProgressReport("Recovering " + r.Name + " ...", 0);
+      r.Drive.ReportProgress(0, "Recovering " + r.Name + " ...");
       try {
         // make sure the destination directory exists
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
@@ -358,19 +357,18 @@ namespace disParity
             hash.TransformBlock(parityBlock.Data, 0, blockSize, parityBlock.Data, 0);
             leftToWrite -= Parity.BlockSize;
             block++;
-            if ((block % 10) == 0) { // report progress every 10 blocks
-              r.Drive.FireProgressReport("", (double)(block - r.StartBlock) / r.LengthInBlocks);
-              FireProgressReport((double)(recoverBlocks + (block - r.StartBlock)) / recoverTotalBlocks);
-            }
+            r.Drive.ReportProgress((double)(block - r.StartBlock) / r.LengthInBlocks, "");
+            ReportProgress((double)(recoverBlocks + (block - r.StartBlock)) / recoverTotalBlocks);
             if (cancelRecover) {
               f.Close();
               File.Delete(fullPath);
+              r.Drive.UpdateStatus();
               return false;
             }
           }
           hash.TransformFinalBlock(parityBlock.Data, 0, 0);
         }
-        r.Drive.FireProgressReport("", 0);
+        r.Drive.ReportProgress(0, "");
         File.SetCreationTime(fullPath, r.CreationTime);
         File.SetLastWriteTime(fullPath, r.LastWriteTime);
         File.SetAttributes(fullPath, r.Attributes);
@@ -390,7 +388,7 @@ namespace disParity
       finally {
         // no matter what happens, keep the progress bar advancing by the right amount
         recoverBlocks += r.LengthInBlocks;
-        FireProgressReport((double)recoverBlocks / recoverTotalBlocks);
+        ReportProgress((double)recoverBlocks / recoverTotalBlocks);
       }
     }
 
@@ -468,11 +466,8 @@ namespace disParity
               change.AddData(data);
               change.Write();
               currentUpdateBlocks++;
-              // only report once every 10 blocks
-              if ((currentUpdateBlocks % 10) == 0) {
-                r.Drive.FireUpdateProgress("", r.Drive.FileCount, r.Drive.TotalFileSize, (double)(b - startBlock) / (double)(endBlock - startBlock));
-                FireProgressReport((double)currentUpdateBlocks / totalUpdateBlocks);
-              }
+              r.Drive.FireUpdateProgress("", r.Drive.FileCount, r.Drive.TotalFileSize, (double)(b - startBlock) / (double)(endBlock - startBlock));
+              ReportProgress((double)currentUpdateBlocks / totalUpdateBlocks);
               if (cancelUpdate)
                 return false;
             }
@@ -523,7 +518,7 @@ namespace disParity
             if ((currentUpdateBlocks % 10) == 0) {
               r.Drive.FireUpdateProgress("", r.Drive.FileCount, r.Drive.TotalFileSize,
                 (double)(b - startBlock) / (double)(endBlock - startBlock));
-              FireProgressReport((double)currentUpdateBlocks / totalUpdateBlocks);
+              ReportProgress((double)currentUpdateBlocks / totalUpdateBlocks);
             }
             if (cancelUpdate)
               return false;
@@ -597,9 +592,7 @@ namespace disParity
                 parityBlock.Add(dataBuf);
           if (!done)
             parityBlock.Write(block);
-          // only report once every 10 blocks
-          if ((block % 10) == 0)
-            FireProgressReport((double)block / totalBlocks);
+          ReportProgress((double)block / totalBlocks);
           block++;
 
           if (cancelUpdate) {
@@ -646,12 +639,6 @@ namespace disParity
     {
       if (RecoverError != null)
         RecoverError(this, new RecoverErrorEventArgs(message));
-    }
-
-    private void FireProgressReport(double progress, string message = "")
-    {
-      if (ProgressReport != null)
-        ProgressReport(this, new ProgressReportEventArgs(progress, message));
     }
 
   }

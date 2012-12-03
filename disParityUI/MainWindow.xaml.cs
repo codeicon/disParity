@@ -63,7 +63,7 @@ namespace disParityUI
     private void HandleClosing(object sender, CancelEventArgs args)
     {
       if (viewModel.Busy) {
-        MessageWindow.Show(this, "Operation in progress", "To avoid parity corruption, please cancel the current operation before closing disParity", MessageWindowIcon.Error, MessageWindowButton.OK);
+        MessageWindow.Show(this, "Operation in progress", "Please cancel the current operation before closing disParity", MessageWindowIcon.Caution, MessageWindowButton.OK);
         args.Cancel = true;
       }
     }

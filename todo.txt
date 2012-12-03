@@ -1,5 +1,7 @@
 * Update main progress correctly during scan of single drive
   
+* No way to re-create parity from scratch.
+
 * Handle out-of-parity space issues robustly (should update detect and report 
   when there is not enough room on the parity drive?)
   

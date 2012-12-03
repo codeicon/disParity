@@ -18,7 +18,7 @@ namespace disParity
     AccessError
   }
 
-  public class DataDrive
+  public class DataDrive : ProgressReporter
   {
 
     private string root;
@@ -27,12 +27,11 @@ namespace disParity
     private List<FileRecord> scanFiles; // List of current files on the drive as seen this scan
     private MD5 hash;
     private Config config;
-    private ProgressReporter scanProgress;
+    private ProgressEstimator scanProgress;
     private bool cancelScan;
 
     const UInt32 META_FILE_VERSION = 1;
 
-    public event EventHandler<ProgressReportEventArgs> ProgressReport;
     public event EventHandler<StatusChangedEventArgs> StatusChanged;
     public event EventHandler<UpdateProgressEventArgs> UpdateProgress;
     public event EventHandler<EventArgs> ScanCompleted;
@@ -177,7 +176,7 @@ namespace disParity
             totalSize += f.Length;
           LogFile.Log("{0}: Found {1} file{2} ({3} total)", Root, scanFiles.Count,
             scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize));
-          FireProgressReport("Scan complete. Analyzing results...", 100.0);
+          ReportProgress(100.0, "Scan complete. Analyzing results...");
           Compare();
           UpdateStatus();
         }
@@ -190,12 +189,12 @@ namespace disParity
       }
     }
 
-    private void Scan(DirectoryInfo dir, List<Regex> ignores, ProgressReporter progress = null)
+    private void Scan(DirectoryInfo dir, List<Regex> ignores, ProgressEstimator progress = null)
     {
       if (cancelScan)
         return;
       if (scanProgress != null)
-        FireProgressReport("Scanning " + dir.FullName + "...", scanProgress.Progress);
+        ReportProgress(scanProgress.Progress, "Scanning " + dir.FullName + "...");
       DirectoryInfo[] subDirs;
       try {
         subDirs = dir.GetDirectories();
@@ -215,9 +214,9 @@ namespace disParity
         return;
       }
 
-      ProgressReporter folderProgress;
+      ProgressEstimator folderProgress;
       if (scanProgress == null) {
-        scanProgress = new ProgressReporter();
+        scanProgress = new ProgressEstimator();
         scanProgress.Reset(subDirs.Length);
         folderProgress = scanProgress;
       }
@@ -235,7 +234,7 @@ namespace disParity
         Scan(d, ignores, folderProgress);
         folderProgress.EndPhase();
       }
-      FireProgressReport("", scanProgress.Progress);
+      ReportProgress(scanProgress.Progress, "");
       string relativePath = Utils.StripRoot(root, dir.FullName);
       foreach (FileInfo f in fileInfos) {
         if (cancelScan)
@@ -264,12 +263,6 @@ namespace disParity
     public void CancelScan()
     {
       cancelScan = true;
-    }
-
-    public void FireProgressReport(string status, double progress)
-    {
-      if (ProgressReport != null)
-        ProgressReport(this, new ProgressReportEventArgs(progress, status));
     }
 
     private void FireStatusChanged()
