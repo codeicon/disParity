@@ -100,7 +100,7 @@
         "DisplayName" = "8:Release"
         "IsDebugOnly" = "11:FALSE"
         "IsReleaseOnly" = "11:TRUE"
-        "OutputFilename" = "8:Release\\disParitySetup.msi"
+        "OutputFilename" = "8:Release\\disParity0.25beta.msi"
         "PackageFilesAs" = "3:2"
         "PackageFileSize" = "3:-2147483648"
         "CabType" = "3:1"
@@ -299,7 +299,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:disParity"
         "ProductCode" = "8:{CA55BA62-B93F-422D-B043-6AD19380A17A}"
-        "PackageCode" = "8:{AFDBFB78-2356-4234-8E53-BB20E91991AD}"
+        "PackageCode" = "8:{16AF2968-A419-4DA1-9901-0CCA5E82D4FA}"
         "UpgradeCode" = "8:{CF2FFBAB-7739-4CA3-B957-57B47B451B67}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
@@ -534,8 +534,8 @@
                             "Type" = "3:3"
                             "ContextData" = "8:"
                             "Attributes" = "3:0"
-                            "Setting" = "3:1"
-                            "Value" = "8:#1203"
+                            "Setting" = "3:2"
+                            "Value" = "8:This installer will install [ProductName] [ProductVersion] Beta on your computer."
                             "DefaultValue" = "8:#1203"
                             "UsePlugInResources" = "11:TRUE"
                             }
@@ -613,8 +613,8 @@
                             "Type" = "3:3"
                             "ContextData" = "8:"
                             "Attributes" = "3:0"
-                            "Setting" = "3:1"
-                            "Value" = "8:#1203"
+                            "Setting" = "3:2"
+                            "Value" = "8:This installer will install [ProductName] [ProductVersion] Beta on your computer."
                             "DefaultValue" = "8:#1203"
                             "UsePlugInResources" = "11:TRUE"
                             }
@@ -834,7 +834,7 @@
         {
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_9E017EBCC22447D4AF74DA354E33715A"
             {
-            "SourcePath" = "8:..\\disParityUI\\obj\\Debug\\disParityUI.exe"
+            "SourcePath" = "8:..\\disParityUI\\obj\\Release\\disParityUI.exe"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_1FA80A27F7A446E59CB7432A2878A4D5"
