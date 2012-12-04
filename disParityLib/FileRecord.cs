@@ -76,11 +76,11 @@ namespace disParity
       Skipped = false;
     }
 
-    public bool Refresh(string fullPath)
+    public bool RefreshAttributes()
     {
-      if (!File.Exists(fullPath))
+      if (!File.Exists(FullPath))
         return false;
-      FileInfo info = new FileInfo(fullPath);
+      FileInfo info = new FileInfo(FullPath);
       Length = info.Length;
       Attributes = info.Attributes;
       CreationTime = info.CreationTime;
@@ -121,6 +121,23 @@ namespace disParity
         f.Write(HashCode, 0, 16);
     }
 
+    /// <summary>
+    /// Attempts to detect whether the file has been modified by checking the length and LastWriteTime
+    /// </summary>
+    public bool Modified
+    {
+      get
+      {
+        if (!File.Exists(FullPath))
+          return true; // a deleted file is considered modified
+        FileInfo info = new FileInfo(FullPath);
+        return (info.Length != Length) || (info.LastWriteTime != LastWriteTime);
+      }
+    }
+
+    /// <summary>
+    /// Returns the full path to the file including the root portion
+    /// </summary>
     public string FullPath
     {
       get

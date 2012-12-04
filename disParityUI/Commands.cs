@@ -11,6 +11,7 @@ namespace disParityUI
   {
 
     public static RoutedUICommand AddDrive;
+    public static RoutedUICommand RemoveDrive;
     public static RoutedUICommand ScanDrive;
     public static RoutedUICommand ScanAll;
     public static RoutedUICommand UpdateAll;
@@ -22,6 +23,7 @@ namespace disParityUI
     static Commands()
     {
       AddDrive = new RoutedUICommand("Add Drive...", "AddDrive", typeof(MainWindow));
+      RemoveDrive = new RoutedUICommand("Remove Drive", "RemoveDrive", typeof(MainWindow));
       ScanDrive = new RoutedUICommand("Scan Drive", "ScanDrive", typeof(MainWindow));
       ScanAll = new RoutedUICommand("Scan All", "ScanAll", typeof(MainWindow));
       UpdateAll = new RoutedUICommand("Update All", "UpdateAll", typeof(MainWindow));

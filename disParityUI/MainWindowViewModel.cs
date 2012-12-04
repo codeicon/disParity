@@ -29,9 +29,11 @@ namespace disParityUI
     private bool scanInProgress;
     private bool updateInProgress;
     private bool recoverInProgress;
+    private bool removeDriveInProgress;
     private bool singleDriveScan;
     private bool updateCancelled;
     private bool recoverCancelled;
+    private bool removeDriveCancelled;
 
     public MainWindowViewModel(Window owner)
     {
@@ -180,6 +182,66 @@ namespace disParityUI
       DataDriveViewModel vm = new DataDriveViewModel(drive);
       vm.PropertyChanged += HandleDataDrivePropertyChanged;
       drives.Add(vm);
+    }
+
+    /// <summary>
+    /// Remove an entire drive from parity.  Called when user presses "Remove Drive" button.
+    /// </summary>
+    public void RemoveDrive(DataDriveViewModel vm)
+    {
+      DataDrive drive = vm.DataDrive;
+      if (drive.FileCount > 0) {
+        string message = String.Format("Are you sure you want to remove {0} from the backup?", drive.Root);
+        if (MessageWindow.Show(owner, "Confirm drive removal", message, MessageWindowIcon.Question, MessageWindowButton.YesNo) == false)
+          return;
+
+        Status = "Removing " + drive.Root + "...";
+        // start process of removing files
+        Task.Factory.StartNew(() =>
+        {
+          removeDriveCancelled = false;
+          removeDriveInProgress = true;
+          try {
+            paritySet.RemoveAllFiles(drive);
+            if (!removeDriveCancelled)
+              RemoveEmptyDrive(vm);
+            else
+              Status = "Remove drive cancelled";
+          }
+          catch (Exception e) {
+            Status = "Remove drive failed: " + e.Message;
+            return;
+          }
+          finally {
+            removeDriveInProgress = false;
+          }
+        });
+
+
+      }
+      else
+        RemoveEmptyDrive(vm);
+    }
+
+    /// <summary>
+    /// Removes a drive from the parity set which has already been confirmed to be empty
+    /// </summary>
+    private void RemoveEmptyDrive(DataDriveViewModel vm)
+    {
+      try {
+        paritySet.RemoveEmptyDrive(vm.DataDrive);
+      }
+      catch (Exception e) {
+        MessageWindow.ShowError(owner, "Error removing drive", e.Message);
+        return;
+      }
+      vm.PropertyChanged -= HandleDataDrivePropertyChanged;
+      // Can only modify the drives collection on the main thread
+      Application.Current.Dispatcher.Invoke(new Action(() =>
+      {
+        drives.Remove(vm);
+      }));
+      Status = vm.DataDrive.Root + " removed";
     }
 
     /// <summary>
@@ -377,6 +439,11 @@ namespace disParityUI
         recoverCancelled = true;
         paritySet.CancelRecover();
       }
+      else if (removeDriveInProgress) {
+        Status = "Cancelling remove drive...";
+        removeDriveCancelled = true;
+        paritySet.CancelRemoveAll();
+      }
     }
 
     public ObservableCollection<DataDriveViewModel> Drives
@@ -436,7 +503,7 @@ namespace disParityUI
     {
       get
       {
-        return scanInProgress || updateInProgress || recoverInProgress;
+        return scanInProgress || updateInProgress || recoverInProgress || removeDriveInProgress;
       }
     }
 

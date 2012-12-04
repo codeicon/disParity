@@ -59,7 +59,7 @@ namespace disParity
     }
 
     /// <summary>
-    /// Add more data to the current block by XOR'ing it in
+    /// Add (or remove) more data to the current block by XOR'ing it in
     /// </summary>
     public void AddData(byte[] data)
     {

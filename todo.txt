@@ -1,7 +1,18 @@
-* Update main progress correctly during scan of single drive
+* Fast file removal needs to consider edits
+
+* Error messages during update need to be collected and reported the same as
+  for recover errors.
   
+* XXX used YYY free report never updates
+
 * No way to re-create parity from scratch.
 
+* Protect against file modifications during updates causing problems by 
+  checking last modified times.
+
+* Idea: don't bother with hash check if LastWriteTime has changed, just
+  assume the file has been edited.
+  
 * Handle out-of-parity space issues robustly (should update detect and report 
   when there is not enough room on the parity drive?)
   
@@ -41,4 +52,4 @@
 * update scan should handle case where file attributes only have changed -
   no parity change occurs but the updated attributes should be saved to the meta data
   
-  
+* Allow re-organizing drive list using drag-and-drop

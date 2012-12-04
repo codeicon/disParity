@@ -45,7 +45,7 @@ namespace disParityUI
     private void HandleInitialized(object sender, EventArgs args)
     {
       if (SingleInstance.AlreadyRunning()) {
-        MessageWindow.Show(null, "Already running", "Another instance of disParity is already running", MessageWindowIcon.Error, MessageWindowButton.OK);
+        MessageWindow.ShowError(null, "Already running", "Another instance of disParity is already running");
         Close();
       }
     }
@@ -87,6 +87,18 @@ namespace disParityUI
       DialogResult r = d.ShowDialog();
       if (r == System.Windows.Forms.DialogResult.OK)
         viewModel.AddDrive(d.SelectedPath);
+      e.Handled = true;
+    }
+
+    void RemoveDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+      e.CanExecute = !viewModel.Busy && (DriveList.SelectedItems.Count == 1);
+    }
+
+    void RemoveDriveExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+      if (DriveList.SelectedItems.Count == 1)  // sanity check
+        viewModel.RemoveDrive((DataDriveViewModel)DriveList.SelectedItem);
       e.Handled = true;
     }
 

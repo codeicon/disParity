@@ -65,6 +65,17 @@ namespace disParityUI
       return result;
     }
 
+    internal static void ShowError(Window owner, string caption, string message)
+    {
+      Application.Current.Dispatcher.Invoke(new Action(() =>
+      {
+        MessageWindow window = new MessageWindow();
+        window.DataContext = new MessageWindowViewModel(caption, message, MessageWindowIcon.Error, MessageWindowButton.OK);
+        window.Owner = owner;
+        window.ShowDialog();
+      }));
+    }
+
   }
 
 

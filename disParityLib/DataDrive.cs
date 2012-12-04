@@ -297,7 +297,12 @@ namespace disParity
     private List<FileRecord> adds = new List<FileRecord>();
     public List<FileRecord> Adds { get { return adds; } }
 
-    // the "moves" dictionary maps FilesRecords from the master files list to the new scanFiles list
+    // the "edits" list contains FileRecords from the master files list
+    // Note that edited files are also in the deletes and adds list
+    private List<FileRecord> edits = new List<FileRecord>();
+    public List<FileRecord> Edits { get { return edits; } }
+
+    // the "moves" dictionary maps old file names to new entryies from the scanFiles list
     private Dictionary<string, FileRecord> moves = new Dictionary<string, FileRecord>();
 
     /// <summary>
@@ -309,6 +314,7 @@ namespace disParity
       adds.Clear();
       deletes.Clear();
       moves.Clear();
+      edits.Clear();
 
       // build dictionary of seen file names for fast lookup
       Dictionary<string, FileRecord> seenFileNames = new Dictionary<string, FileRecord>();
@@ -340,6 +346,7 @@ namespace disParity
               }
             }
       }
+
       // remove the moved files from the add and delete lists
       foreach (var kvp in moves) {
         FileRecord delete = null;
@@ -356,19 +363,19 @@ namespace disParity
       // now check for edits
       foreach (var kvp in files) {
         FileRecord n;
-        // can only be an edit if we saw the same file name this scan...
+        // a file can only be edited if the file name was seen this can
         if (seenFileNames.TryGetValue(kvp.Key, out n)) {
-          // if we detect an edit, we add the "new" version of the file to the "edit" list, 
-          // because it has the new attributes and we want those saved later
+          // if we detect an edit, we add the "new" version of the file to the adds list, 
+          // because it has the new attributes and we want those saved later.  The old value goes
+          // into the edits and deletes lists.
           if (kvp.Value.Length != n.Length) {
+            edits.Add(kvp.Value);
             deletes.Add(kvp.Value);
             adds.Add(n);
-          }
-          // don't compare creation times; if you "upgrade" to a larger disk and just copy files over, it changes
-          // the creation time and then spends hours here needlessly checking for edits
-          else if (/*kvp.Value.CreationTime != n.CreationTime || */ kvp.Value.LastWriteTime != n.LastWriteTime)
-            // probable edit, check hash code to be sure
+          } else if (kvp.Value.LastWriteTime != n.LastWriteTime)
+            // length hasn't changed but timestamp says file was modified, check hash code to be sure it has changed
             if (!HashCheck(kvp.Value)) {
+              edits.Add(kvp.Value);
               deletes.Add(kvp.Value);
               adds.Add(n);
             }
@@ -408,7 +415,7 @@ namespace disParity
     }
 
     /// <summary>
-    /// Removes the file from the newFiles list and saves the new list to disk
+    /// Removes the file from the master files list and saves the new list to disk
     /// </summary>
     public void RemoveFile(FileRecord r)
     {

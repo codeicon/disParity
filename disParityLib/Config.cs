@@ -103,6 +103,7 @@ namespace disParity
                   if (reader.Name == "Ignore" && reader.IsStartElement()) {
                     reader.Read();
                     Ignores.Add(reader.Value);
+                    reader.Read(); // skip end element
                   }
                 }
               }

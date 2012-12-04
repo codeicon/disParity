@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.IO;
 using System.Security.Cryptography;
@@ -14,8 +15,7 @@ namespace disParity
     private List<DataDrive> drives;
     private Parity parity;
     private byte[] tempBuf = new byte[Parity.BlockSize];
-    private bool cancelUpdate;
-    private bool cancelRecover;
+    private bool cancel;
 
     public event EventHandler<RecoverErrorEventArgs> RecoverError;
 
@@ -124,7 +124,7 @@ namespace disParity
       Empty = true;
     }
 
-    // update progress state
+    // Update progress state.  Also used for RemoveAllFiles.
     private UInt32 currentUpdateBlocks;
     private UInt32 totalUpdateBlocks;
 
@@ -133,7 +133,7 @@ namespace disParity
     /// </summary>
     public void Update(bool scanFirst = false)
     {
-      cancelUpdate = false;
+      cancel = false;
       if (Empty) {
         LogFile.Log("No existing parity data found.  Creating new snapshot.");
         Create();
@@ -145,7 +145,7 @@ namespace disParity
           // get the current list of files on each drive and compare to old state
           ScanAll();
 
-        if (cancelUpdate)
+        if (cancel)
           return;
 
         // process all moves for all drives first, since that doesn't require changing
@@ -153,7 +153,7 @@ namespace disParity
         foreach (DataDrive d in drives)
           d.ProcessMoves();
 
-        if (cancelUpdate)
+        if (cancel)
           return;
 
         // count total blocks for this update, for progress reporting
@@ -179,7 +179,7 @@ namespace disParity
               deleteSize += r.Length;
               d.Deletes.Remove(r);
             }
-            if (cancelUpdate)
+            if (cancel)
               return;
           }
           d.UpdateStatus();
@@ -203,7 +203,7 @@ namespace disParity
               addSize += r.Length;
               d.Adds.Remove(r);
             }
-            if (cancelUpdate)
+            if (cancel)
               return;
           }
           d.UpdateStatus();
@@ -216,7 +216,7 @@ namespace disParity
 
       }
       finally {
-        if (cancelUpdate)
+        if (cancel)
           // make sure all progress bars are reset
           foreach (DataDrive d in drives)
             d.UpdateStatus();
@@ -229,7 +229,7 @@ namespace disParity
     public void CancelUpdate()
     {
       LogFile.Log("Update cancelled");
-      cancelUpdate = true;
+      cancel = true;
       // in case we are still doing the pre-update scan
       foreach (DataDrive d in drives)
         d.CancelScan();
@@ -239,7 +239,13 @@ namespace disParity
     public void CancelRecover()
     {
       LogFile.Log("Recover cancelled");
-      cancelRecover = true;
+      cancel = true;
+    }
+
+    public void CancelRemoveAll()
+    {
+      LogFile.Log("Remove all cancelled");
+      cancel = true;
     }
 
     private bool ValidDrive(DataDrive drive)
@@ -288,6 +294,54 @@ namespace disParity
       return newDrive;
     }
 
+    /// <summary>
+    /// Remove all files from the given drive from the parity set
+    /// </summary>
+    public void RemoveAllFiles(DataDrive drive)
+    {
+      totalUpdateBlocks = 0;
+      cancel = false;
+
+      // make a copy of the drive's file table to work on
+      FileRecord[] files = drive.Files.ToArray();
+
+      // get total blocks for progress reporting
+      foreach (FileRecord r in files)
+        totalUpdateBlocks += r.LengthInBlocks;
+
+      currentUpdateBlocks = 0;
+      ReportProgress(0);
+      drive.ReportProgress(0);
+      foreach (FileRecord r in files) {
+        RemoveFromParity(r);
+        if (cancel)
+          break;
+      }
+      ReportProgress(0);
+      drive.ReportProgress(0);
+    }
+
+    public void RemoveEmptyDrive(DataDrive drive)
+    {
+      if (drive.FileCount > 0)
+        throw new Exception("Attempt to remove non-empty drive");
+
+      // find the config entry for this drive
+      Drive driveConfig = Config.Drives.Single(s => s.Path == drive.Root);
+
+      // delete the meta data file, if any
+      string metaFilePath = Path.Combine(Config.ParityDir, driveConfig.Metafile);
+      if (File.Exists(metaFilePath))
+        File.Delete(Path.Combine(Config.ParityDir, driveConfig.Metafile));
+
+      // remove it from the config and save
+      Config.Drives.Remove(driveConfig);
+      Config.Save();
+
+      // finally remove the drive from the parity set
+      drives.Remove(drive);
+    }
+
     private string FindAvailableMetafileName()
     {
       int fileNo = 0;
@@ -315,7 +369,7 @@ namespace disParity
     /// </summary>
     public void Recover(DataDrive drive, string path, out int successes, out int failures)
     {
-      cancelRecover = false;
+      cancel = false;
       if (!ValidDrive(drive))
         throw new Exception("Invalid drive passed to Recover");
       successes = 0;
@@ -328,7 +382,7 @@ namespace disParity
         if (RecoverFile(f, path))
           successes++;
         else {
-          if (cancelRecover) {
+          if (cancel) {
             drive.ReportProgress(0, "");
             return;
           }
@@ -359,7 +413,7 @@ namespace disParity
             block++;
             r.Drive.ReportProgress((double)(block - r.StartBlock) / r.LengthInBlocks, "");
             ReportProgress((double)(recoverBlocks + (block - r.StartBlock)) / recoverTotalBlocks);
-            if (cancelRecover) {
+            if (cancel) {
               f.Close();
               File.Delete(fullPath);
               r.Drive.UpdateStatus();
@@ -405,8 +459,8 @@ namespace disParity
     {
       string fullPath = r.FullPath;
       // attributes may have changed since we started, refresh just in case
-      if (!r.Refresh(fullPath)) {
-        LogFile.Log("{0} no longer exists.", fullPath);
+      if (!r.RefreshAttributes()) {
+        LogFile.Log("{0} no longer exists.", r.FullPath);
         return false;
       }
       if (r.Length > 0) {
@@ -441,39 +495,10 @@ namespace disParity
 
         r.Drive.FireUpdateProgress("Adding  " + fullPath, r.Drive.FileCount, r.Drive.TotalFileSize, 0);
 
-        byte[] data = new byte[Parity.BlockSize];
-        MD5 hash = MD5.Create();
-        hash.Initialize();
-        using (ParityChange change = new ParityChange(parity, Config, startBlock, r.LengthInBlocks)) {
-          using (FileStream f = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read))
-            for (UInt32 b = startBlock; b < endBlock; b++) {
-              Int32 bytesRead;
-              try {
-                bytesRead = f.Read(data, 0, Parity.BlockSize);
-              }
-              catch (Exception e) {
-                LogFile.Log("Error reading {0}: {1}", fullPath, e.Message);
-                LogFile.Log("File will be skipped.");
-                return false;
-              }
-              if (b == (endBlock - 1))
-                hash.TransformFinalBlock(data, 0, bytesRead);
-              else
-                hash.TransformBlock(data, 0, bytesRead, data, 0);
-              while (bytesRead < Parity.BlockSize)
-                data[bytesRead++] = 0;
-              change.Reset(true);
-              change.AddData(data);
-              change.Write();
-              currentUpdateBlocks++;
-              r.Drive.FireUpdateProgress("", r.Drive.FileCount, r.Drive.TotalFileSize, (double)(b - startBlock) / (double)(endBlock - startBlock));
-              ReportProgress((double)currentUpdateBlocks / totalUpdateBlocks);
-              if (cancelUpdate)
-                return false;
-            }
-          change.Save();
+        if (!XORFileWithParity(r, false)) {
+          LogFile.Log("Could not add {0} to parity.  File will be skipped.", r.FullPath);
+          return false;
         }
-        r.HashCode = hash.Hash;
       }
       r.Drive.AddFile(r);
       return true;
@@ -482,15 +507,21 @@ namespace disParity
     private bool RemoveFromParity(FileRecord r)
     {
       if (r.Length > 0) {
+        string fullPath = r.FullPath;
         UInt32 startBlock = r.StartBlock;
         UInt32 endBlock = startBlock + r.LengthInBlocks;
-        string fullPath = r.FullPath;
         if (LogFile.Verbose)
           LogFile.Log("Removing {0} from blocks {1} to {2}...", fullPath, startBlock, endBlock - 1);
         else
           LogFile.Log("Removing {0}...", fullPath);
 
         r.Drive.FireUpdateProgress("Removing  " + fullPath, r.Drive.FileCount, r.Drive.TotalFileSize, 0);
+
+        // Optimization: if the file still exists and is unmodified, we can remove it much faster this way
+        if (!r.Modified && XORFileWithParity(r, true)) {
+          r.Drive.RemoveFile(r);
+          return true;
+        }
 
         // Recalulate parity from scratch for all blocks that contained the deleted file's data.
         using (ParityChange change = new ParityChange(parity, Config, startBlock, r.LengthInBlocks)) {
@@ -514,13 +545,10 @@ namespace disParity
             }
             change.Write();
             currentUpdateBlocks++;
-            // only report once every 10 blocks
-            if ((currentUpdateBlocks % 10) == 0) {
-              r.Drive.FireUpdateProgress("", r.Drive.FileCount, r.Drive.TotalFileSize,
-                (double)(b - startBlock) / (double)(endBlock - startBlock));
-              ReportProgress((double)currentUpdateBlocks / totalUpdateBlocks);
-            }
-            if (cancelUpdate)
+            r.Drive.FireUpdateProgress("", r.Drive.FileCount, r.Drive.TotalFileSize,
+              (double)(b - startBlock) / (double)(endBlock - startBlock));
+            ReportProgress((double)currentUpdateBlocks / totalUpdateBlocks);
+            if (cancel)
               return false;
           }
           change.Save();
@@ -529,6 +557,66 @@ namespace disParity
       r.Drive.RemoveFile(r);
       return true;
     }
+
+    /// <summary>
+    /// XORs the data from the given file with the parity data.  This either adds the file to 
+    /// parity or removes it from parity if it was already there.  If checkHash is true,
+    /// it verifies the file's hash matches the hash on record before commiting the parity.
+    /// If false, it updates the file's hash on record.
+    /// </summary>
+    private bool XORFileWithParity(FileRecord r, bool checkHash)
+    {
+      if (!File.Exists(r.FullPath))
+        return false;
+      if (r.Length == 0)
+        return true;
+
+      using (ParityChange change = new ParityChange(parity, Config, r.StartBlock, r.LengthInBlocks)) {
+        byte[] data = new byte[Parity.BlockSize];
+        MD5 hash = MD5.Create();
+        hash.Initialize();
+        UInt32 endBlock = r.StartBlock + r.LengthInBlocks;
+        using (FileStream f = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+          for (UInt32 b = r.StartBlock; b < endBlock; b++) {
+            Int32 bytesRead;
+            try {
+              bytesRead = f.Read(data, 0, Parity.BlockSize);
+            }
+            catch (Exception e) {
+              LogFile.Log("Error reading {0}: {1}", r.FullPath, e.Message);
+              return false;
+            }
+            if (b == (endBlock - 1))
+              hash.TransformFinalBlock(data, 0, bytesRead);
+            else
+              hash.TransformBlock(data, 0, bytesRead, data, 0);
+            while (bytesRead < Parity.BlockSize)
+              data[bytesRead++] = 0;
+            change.Reset(true);
+            change.AddData(data);
+            change.Write();
+            currentUpdateBlocks++;
+            r.Drive.FireUpdateProgress("", r.Drive.FileCount, r.Drive.TotalFileSize, (double)(b - r.StartBlock) / (double)(endBlock - r.StartBlock));
+            ReportProgress((double)currentUpdateBlocks / totalUpdateBlocks);
+            if (cancel)
+              return false;
+          }
+
+        if (checkHash) {
+          if (!Utils.HashCodesMatch(hash.Hash, r.HashCode)) {
+            LogFile.Log("Tried to remove existing file but hash codes don't match.");
+            return false;
+          }
+        }
+        else
+          r.HashCode = hash.Hash;
+
+        change.Save(); // commit the parity change to disk
+      }
+      return true;
+    }
+
+    
 
     private void PrintBlockMask(DataDrive d)
     {
@@ -595,7 +683,7 @@ namespace disParity
           ReportProgress((double)block / totalBlocks);
           block++;
 
-          if (cancelUpdate) {
+          if (cancel) {
             // we can't salvage an initial update that was cancelled so we'll have to start again from scratch next time.
             LogFile.Log("Initial update cancelled.  Resetting parity to empty.");
             parity.Close();
