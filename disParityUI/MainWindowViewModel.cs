@@ -47,6 +47,7 @@ namespace disParityUI
       if (!Directory.Exists(logPath))
         Directory.CreateDirectory(logPath);
       LogFile.Open(Path.Combine(logPath, "disParity.log"), false);
+      LogFile.Log("Application launched at " + DateTime.Now);
 
       LoadConfig(appDataPath);
 
@@ -82,16 +83,21 @@ namespace disParityUI
     /// </summary>
     public void Loaded()
     {
-      if (!disParity.License.Accepted) {
-        if (!ShowLicenseAgreement()) {
-          owner.Close();
-          return;
+      try {
+        if (!disParity.License.Accepted) {
+          if (!ShowLicenseAgreement()) {
+            owner.Close();
+            return;
+          }
+          disParity.License.Accepted = true;
         }
-        disParity.License.Accepted = true;
-      }
 
-      disParity.Version.DoUpgradeCheck(HandleNewVersionAvailable);
-      ScanAll();
+        disParity.Version.DoUpgradeCheck(HandleNewVersionAvailable);
+        ScanAll();
+      }
+      catch (Exception e) {
+        LogFile.Log("Exception in MainWindow.Loaded: " + e.Message);
+      }
     }
 
     private bool ShowLicenseAgreement()
@@ -158,6 +164,7 @@ namespace disParityUI
       config.MainWindowWidth = (int)Width;
       config.MainWindowHeight = (int)Height;
       paritySet.Close();
+      LogFile.Log("Application shutdown at " + DateTime.Now);
       LogFile.Close();
     }
 

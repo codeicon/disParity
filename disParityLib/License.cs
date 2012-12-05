@@ -23,7 +23,8 @@ namespace disParity
           else
             return true;
         }
-        catch {
+        catch (Exception e) {
+          LogFile.Log("Registry.GetValue failed: " + e.Message);
           return false;
         }
       }
@@ -34,7 +35,8 @@ namespace disParity
           Registry.SetValue("HKEY_CURRENT_USER\\Software\\disParity", "License", 
             value ? 1 : 0, RegistryValueKind.DWord);
         }
-        catch {
+        catch (Exception e) {
+          LogFile.Log("Registry.SetValue failed: " + e.Message);
         }
       }
 

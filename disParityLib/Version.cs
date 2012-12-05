@@ -33,6 +33,7 @@ namespace disParity
       Task.Factory.StartNew(() =>
       {
         try {
+          LogFile.Log("Checking for upgrade...");
           bool firstRun;
           UInt32 id = GetID(out firstRun);
           string url = @"http://www.vilett.com/disParity/ping.php?id=" + id.ToString() + 
@@ -41,6 +42,7 @@ namespace disParity
           byte[] buf = webClient.DownloadData(new System.Uri(url));
           double currentVersion = Convert.ToDouble(Version.VersionNum);
           double latestVersion = Convert.ToDouble(Encoding.ASCII.GetString(buf));
+          LogFile.Log("Current version: {0} Latest version: {1}", currentVersion, latestVersion);
           if (latestVersion > 0 && latestVersion > currentVersion)
             callback(Encoding.ASCII.GetString(buf));
         }
@@ -69,7 +71,8 @@ namespace disParity
           id = (UInt32)(int)entry;
         return id;
       }
-      catch {
+      catch (Exception e) {
+        LogFile.Log("Error accessing registry: " + e.Message);
         return 0;
       }
     }

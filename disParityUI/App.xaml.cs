@@ -5,6 +5,7 @@ using System.Data;
 using System.Linq;
 using System.Windows;
 using System.IO;
+using disParity;
 
 namespace disParityUI
 {
@@ -21,6 +22,10 @@ namespace disParityUI
     static void HandleUnhandledException(object sender, UnhandledExceptionEventArgs args)
     {
       Exception e = (Exception)args.ExceptionObject;
+
+      LogFile.Log("Exiting due to unhandled exception: " + e.Message);
+      LogFile.Log(e.StackTrace);
+      LogFile.Close();
 
       string appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "disParity");
       if (!Directory.Exists(appDataPath))
@@ -41,6 +46,7 @@ namespace disParityUI
         }
        
       }
+      Environment.Exit(0);
     }
 
   }
