@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Diagnostics;
 
 namespace disParity
 {
@@ -37,6 +38,14 @@ namespace disParity
     public void Write(UInt32 block)
     {
       parity.WriteBlock(block, data);
+    }
+
+    public bool Equals(ParityBlock block)
+    {
+      for (int i = 0; i < Parity.BlockSize; i++)
+        if (data[i] != block.Data[i])
+          return false;
+      return true;
     }
 
   }

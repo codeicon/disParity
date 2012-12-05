@@ -17,7 +17,8 @@ namespace disParity
     private byte[] tempBuf = new byte[Parity.BlockSize];
     private bool cancel;
 
-    public event EventHandler<RecoverErrorEventArgs> RecoverError;
+    // For a reportable generated during a long-running operation (Recover, Verify, etc.)
+    public event EventHandler<ErrorMessageEventArgs> ErrorMessage;
 
     public ParitySet(Config config)
     {
@@ -248,6 +249,16 @@ namespace disParity
       cancel = true;
     }
 
+    // Caution: Keep this thread safe!
+    public void CancelVerify()
+    {
+      LogFile.Log("Verify cancelled");
+      cancel = true;
+      // in case we are still doing the pre-verify scan
+      foreach (DataDrive d in drives)
+        d.CancelScan();
+    }
+
     private bool ValidDrive(DataDrive drive)
     {
       foreach (DataDrive d in drives)
@@ -428,7 +439,7 @@ namespace disParity
         File.SetAttributes(fullPath, r.Attributes);
         if (r.Length > 0 && !Utils.HashCodesMatch(hash.Hash, r.HashCode)) {
           LogFile.Log("ERROR: hash verify FAILED for {0}", fullPath);
-          FireRecoverError("Hash verify failed for \"" + fullPath + "\".  Recovered file is probably corrupt.");
+          FireErrorMessage("Hash verify failed for \"" + fullPath + "\".  Recovered file is probably corrupt.");
           return false;
         }
         else
@@ -436,7 +447,7 @@ namespace disParity
       }
       catch (Exception e) {
         LogFile.Log("ERROR recovering {0} : {1}", fullPath, e.Message);
-        FireRecoverError("Error recovering \"" + fullPath + "\": " + e.Message);
+        FireErrorMessage("Error recovering \"" + fullPath + "\": " + e.Message);
         return false;
       }
       finally {
@@ -705,6 +716,41 @@ namespace disParity
 
     }
 
+    public void Verify()
+    {
+      cancel = false;
+      MD5 hash = MD5.Create();
+      UInt32 maxBlock = MaxParityBlock();
+      UInt32 errors = 0;
+
+      ReportProgress(0);
+
+      TimeBasedProgressThrottling = true;
+      try {
+        ParityBlock parityBlock = new ParityBlock(parity);
+        ParityBlock calculatedParityBlock = new ParityBlock(parity);
+        byte[] buf = new byte[Parity.BlockSize];
+        for (UInt32 block = 0; block < maxBlock; block++) {
+          parityBlock.Load(block);
+          calculatedParityBlock.Clear();
+          foreach (DataDrive d in drives)
+            if (d.ReadBlock(block, buf))
+              calculatedParityBlock.Add(buf);
+          if (!calculatedParityBlock.Equals(parityBlock)) {
+            FireErrorMessage(String.Format("Block {0} does not match", block));
+            errors++;
+          }
+          ReportProgress((double)block / maxBlock, String.Format("{0} of {1} blocks verified. Errors found: {2}", block, maxBlock, errors));
+          if (cancel)
+            return;
+        }
+      }
+      finally {
+        TimeBasedProgressThrottling = false;
+      }
+
+    }
+
     private void ValidateConfig()
     {
       // this is now a valid condition
@@ -723,17 +769,20 @@ namespace disParity
         throw new Exception(String.Format("{0} is not a valid parity path (must be absolute)", Config.ParityDir));
     }
 
-    private void FireRecoverError(string message)
+    private void FireErrorMessage(string message)
     {
-      if (RecoverError != null)
-        RecoverError(this, new RecoverErrorEventArgs(message));
+      if (ErrorMessage != null)
+        ErrorMessage(this, new ErrorMessageEventArgs(message));
     }
 
   }
 
-  public class RecoverErrorEventArgs : EventArgs
+  /// <summary>
+  /// For a reportable generated during a long-running operation (Recover, Verify, etc.)
+  /// </summary>
+  public class ErrorMessageEventArgs : EventArgs
   {
-    public RecoverErrorEventArgs(string msg)
+    public ErrorMessageEventArgs(string msg)
     {
       Message = msg;
     }

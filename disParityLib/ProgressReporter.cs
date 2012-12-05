@@ -12,22 +12,35 @@ namespace disParity
   public class ProgressReporter
   {
 
+    private DateTime lastReport;
     private double lastProgress;
     private const double MIN_PROGRESS_DELTA = 0.001;
+    private TimeSpan minTimeDelta = TimeSpan.FromMilliseconds(100); // max. 10x per second
 
     public event EventHandler<ProgressReportEventArgs> ProgressReport;
 
-    public void ReportProgress(double progress, string message = "")
+    public void ReportProgress(double progress, string message = "", bool force = false)
     {
-      if (ProgressReport != null) {
-        // only fire the event if the messages is non-empty or if the progress has advanced
-        // by MIN_PROGRESS_DELTA
-        if (message != "" || progress == 0.0 || (progress - lastProgress) >= MIN_PROGRESS_DELTA) {
-          ProgressReport(this, new ProgressReportEventArgs(progress, message));
-          lastProgress = progress;
+      if (ProgressReport == null)
+        return;
+
+      DateTime now = DateTime.Now;
+
+      if (!force && progress != 0.0)
+        if (TimeBasedProgressThrottling) {
+          if (now - lastReport < minTimeDelta)
+            return;
         }
-      }
+        else if ((progress - lastProgress) < MIN_PROGRESS_DELTA)
+          return;
+
+      ProgressReport(this, new ProgressReportEventArgs(progress, message));
+      lastProgress = progress;
+      lastReport = now;
+
     }
+
+    protected bool TimeBasedProgressThrottling { set; private get; }
 
   }
 

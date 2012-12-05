@@ -44,7 +44,8 @@ namespace disParity
           if (latestVersion > 0 && latestVersion > currentVersion)
             callback(Encoding.ASCII.GetString(buf));
         }
-        catch {
+        catch (Exception e) {
+          LogFile.Log("Error checking for upgrade: " + e.Message);
         }
       });
 #endif

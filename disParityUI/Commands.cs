@@ -19,6 +19,7 @@ namespace disParityUI
     public static RoutedUICommand Options;
     public static RoutedUICommand About;
     public static RoutedUICommand CancelOperation;
+    public static RoutedUICommand Verify;
 
     static Commands()
     {
@@ -31,6 +32,7 @@ namespace disParityUI
       Options = new RoutedUICommand("Options...", "Options", typeof(MainWindow));
       About = new RoutedUICommand("About...", "About", typeof(MainWindow));
       CancelOperation = new RoutedUICommand("Cancel", "Cancel", typeof(MainWindow));
+      Verify = new RoutedUICommand("Verify", "Verify", typeof(MainWindow));
     }
 
   }

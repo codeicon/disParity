@@ -33,6 +33,7 @@ namespace disParityUI
       updateStatusTimer.Interval = TimeSpan.FromSeconds(1);
       updateStatusTimer.Tick += HandleUpdateStatusTimerTick;
       updateStatusTimer.Stop();
+      UpdateAdditionalInfo();
     }
 
     public void Scan()
@@ -41,11 +42,13 @@ namespace disParityUI
       {
         try {
           DataDrive.Scan();
+          UpdateAdditionalInfo();
         }
         catch (Exception e) {
           LogFile.Log("Error occurred during scan of {0}: {1}", DataDrive.Root, e.Message);
         }
         finally {
+          UpdateStatus();
           Progress = 0;
         }
       }
@@ -53,6 +56,16 @@ namespace disParityUI
     }
 
     public DataDrive DataDrive { get; private set; }
+
+    private void UpdateAdditionalInfo()
+    {
+      if (DataDrive.DriveType == DriveType.Network)
+        AdditionalInfo = "Network drive";
+      else
+        AdditionalInfo = String.Format("{0} used {1} free",
+          Utils.SmartSize(DataDrive.TotalSpace - DataDrive.FreeSpace),
+          Utils.SmartSize(DataDrive.FreeSpace));
+    }
 
     private void HandleUpdateStatusTimerTick(object sender, EventArgs args)
     {
@@ -75,6 +88,7 @@ namespace disParityUI
 
     private void HandleStatusChanged(object sender, StatusChangedEventArgs args)
     {
+      /*
       if (args.Status == DriveStatus.UpdateRequired) {
         Status = String.Format("Update Required ({0} new, {1} deleted, {2} moved)",
           args.AddCount, args.DeleteCount, args.MoveCount);
@@ -85,6 +99,8 @@ namespace disParityUI
       } 
       else
         UpdateStatus();
+       */
+      UpdateStatus();
       FileCount = String.Format("{0} ({1})", DataDrive.FileCount,
         Utils.SmartSize(DataDrive.TotalFileSize));
       Progress = 0;
@@ -125,16 +141,16 @@ namespace disParityUI
       }
     }
 
+    private string additionalInfo;
     public string AdditionalInfo
     {
       get
       {
-        if (DataDrive.DriveType == DriveType.Network)
-          return "Network drive";
-        else
-          return String.Format("{0} used {1} free",
-            Utils.SmartSize(DataDrive.TotalSpace - DataDrive.FreeSpace),
-            Utils.SmartSize(DataDrive.FreeSpace));
+        return additionalInfo;
+      }
+      set
+      {
+        SetProperty(ref additionalInfo, "AdditionalInfo", value);
       }
     }
 
@@ -191,14 +207,6 @@ namespace disParityUI
       }
     }
 
-    public bool NeedsUpdate
-    {
-      get
-      {
-        return (DataDrive.Status == DriveStatus.UpdateRequired);
-      }
-    }
-
     #endregion
 
     public void UpdateStatus()
@@ -206,22 +214,22 @@ namespace disParityUI
       switch (DataDrive.Status) {
         case DriveStatus.ScanRequired:
           Status = "Unknown (scan required)";
-          //StatusColor = Brushes.Red;
           StatusIcon = Icons.Unknown;
           break;
         case DriveStatus.UpdateRequired:
-          Status = "Update required";
-          //StatusColor = cautionBrush;
-          StatusIcon = Icons.Caution;
+          Status = String.Format("Update Required ({0} new, {1} deleted, {2} moved)",
+            DataDrive.Adds.Count, DataDrive.Deletes.Count, DataDrive.Moves.Count());
+          if (DataDrive.Deletes.Count > 0 || DataDrive.Moves.Count() > 0)
+            StatusIcon = Icons.Urgent;
+          else
+            StatusIcon = Icons.Caution;
           break;
         case DriveStatus.UpToDate:
           Status = "Up to date";
-          //StatusColor = Brushes.Green;
           StatusIcon = Icons.Good;
           break;
         case DriveStatus.AccessError:
           Status = "Error: " + DataDrive.LastError;
-          //StatusColor = Brushes.Red;
           StatusIcon = Icons.Urgent;
           break;
       }

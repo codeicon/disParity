@@ -154,6 +154,20 @@ namespace disParityUI
       e.Handled = true;
     }
 
+    void VerifyCanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+      if (viewModel.Busy || viewModel.Drives.Count == 0)
+        e.CanExecute = false;
+      else
+        e.CanExecute = true;
+    }
+
+    void VerifyExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+      viewModel.Verify();
+      e.Handled = true;
+    }
+
     void OptionsCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
       e.CanExecute = !viewModel.Busy;

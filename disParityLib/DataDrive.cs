@@ -51,7 +51,6 @@ namespace disParity
             DriveType = driveInfo.DriveType;
             VolumeLabel = driveInfo.VolumeLabel;
             TotalSpace = driveInfo.TotalSize;
-            FreeSpace = driveInfo.TotalFreeSpace;
           }
           catch {
             DriveType = DriveType.Unknown;
@@ -89,7 +88,14 @@ namespace disParity
 
     public string VolumeLabel { get; private set; }
 
-    public long FreeSpace { get; private set; }
+    public long FreeSpace 
+    {
+      get
+      {
+        DriveInfo driveInfo = new DriveInfo(Path.GetPathRoot(root));
+        return driveInfo.TotalFreeSpace;
+      }
+    }
 
     public long TotalSpace { get; private set; }
 
@@ -146,6 +152,7 @@ namespace disParity
       Debug.Assert(!Scanning);
       Scanning = true;
       cancelScan = false;
+      ReportProgress(0);
       try {
 
         // Convert list of ignores to a list of Regex
@@ -176,7 +183,7 @@ namespace disParity
             totalSize += f.Length;
           LogFile.Log("{0}: Found {1} file{2} ({3} total)", Root, scanFiles.Count,
             scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize));
-          ReportProgress(100.0, "Scan complete. Analyzing results...");
+          ReportProgress(1.0, "Scan complete. Analyzing results...");
           Compare();
           UpdateStatus();
         }
@@ -194,7 +201,7 @@ namespace disParity
       if (cancelScan)
         return;
       if (scanProgress != null)
-        ReportProgress(scanProgress.Progress, "Scanning " + dir.FullName + "...");
+        ReportProgress(scanProgress.Progress, "Scanning " + dir.FullName);
       DirectoryInfo[] subDirs;
       try {
         subDirs = dir.GetDirectories();
@@ -304,6 +311,7 @@ namespace disParity
 
     // the "moves" dictionary maps old file names to new entryies from the scanFiles list
     private Dictionary<string, FileRecord> moves = new Dictionary<string, FileRecord>();
+    public IEnumerable<FileRecord> Moves { get { return moves.Values; } }
 
     /// <summary>
     /// Compare the old list of files with the new list in order to

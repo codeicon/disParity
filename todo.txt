@@ -1,10 +1,13 @@
-* Fast file removal needs to consider edits
+* USERS ARE CRASHING ON FIRST RUN AFTER INSTALL
+
+* Adding C:\ as a drive causes excessive memory use during scan.  Can we check
+  for system drive?
+
+* Verify is brutally slow because it open/closes every file each time for every block 
 
 * Error messages during update need to be collected and reported the same as
   for recover errors.
   
-* XXX used YYY free report never updates
-
 * No way to re-create parity from scratch.
 
 * Protect against file modifications during updates causing problems by 
