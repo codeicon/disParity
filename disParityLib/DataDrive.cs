@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.IO;
 using System.Diagnostics;
+using System.Timers;
 
 namespace disParity
 {
@@ -29,6 +30,8 @@ namespace disParity
     private Config config;
     private ProgressEstimator scanProgress;
     private bool cancelScan;
+    private Timer fileCloseTimer;
+    private object fileCloseLock = new object();
 
     const UInt32 META_FILE_VERSION = 1;
 
@@ -63,6 +66,9 @@ namespace disParity
       files = new Dictionary<string, FileRecord>();
       Reset();
 
+      fileCloseTimer = new Timer(1000); // keep cached read files open for at most one second
+      fileCloseTimer.AutoReset = false;
+      fileCloseTimer.Elapsed += HandleFileCloseTimer;
     }
 
     private string MetaFilePath
@@ -581,23 +587,45 @@ namespace disParity
       }
     }
 
+    private FileRecord currentOpenFile;
+    private FileStream currentOpenFileStream;
+
     public bool ReadBlock(UInt32 block, byte[] data)
     {
       FileRecord r = FindFileContaining(block);
       if (r == null)
         return false;
-      string fullPath = r.FullPath;
-      FireReadingFile(fullPath);
-      // to do: what if the file has been edited?
-      // Allow any I/O exceptions below to be caught by parent
-      using (FileStream f = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read)) {
-        f.Position = (block - r.StartBlock) * Parity.BlockSize;
-        int bytesRead = f.Read(data, 0, data.Length);
+      // to do: check r.Modified here, handle it!
+      lock (fileCloseLock) {
+        if (r != currentOpenFile) {
+          if (currentOpenFileStream != null) {
+            currentOpenFileStream.Dispose();
+            currentOpenFileStream = null;
+          }
+          // Allow any I/O exceptions below to be caught by parent
+          currentOpenFileStream = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+          currentOpenFile = r;
+        }
+        fileCloseTimer.Stop();
+        fileCloseTimer.Start();
+        FireReadingFile(currentOpenFile.FullPath);
+        currentOpenFileStream.Position = (block - r.StartBlock) * Parity.BlockSize;
+        int bytesRead = currentOpenFileStream.Read(data, 0, data.Length);
         while (bytesRead < data.Length)
           data[bytesRead++] = 0;
-        f.Close();
       }
       return true;
+    }
+
+    private void HandleFileCloseTimer(object sender, ElapsedEventArgs args)
+    {
+      lock (fileCloseLock) {
+        if (currentOpenFileStream != null) {
+          currentOpenFileStream.Dispose();
+          currentOpenFileStream = null;
+          currentOpenFile = null;
+        }
+      }
     }
 
     /// <summary>

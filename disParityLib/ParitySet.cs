@@ -732,9 +732,12 @@ namespace disParity
         byte[] buf = new byte[Parity.BlockSize];
         for (UInt32 block = 0; block < maxBlock; block++) {
           parityBlock.Load(block);
-          calculatedParityBlock.Clear();
+          bool firstRead = true;
           foreach (DataDrive d in drives)
-            if (d.ReadBlock(block, buf))
+            if (firstRead) {
+              if (d.ReadBlock(block, calculatedParityBlock.Data))
+                firstRead = false;
+            } else if (d.ReadBlock(block, buf))
               calculatedParityBlock.Add(buf);
           if (!calculatedParityBlock.Equals(parityBlock)) {
             FireErrorMessage(String.Format("Block {0} does not match", block));

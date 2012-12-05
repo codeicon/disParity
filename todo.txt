@@ -1,5 +1,11 @@
 * USERS ARE CRASHING ON FIRST RUN AFTER INSTALL
 
+* During verify, drives that have finished early are sometimes stuck on "Reading..." the last file?
+
+* Buttons need tooltips
+
+* Parity location should also show used/free space for the drive
+* 
 * Adding C:\ as a drive causes excessive memory use during scan.  Can we check
   for system drive?
 
