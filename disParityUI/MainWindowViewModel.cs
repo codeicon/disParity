@@ -69,13 +69,14 @@ namespace disParityUI
     private void LoadConfig(string appDataPath)
     {
       string ConfigPath = Path.Combine(appDataPath, "Config.xml");
-      try {
+      // let generic crash logging handle this any exceptions here for now
+      //try {
         config = new Config(ConfigPath);
         config.Load();
-      }
-      catch (Exception e) {
-        throw new Exception("Could not load Config file: " + e.Message);
-      }
+      //}
+      //catch (Exception e) {
+      //  throw new Exception("Could not load Config file: " + e.Message);
+      //}
     }
 
     /// <summary>
@@ -96,6 +97,7 @@ namespace disParityUI
         ScanAll();
       }
       catch (Exception e) {
+        App.LogCrash(e);
         LogFile.Log("Exception in MainWindow.Loaded: " + e.Message);
       }
     }
@@ -217,6 +219,7 @@ namespace disParityUI
               Status = "Remove drive cancelled";
           }
           catch (Exception e) {
+            App.LogCrash(e);
             Status = "Remove drive failed: " + e.Message;
             return;
           }
@@ -240,6 +243,7 @@ namespace disParityUI
         paritySet.RemoveEmptyDrive(vm.DataDrive);
       }
       catch (Exception e) {
+        App.LogCrash(e);
         MessageWindow.ShowError(owner, "Error removing drive", e.Message);
         return;
       }
@@ -300,6 +304,8 @@ namespace disParityUI
             updateAfterScan = false;
             if (anyDriveNeedsUpdate)
               Update();
+            else
+              DisplayUpToDateStatus();
           }
           else if (verifyAfterScan) {
             verifyAfterScan = false;
@@ -357,6 +363,7 @@ namespace disParityUI
         }
         catch (Exception e) {
           Status = "Update failed: " + e.Message;
+          App.LogCrash(e);
         }
         finally {
           Progress = 0;
@@ -402,6 +409,7 @@ namespace disParityUI
             successes, successes == 1 ? "" : "s", failures, failures == 1 ? "" : "s");
         }
         catch (Exception e) {
+          App.LogCrash(e);
           MessageWindow.Show(owner, "Recover failed!", 
             "Sorry, an unexpected error occurred while recovering the drive:\r\n\r\n" + e.Message);
         }
@@ -482,6 +490,7 @@ namespace disParityUI
             }
         }
         catch (Exception e) {
+          App.LogCrash(e);
           Status = "Verify failed: " + e.Message;
         }
         finally {

@@ -98,8 +98,13 @@ namespace disParity
     {
       get
       {
-        DriveInfo driveInfo = new DriveInfo(Path.GetPathRoot(root));
-        return driveInfo.TotalFreeSpace;
+        try {
+          DriveInfo driveInfo = new DriveInfo(Path.GetPathRoot(root));
+          return driveInfo.TotalFreeSpace;
+        }
+        catch {
+          return 0;
+        }
       }
     }
 
@@ -175,6 +180,18 @@ namespace disParity
         scanProgress = null;
         try {
           Scan(new DirectoryInfo(root), ignores);
+          if (!cancelScan) {
+            long totalSize = 0;
+            foreach (FileRecord f in scanFiles)
+              totalSize += f.Length;
+            LogFile.Log("{0}: Found {1} file{2} ({3} total)", Root, scanFiles.Count,
+              scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize));
+            ReportProgress(1.0, "Scan complete. Analyzing results...", true);
+            Compare();
+            UpdateStatus();
+          }
+          else
+            LogFile.Log("{0}: Scan cancelled", Root);
         }
         catch (Exception e) {
           LogFile.Log("Could not scan {0}: {1}", root, e.Message);
@@ -183,18 +200,6 @@ namespace disParity
           FireStatusChanged();
           return;
         }
-        if (!cancelScan) {
-          long totalSize = 0;
-          foreach (FileRecord f in scanFiles)
-            totalSize += f.Length;
-          LogFile.Log("{0}: Found {1} file{2} ({3} total)", Root, scanFiles.Count,
-            scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize));
-          ReportProgress(1.0, "Scan complete. Analyzing results...");
-          Compare();
-          UpdateStatus();
-        }
-        else
-          LogFile.Log("{0}: Scan cancelled", Root);
       }
       finally {
         FireScanCompleted();
@@ -376,6 +381,8 @@ namespace disParity
 
       // now check for edits
       foreach (var kvp in files) {
+        if (cancelScan)
+          return;
         FileRecord n;
         // a file can only be edited if the file name was seen this can
         if (seenFileNames.TryGetValue(kvp.Key, out n)) {
@@ -501,9 +508,13 @@ namespace disParity
     /// </summary>
     private byte[] ComputeHash(FileRecord r)
     {
-      using (FileStream s = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read))
-        hash.ComputeHash(s);
-      return hash.Hash;
+      // ComputeHash(stream) is nice, but the problem is it's not cancellable.  Probably
+      // should make this manual so it can be cancelled.
+      using (MD5 hash = MD5.Create()) {
+        using (FileStream s = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read))
+          hash.ComputeHash(s);
+        return hash.Hash;
+      }
     }
 
     private UInt32 enumBlock;

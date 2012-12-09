@@ -24,6 +24,8 @@ namespace disParity
     {
       drives = new List<DataDrive>();
       Config = config;
+      parity = new Parity(Config);
+      Empty = true;
 
       if (config.Exists) {
 
@@ -37,10 +39,8 @@ namespace disParity
             throw new Exception("Could not create parity folder " + Config.ParityDir + ": " + e.Message);
           }
 
-          Empty = true;
           ReloadDrives();
 
-          parity = new Parity(Config);
         }
       }
     }
@@ -149,6 +149,8 @@ namespace disParity
         if (cancel)
           return;
 
+        LogFile.Log("Beginning update at " + DateTime.Now);
+
         // process all moves for all drives first, since that doesn't require changing
         // any parity data, only the meta data
         foreach (DataDrive d in drives)
@@ -157,6 +159,7 @@ namespace disParity
         if (cancel)
           return;
 
+        ReportProgress(0);
         // count total blocks for this update, for progress reporting
         currentUpdateBlocks = 0;
         totalUpdateBlocks = 0;
@@ -222,6 +225,7 @@ namespace disParity
           foreach (DataDrive d in drives)
             d.UpdateStatus();
         parity.Close();
+        LogFile.Log("Update complete at " + DateTime.Now);
       }
 
     }
@@ -712,6 +716,8 @@ namespace disParity
         foreach (DataDrive d in drives)
           d.EndFileEnum();
         parity.Close();
+        if (!cancel)
+          Empty = false;
       }
 
     }

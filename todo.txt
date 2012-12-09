@@ -1,8 +1,15 @@
-* USERS ARE CRASHING ON FIRST RUN AFTER INSTALL
+* Build up seenFiles during scan instead of at the end, to minimize "Analyzing Results" time.
+* Need to make ComputeHash() cancellable, and the whole "Analyzing results" phase must be cleanly cancellable.
+* 
+* Perhaps moves should be processed immediately as part of a scan.  They take a lot of time to detect, and it's easy to wind up checking them more than once.
 
 * During verify, drives that have finished early are sometimes stuck on "Reading..." the last file?
 
+* Verify needs more detailed error reporting
+
 * Buttons need tooltips
+
+* Maybe check AvailablePhysicalMemory before an update to control how much temp RAM is used?
 
 * Parity location should also show used/free space for the drive
 * 

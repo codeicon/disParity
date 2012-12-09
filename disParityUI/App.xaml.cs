@@ -16,7 +16,11 @@ namespace disParityUI
   {
     protected override void OnStartup(StartupEventArgs e)
     {
+      // Don't install the unhandled exception handler in debug builds, we want to be
+      // able to catch those in the debugger
+#if !DEBUG
       AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(HandleUnhandledException);
+#endif
     }
 
     static void HandleUnhandledException(object sender, UnhandledExceptionEventArgs args)
@@ -27,10 +31,16 @@ namespace disParityUI
       LogFile.Log(e.StackTrace);
       LogFile.Close();
 
+      LogCrash(e);
+      Environment.Exit(0);
+    }
+
+    public static void LogCrash(Exception e)
+    {
       string appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "disParity");
       if (!Directory.Exists(appDataPath))
         Directory.CreateDirectory(appDataPath);
-      
+
       using (StreamWriter s = new StreamWriter(Path.Combine(appDataPath, "crash.txt"))) {
         s.WriteLine("Crash log generated {0}", DateTime.Now);
         s.WriteLine();
@@ -44,9 +54,8 @@ namespace disParityUI
             s.WriteLine();
           }
         }
-       
+
       }
-      Environment.Exit(0);
     }
 
   }

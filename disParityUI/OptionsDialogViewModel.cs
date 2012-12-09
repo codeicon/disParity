@@ -94,7 +94,14 @@ namespace disParityUI
 
     public void ImportOldConfiguration(string path)
     {
-      config.ImportOld(path);
+      try {
+        config.ImportOld(path);
+      }
+      catch (Exception e) {
+        App.LogCrash(e);
+        MessageWindow.ShowError(Owner, "Import error", "Sorry, an error occurred while importing the configuration: " + e.Message);
+        return;
+      }
       SetProperties();
       ConfigImported = true;
     }
