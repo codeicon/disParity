@@ -126,7 +126,7 @@
       <Button Margin="0,10,0,0" Command="ui:Commands.ScanAll" Content="Scan All"/>
       <Button Margin="0,10,0,0" Command="ui:Commands.UpdateAll" Content="Update All"/>
       <Button Margin="0,10,0,0" Command="ui:Commands.RecoverDrive" Content="Recover Drive..."/>
-      <Button Margin="0,10,0,0" Command="ui:Commands.Verify" Content="Verify"/>
+      <!--<Button Margin="0,10,0,0" Command="ui:Commands.Verify" Content="Verify"/>-->
       <Button Margin="0,10,0,0" Command="ui:Commands.Options" Content="Options..."/>
       <Button Margin="0,10,0,0" Command="ui:Commands.About" Content="About..."/>
     </StackPanel>

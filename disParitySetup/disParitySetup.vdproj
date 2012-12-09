@@ -46,13 +46,13 @@
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_1303DA4219DA8EEFB8B30C2FBCCA2E08"
+        "OwnerKey" = "8:_9C01643FC97E31887769B97C4DDF0D7A"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_9C01643FC97E31887769B97C4DDF0D7A"
+        "OwnerKey" = "8:_1303DA4219DA8EEFB8B30C2FBCCA2E08"
         "MsmSig" = "8:_UNDEFINED"
         }
     }
@@ -100,7 +100,7 @@
         "DisplayName" = "8:Release"
         "IsDebugOnly" = "11:FALSE"
         "IsReleaseOnly" = "11:TRUE"
-        "OutputFilename" = "8:Release\\disParity0.27beta.msi"
+        "OutputFilename" = "8:Release\\disParity0.28beta.msi"
         "PackageFilesAs" = "3:2"
         "PackageFileSize" = "3:-2147483648"
         "CabType" = "3:1"
@@ -298,15 +298,15 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:disParity"
-        "ProductCode" = "8:{0AB256E5-DEA8-471C-B52C-A71B165F6AE6}"
-        "PackageCode" = "8:{CD508D7A-FA59-4F39-BAA8-2663E013C1DE}"
+        "ProductCode" = "8:{76EB7F9F-6710-4F5C-8D3E-8ADAB9CE14F9}"
+        "PackageCode" = "8:{A3BCC16E-7B1C-4C93-BF4F-BBAE79AA471D}"
         "UpgradeCode" = "8:{CF2FFBAB-7739-4CA3-B957-57B47B451B67}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:FALSE"
-        "ProductVersion" = "8:0.27"
+        "ProductVersion" = "8:0.28"
         "Manufacturer" = "8:Disparity Solutions, LLC"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
