@@ -43,10 +43,11 @@ namespace disParity
       UInt32 partityFileNum = block / (UInt32)BLOCKS_PER_FILE;
       if (f != null && partityFileNum == currentParityFile) {
         long position = FilePosition(block);
-        if (f.Position != position)
+        if (f.Position != position) {
           if (readOnly && position > f.Length)
             return false;
           f.Position = position;
+        }
         return true;
       }
       Close();

@@ -55,6 +55,7 @@
       <DependentUpon>AboutWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="AboutWindowViewModel.cs" />
+    <Compile Include="CancellableOperation.cs" />
     <Compile Include="Commands.cs" />
     <Compile Include="Icons.cs" />
     <Compile Include="LicenseWindow.xaml.cs">
@@ -65,10 +66,15 @@
       <DependentUpon>MessageWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="MessageWindowViewModel.cs" />
+    <Compile Include="RecoverOperation.cs" />
+    <Compile Include="RemoveDriveOperation.cs" />
     <Compile Include="ReportWindow.xaml.cs">
       <DependentUpon>ReportWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="ReportWindowViewModel.cs" />
+    <Compile Include="ScanOperation.cs" />
+    <Compile Include="UpdateOperation.cs" />
+    <Compile Include="VerifyOperation.cs" />
     <Compile Include="ViewModel.cs" />
     <Compile Include="WindowUtils.cs" />
     <Page Include="AboutWindow.xaml">

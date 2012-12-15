@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -17,24 +18,12 @@ namespace disParityUI
   class MainWindowViewModel : ViewModel
   {
 
-    private ParitySet paritySet;
     private ObservableCollection<DataDriveViewModel> drives = new ObservableCollection<DataDriveViewModel>();
-    private int runningScans;
-    private DataDriveViewModel recoverDrive; // current drive being recovered, if any
-    private List<string> errorMessages = new List<string>();
+    private ParitySet paritySet;
     private Window owner;
     private OptionsDialogViewModel optionsViewModel;
     private Config config;
-    private double[] scanProgress;
-    private bool updateAfterScan;
-    private bool verifyAfterScan;
-    private bool scanInProgress;
-    private bool updateInProgress;
-    private bool recoverInProgress;
-    private bool verifyInProgress;
-    private bool removeDriveInProgress;
-    private bool singleDriveScan;
-    private bool cancelled;
+    private CancellableOperation operationInProgress;
 
     public MainWindowViewModel(Window owner)
     {
@@ -54,7 +43,6 @@ namespace disParityUI
       paritySet = new ParitySet(config);
       AddDrives();
       paritySet.ProgressReport += HandleProgressReport;
-      paritySet.ErrorMessage += HandleErrorMessage;
 
       Left = config.MainWindowX;
       Top = config.MainWindowY;
@@ -62,21 +50,16 @@ namespace disParityUI
       Width = config.MainWindowWidth;
 
       UpdateStartupMessage();
-      ParityLocation = config.ParityDir;
+      UpdateParityStatus();
 
     }
 
     private void LoadConfig(string appDataPath)
     {
       string ConfigPath = Path.Combine(appDataPath, "Config.xml");
-      // let generic crash logging handle this any exceptions here for now
-      //try {
-        config = new Config(ConfigPath);
-        config.Load();
-      //}
-      //catch (Exception e) {
-      //  throw new Exception("Could not load Config file: " + e.Message);
-      //}
+      // let generic crash logging handle any exceptions loading the Config
+      config = new Config(ConfigPath);
+      config.Load();
     }
 
     /// <summary>
@@ -123,8 +106,6 @@ namespace disParityUI
 
     public void OptionsChanged()
     {
-      ParityLocation = config.ParityDir;
-
       if (optionsViewModel.ConfigImported) {
         paritySet.ReloadDrives();
         AddDrives();
@@ -132,6 +113,7 @@ namespace disParityUI
       }
 
       UpdateStartupMessage();
+      UpdateParityStatus();
       if (StartupMessage == "")
         ScanAll();
     }
@@ -146,6 +128,23 @@ namespace disParityUI
         StartupMessage = "Add one or more drives to be backed up by pressing the 'Add Drive' button.";
       else
         StartupMessage = "";
+    }
+
+    private void UpdateParityStatus()
+    {
+      if (String.IsNullOrEmpty(config.ParityDir)) {
+        ParityStatus = "Parity drive not set";
+        return;
+      }
+      try {
+        DriveInfo driveInfo = new DriveInfo(Path.GetPathRoot(config.ParityDir));
+        ParityStatus = String.Format("{0} used {1} free",
+          Utils.SmartSize(driveInfo.TotalSize - driveInfo.TotalFreeSpace),
+          Utils.SmartSize(driveInfo.TotalFreeSpace));   
+      }
+      catch {
+        ParityStatus = "Unknown";
+      }
     }
 
     public OptionsDialogViewModel GetOptionsDialogViewModel()
@@ -188,146 +187,22 @@ namespace disParityUI
 
     private void AddDrive(DataDrive drive)
     {
-      drive.ScanCompleted += HandleScanCompleted;
       DataDriveViewModel vm = new DataDriveViewModel(drive);
-      vm.PropertyChanged += HandleDataDrivePropertyChanged;
       drives.Add(vm);
     }
 
     /// <summary>
-    /// Remove an entire drive from parity.  Called when user presses "Remove Drive" button.
+    /// Callback from RemoveDriveOperation when a drive has been removed
     /// </summary>
-    public void RemoveDrive(DataDriveViewModel vm)
+    public void DriveRemoved(DataDriveViewModel drive)
     {
-      DataDrive drive = vm.DataDrive;
-      if (drive.FileCount > 0) {
-        string message = String.Format("Are you sure you want to remove {0} from the backup?", drive.Root);
-        if (MessageWindow.Show(owner, "Confirm drive removal", message, MessageWindowIcon.Question, MessageWindowButton.YesNo) == false)
-          return;
-
-        Status = "Removing " + drive.Root + "...";
-        // start process of removing files
-        Task.Factory.StartNew(() =>
-        {
-          cancelled = false;
-          removeDriveInProgress = true;
-          try {
-            paritySet.RemoveAllFiles(drive);
-            if (!cancelled)
-              RemoveEmptyDrive(vm);
-            else
-              Status = "Remove drive cancelled";
-          }
-          catch (Exception e) {
-            App.LogCrash(e);
-            Status = "Remove drive failed: " + e.Message;
-            return;
-          }
-          finally {
-            removeDriveInProgress = false;
-          }
-        });
-
-
-      }
-      else
-        RemoveEmptyDrive(vm);
-    }
-
-    /// <summary>
-    /// Removes a drive from the parity set which has already been confirmed to be empty
-    /// </summary>
-    private void RemoveEmptyDrive(DataDriveViewModel vm)
-    {
-      try {
-        paritySet.RemoveEmptyDrive(vm.DataDrive);
-      }
-      catch (Exception e) {
-        App.LogCrash(e);
-        MessageWindow.ShowError(owner, "Error removing drive", e.Message);
-        return;
-      }
-      vm.PropertyChanged -= HandleDataDrivePropertyChanged;
       // Can only modify the drives collection on the main thread
       Application.Current.Dispatcher.Invoke(new Action(() =>
       {
-        drives.Remove(vm);
+        drives.Remove(drive);
       }));
-      Status = vm.DataDrive.Root + " removed";
     }
 
-    /// <summary>
-    /// Scan all drives for changes.  Called when user presses "Scan All" button or "Update All" button.
-    /// </summary>
-    public void ScanAll()
-    {
-      if (drives.Count == 0)
-        return;
-      scanInProgress = true;
-      cancelled = false;
-      singleDriveScan = false;
-      Status = "Scanning drives...";
-      runningScans = drives.Count;
-      scanProgress = new double[drives.Count];
-      foreach (DataDriveViewModel vm in drives)
-        vm.Scan();
-    }
-
-    /// <summary>
-    /// Scan an individual drive for changes.  Called when user presses "Scan Drive" button.
-    /// </summary>
-    public void ScanDrive(DataDriveViewModel vm)
-    {
-      scanInProgress = true;
-      singleDriveScan = true;
-      cancelled = false;
-      Status = "Scanning " + vm.DataDrive.Root + "...";
-      runningScans = 1;
-      vm.Scan();
-    }
-
-    private void HandleScanCompleted(object sender, EventArgs args)
-    {
-      runningScans--;
-      if (runningScans == 0) {
-        scanInProgress = false;
-        if (!cancelled) {
-          bool anyDriveNeedsUpdate = false;
-          foreach (DataDrive d in paritySet.Drives)
-            if (d.Status == DriveStatus.AccessError) {
-              Status = "Error(s) encountered during scan!";
-              return;
-            }
-            else if (d.Status == DriveStatus.UpdateRequired)
-              anyDriveNeedsUpdate = true;
-          if (updateAfterScan) {
-            updateAfterScan = false;
-            if (anyDriveNeedsUpdate)
-              Update();
-            else
-              DisplayUpToDateStatus();
-          }
-          else if (verifyAfterScan) {
-            verifyAfterScan = false;
-            if (anyDriveNeedsUpdate) {
-              foreach (DataDrive d in paritySet.Drives)
-                if (d.Deletes.Count > 0 || d.Moves.Count() > 0) {
-                  MessageWindow.Show(owner, "Update before verify", "One or more drives have changes that must be processed before a Verify can be run.  Please Update first.", MessageWindowIcon.Caution, MessageWindowButton.OK);
-                  return;
-                }
-            }
-            DoVerify();
-          }
-          else if (anyDriveNeedsUpdate)
-            Status = "Changes detected.  Update required.";
-          else
-            DisplayUpToDateStatus();
-        } else
-          Status = "Scan cancelled";
-        Progress = 0;
-        ProgressState = TaskbarItemProgressState.None;
-      }
-    }
 
     private void DisplayUpToDateStatus()
     {
@@ -341,87 +216,6 @@ namespace disParityUI
         Utils.SmartSize(totalSize), totalFiles);
     }
 
-    public void UpdateAll()
-    {
-      updateAfterScan = true;
-      ScanAll();
-    }
-
-    private void Update()
-    {
-      updateInProgress = true;
-      cancelled = false;
-      Status = "Update In Progress...";
-      Task.Factory.StartNew(() =>
-      {
-        try {
-          paritySet.Update();
-          if (cancelled)
-            Status = "Update cancelled";
-          else
-            DisplayUpToDateStatus();
-        }
-        catch (Exception e) {
-          Status = "Update failed: " + e.Message;
-          App.LogCrash(e);
-        }
-        finally {
-          Progress = 0;
-          ProgressState = TaskbarItemProgressState.None;
-          updateInProgress = false;
-        }
-      }
-      );
-    }
-
-    public void RecoverDrive(DataDriveViewModel drive, string path)
-    {
-      cancelled = false;
-      recoverInProgress = true;
-      Status = "Recovering " + drive.Root + " to " + path + "...";
-      recoverDrive = drive;
-      errorMessages.Clear();
-      // must run actual recover as a separate Task so UI can still update
-      Task.Factory.StartNew(() =>
-      {
-        try {
-          int successes;
-          int failures;
-          paritySet.Recover(drive.DataDrive, path, out successes, out failures);
-          if (cancelled) {
-            Status = "Recover cancelled";
-            return;
-          }
-          if (failures == 0) {
-            string msg = String.Format("{0} file{1} successfully recovered!",
-              successes, successes == 1 ? "" : "s");
-            MessageWindow.Show(owner, "Recovery complete", msg);
-          }
-          else {
-            string msg =
-              String.Format("{0} file{1} recovered successfully.\r\n\r\n", successes, successes == 1 ? " was" : "s were") +
-              String.Format("{0} file{1} encountered errors during the recovery.", failures, failures == 1 ? "" : "s") +
-              "\r\n\r\nWould you like to see a list of errors?";
-            if (MessageWindow.Show(owner, "Recovery complete", msg, MessageWindowIcon.Error, MessageWindowButton.YesNo) == true)
-              ReportWindow.Show(owner, errorMessages);
-          }
-          Status = String.Format("{0} file{1} recovered ({2} failure{3})",
-            successes, successes == 1 ? "" : "s", failures, failures == 1 ? "" : "s");
-        }
-        catch (Exception e) {
-          App.LogCrash(e);
-          MessageWindow.Show(owner, "Recover failed!", 
-            "Sorry, an unexpected error occurred while recovering the drive:\r\n\r\n" + e.Message);
-        }
-        finally {
-          Progress = 0;
-          ProgressState = TaskbarItemProgressState.None;
-          recoverInProgress = false;
-        }
-      }
-      );
-    }
-
     private void HandleProgressReport(object sender, ProgressReportEventArgs args)
     {
       ProgressState = TaskbarItemProgressState.Normal;
@@ -430,107 +224,79 @@ namespace disParityUI
         Status = args.Message;
     }
 
-
-    private void HandleErrorMessage(object sender, ErrorMessageEventArgs args)
+    public void ScanAll()
     {
-      errorMessages.Add(args.Message);
+      operationInProgress = new ScanOperation(this);
+      operationInProgress.Finished += HandleOperationFinished;
+      operationInProgress.Begin();
     }
 
-    // for updating overall progress bar during a scan
-    private void HandleDataDrivePropertyChanged(object sender, PropertyChangedEventArgs args)
+    public void ScanDrive(DataDriveViewModel drive)
     {
-      double progress = 0;
-      if (scanInProgress && args.PropertyName == "Progress") {
-        if (singleDriveScan)
-          progress = ((DataDriveViewModel)sender).Progress;
-        else {
-          int i = 0;
-          foreach (DataDriveViewModel vm in drives) {
-            if (vm.Progress > 0.0)
-              scanProgress[i] = vm.Progress;
-            i++;
-          }
-          foreach (double p in scanProgress)
-            progress += p;
-          progress /= drives.Count;
-        }
-        ProgressState = TaskbarItemProgressState.Normal;
-        Progress = progress;
-      }
+      operationInProgress = new ScanOperation(this);
+      operationInProgress.Finished += HandleOperationFinished;
+      operationInProgress.Begin(drive);
+    }
+
+    public void Recover(DataDriveViewModel drive)
+    {
+      operationInProgress = new RecoverOperation(this);
+      operationInProgress.Finished += HandleOperationFinished;
+      operationInProgress.Begin(drive);
+    }
+
+    public void RemoveDrive(DataDriveViewModel drive)
+    {
+      operationInProgress = new RemoveDriveOperation(this);
+      operationInProgress.Finished += HandleOperationFinished;
+      operationInProgress.Begin(drive);
+    }
+
+    public void Update()
+    {
+      operationInProgress = new UpdateOperation(this);
+      operationInProgress.Finished += HandleOperationFinished;
+      operationInProgress.Begin();
     }
 
     public void Verify()
     {
-      verifyAfterScan = true;
-      ScanAll();
+      operationInProgress = new VerifyOperation(this);
+      operationInProgress.Finished += HandleOperationFinished;
+      operationInProgress.Begin();
     }
 
-    /// <summary>
-    /// Does the actual Verify.  Called from HandleScanCompleted.
-    /// </summary>
-    private void DoVerify()
+    private void HandleOperationFinished()
     {
-      cancelled = false;
-      verifyInProgress = true;
-      errorMessages.Clear();
-      Status = "Verify In Progress...";
-      Task.Factory.StartNew(() =>
-      {
-        try {
-          paritySet.Verify();
-          if (cancelled)
-            Status = "Verify cancelled";
-          else
-            if (errorMessages.Count == 0)
-              Status = "Verify complete.  No errors found.";
-            else {
-              Status = "Verify complete.  Errors found: " + errorMessages.Count;
-              if (MessageWindow.Show(owner, "Verify failed", "Errors were found during the verify.  Would you like to see a list of errors?", MessageWindowIcon.Error, MessageWindowButton.YesNo) == true)
-                ReportWindow.Show(owner, errorMessages);
-            }
-        }
-        catch (Exception e) {
-          App.LogCrash(e);
-          Status = "Verify failed: " + e.Message;
-        }
-        finally {
-          Progress = 0;
-          ProgressState = TaskbarItemProgressState.None;
-          verifyInProgress = false;
-        }
-      }
-      );
+      operationInProgress.Finished -= HandleOperationFinished;
+      UpdateParityStatus();
     }
 
     public void Cancel()
     {
-      if (scanInProgress) {
-        Status = "Cancelling scan...";
-        cancelled = true;
-        foreach (DataDriveViewModel vm in drives)
-          vm.DataDrive.CancelScan();
-      }
-      else if (updateInProgress) {
-        Status = "Cancelling update...";
-        cancelled = true;
-        paritySet.CancelUpdate();
-      }
-      else if (recoverInProgress) {
-        Status = "Cancelling recover...";
-        cancelled = true;
-        paritySet.CancelRecover();
-      }
-      else if (removeDriveInProgress) {
-        Status = "Cancelling remove drive...";
-        cancelled = true;
-        paritySet.CancelRemoveAll();
-      }
-      else if (verifyInProgress) {
-        Status = "Cancelling verify...";
-        cancelled = true;
-        paritySet.CancelVerify();
-      }
+      if (operationInProgress != null)
+        operationInProgress.Cancel();
     }
+
+    public void StartProgress()
+    {
+      Progress = 0;
+      ProgressState = TaskbarItemProgressState.Normal;
+    }
+ 
+    public void StopProgress()
+    {
+      Progress = 0;
+      ProgressState = TaskbarItemProgressState.None;
+    }
+
+    #region Properties
+
+    public Config Config { get { return config; } }
+
+    public ParitySet ParitySet { get { return paritySet; } }
+
+    public Window Owner { get { return owner; } }
 
     public ObservableCollection<DataDriveViewModel> Drives
     {
@@ -540,18 +306,16 @@ namespace disParityUI
       }
     }
 
-    #region Properties
-
-    private string parityLocation;
-    public string ParityLocation
+    private string parityStatus;
+    public string ParityStatus
     {
       get
       {
-        return parityLocation;
+        return parityStatus;
       }
       set
       {
-        SetProperty(ref parityLocation, "ParityLocation", value);
+        SetProperty(ref parityStatus, "ParityStatus", value);
       }
     }
 
@@ -589,7 +353,7 @@ namespace disParityUI
     {
       get
       {
-        return scanInProgress || updateInProgress || recoverInProgress || removeDriveInProgress || verifyInProgress;
+        return (operationInProgress != null && operationInProgress.Running);
       }
     }
 

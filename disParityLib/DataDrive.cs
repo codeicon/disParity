@@ -25,7 +25,8 @@ namespace disParity
     private string root;
     private string metaFile;
     private Dictionary<string, FileRecord> files; // Master list of protected files; should reflect what is currently in files.dat at all times
-    private List<FileRecord> scanFiles; // List of current files on the drive as seen this scan
+    private List<FileRecord> scanFiles = new List<FileRecord>(); // List of current files on the drive as seen this scan, non-empty only during a scan
+    private Dictionary<string, FileRecord> seenFileNames = new Dictionary<string, FileRecord>(); // for fast lookups, also only non-empty during a scan
     private MD5 hash;
     private Config config;
     private ProgressEstimator scanProgress;
@@ -116,15 +117,15 @@ namespace disParity
     public long TotalFileSize { get; private set; }
 
     /// <summary>
-    /// Returns the total size of all files in the scanFiles list, in blocks.
+    /// Returns the total size of all files in the adds list, in blocks.
     /// Currently only used for progress reporting during creates.
     /// </summary>
-    public UInt32 TotalBlocks
+    public UInt32 TotalScanBlocks
     {
       get
       {
         UInt32 result = 0;
-        foreach (FileRecord r in scanFiles)
+        foreach (FileRecord r in adds)
           result += r.LengthInBlocks;
         return result;
       }
@@ -147,7 +148,6 @@ namespace disParity
     public void Reset()
     {
       files.Clear();
-      scanFiles = null; // this seems risky, could cause a crash if  Scan is running right now?
       MaxBlock = 0;
       if (File.Exists(MetaFilePath))
         LoadFileList();
@@ -175,7 +175,7 @@ namespace disParity
           ignores.Add(new Regex(pattern));
         }
 
-        scanFiles = new List<FileRecord>();
+        scanFiles.Clear();
         LogFile.Log("Scanning {0}...", root);
         scanProgress = null;
         try {
@@ -188,6 +188,12 @@ namespace disParity
               scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize));
             ReportProgress(1.0, "Scan complete. Analyzing results...", true);
             Compare();
+            if (cancelScan) {
+              Status = DriveStatus.ScanRequired;
+              return;
+            }
+            // process moves now as part of the scan, since they don't require changes to parity
+            ProcessMoves();
             UpdateStatus();
           }
           else
@@ -202,6 +208,8 @@ namespace disParity
         }
       }
       finally {
+        scanFiles.Clear();
+        seenFileNames.Clear();
         FireScanCompleted();
         Scanning = false;
       }
@@ -273,8 +281,18 @@ namespace disParity
           LogFile.Log("Skipping {0} because it matches an ignore...", f.FullName);
           continue;
         }
-        scanFiles.Add(new FileRecord(f, relativePath, this));
+        FileRecord r = new FileRecord(f, relativePath, this);
+        scanFiles.Add(r);
+        seenFileNames[r.Name.ToLower()] = r;
       }
+    }
+
+    /// <summary>
+    /// Called from ParitySet when an update has completed.  We can clean up all scan-related stuff here.
+    /// </summary>
+    public void UpdateFinished()
+    {
+      // Clear() adds, deletes, etc. here???
     }
 
     // Caution: Keep this thread safe!
@@ -286,7 +304,7 @@ namespace disParity
     private void FireStatusChanged()
     {
       if (StatusChanged != null)
-        StatusChanged(this, new StatusChangedEventArgs(Status, adds.Count, deletes.Count, moves.Count));
+        StatusChanged(this, new StatusChangedEventArgs(Status, adds.Count, deletes.Count, edits.Count));
     }
 
     public void FireUpdateProgress(string file, int count, long size, double progress)
@@ -320,9 +338,8 @@ namespace disParity
     private List<FileRecord> edits = new List<FileRecord>();
     public List<FileRecord> Edits { get { return edits; } }
 
-    // the "moves" dictionary maps old file names to new entryies from the scanFiles list
+    // the "moves" dictionary maps old file names to new entries from the scanFiles list
     private Dictionary<string, FileRecord> moves = new Dictionary<string, FileRecord>();
-    public IEnumerable<FileRecord> Moves { get { return moves.Values; } }
 
     /// <summary>
     /// Compare the old list of files with the new list in order to
@@ -334,11 +351,6 @@ namespace disParity
       deletes.Clear();
       moves.Clear();
       edits.Clear();
-
-      // build dictionary of seen file names for fast lookup
-      Dictionary<string, FileRecord> seenFileNames = new Dictionary<string, FileRecord>();
-      foreach (FileRecord r in scanFiles)
-        seenFileNames[r.Name.ToLower()] = r;
 
       // build list of new files we haven't seen before (adds)
       foreach (FileRecord r in scanFiles)
@@ -403,14 +415,14 @@ namespace disParity
         }
       }
 
-      LogFile.Log("Adds: {0} Deletes: {1} Moves: {2}", adds.Count, deletes.Count, moves.Count);
+      LogFile.Log("Adds: {0} Deletes: {1} Moves: {2} Edits: {3}", adds.Count, deletes.Count, moves.Count, edits.Count);
 
     }
 
     /// <summary>
     /// Process moves by updating their records to reflect the new locations
     /// </summary>
-    public void ProcessMoves()
+    private void ProcessMoves()
     {
       if (moves.Count == 0)
         return;
@@ -508,13 +520,28 @@ namespace disParity
     /// </summary>
     private byte[] ComputeHash(FileRecord r)
     {
-      // ComputeHash(stream) is nice, but the problem is it's not cancellable.  Probably
-      // should make this manual so it can be cancelled.
+      // ComputeHash(stream) is nice, but it's not cancellable, so we can't use it
+      using (FileStream s = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read))
       using (MD5 hash = MD5.Create()) {
-        using (FileStream s = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read))
-          hash.ComputeHash(s);
+        hash.Initialize();
+        byte[] buf = new byte[Parity.BlockSize];
+        int read = 0;
+        while (!cancelScan && ((read = s.Read(buf, 0, Parity.BlockSize)) > 0))
+          hash.TransformBlock(buf, 0, read, buf, 0);
+        hash.TransformFinalBlock(buf, 0, 0);
         return hash.Hash;
       }
+    }
+
+    /// <summary>
+    /// Finds the file containing this block
+    /// </summary>
+    public FileRecord FileFromBlock(UInt32 block)
+    {
+      foreach (FileRecord r in files.Values)
+        if (r.ContainsBlock(block))
+          return r;
+      return null;
     }
 
     private UInt32 enumBlock;
@@ -531,9 +558,9 @@ namespace disParity
       enumFile = null;
       enumComplete = false;
       enumBlocks = 0;
-      foreach (FileRecord r in scanFiles)
+      foreach (FileRecord r in adds)
         enumBlocks += r.LengthInBlocks;
-      enumerator = scanFiles.GetEnumerator();
+      enumerator = adds.GetEnumerator();
       enumCount = 0;
       enumSize = 0;
     }
@@ -601,29 +628,48 @@ namespace disParity
     private FileRecord currentOpenFile;
     private FileStream currentOpenFileStream;
 
-    public bool ReadBlock(UInt32 block, byte[] data)
+    /// <summary>
+    /// Reads a block of data from the drive.  Returns the File containing the block, if any, in r.
+    /// Returns true if data was read.
+    /// Returns false if no file contains this block.  r will be null.
+    /// If the file doens't exist, returns false, and sets r to the file.
+    /// If the file exists but has been modified, reads the block and returns true.  It is the
+    ///   caller's reponsibility to check r.Modified and handle appropriately.
+    /// Throws an exception if opening or reading the file fails.
+    /// </summary>
+    public bool ReadBlock(UInt32 block, byte[] data, out FileRecord r)
     {
-      FileRecord r = FindFileContaining(block);
+      r = FindFileContaining(block);
       if (r == null)
         return false;
-      // to do: check r.Modified here, handle it!
       lock (fileCloseLock) {
         if (r != currentOpenFile) {
           if (currentOpenFileStream != null) {
             currentOpenFileStream.Dispose();
             currentOpenFileStream = null;
           }
-          // Allow any I/O exceptions below to be caught by parent
-          currentOpenFileStream = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+          if (!File.Exists(r.FullPath))
+            return false;
+          try {
+            currentOpenFileStream = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+          }
+          catch (Exception e) {
+            throw new Exception(String.Format("Error opening {0}: {1}", r.FullPath, e.Message), e);
+          }
           currentOpenFile = r;
         }
         fileCloseTimer.Stop();
         fileCloseTimer.Start();
         FireReadingFile(currentOpenFile.FullPath);
-        currentOpenFileStream.Position = (block - r.StartBlock) * Parity.BlockSize;
-        int bytesRead = currentOpenFileStream.Read(data, 0, data.Length);
-        while (bytesRead < data.Length)
-          data[bytesRead++] = 0;
+        try {
+          currentOpenFileStream.Position = (block - r.StartBlock) * Parity.BlockSize;
+          int bytesRead = currentOpenFileStream.Read(data, 0, data.Length);
+          while (bytesRead < data.Length)
+            data[bytesRead++] = 0;
+        }
+        catch (Exception e) {
+          throw new Exception(String.Format("Error reading {0}: {1}", r.FullPath, e.Message), e);
+        }
       }
       return true;
     }

@@ -217,9 +217,16 @@ namespace disParityUI
           StatusIcon = Icons.Unknown;
           break;
         case DriveStatus.UpdateRequired:
-          Status = String.Format("Update Required ({0} new, {1} deleted, {2} moved)",
-            DataDrive.Adds.Count, DataDrive.Deletes.Count, DataDrive.Moves.Count());
-          if (DataDrive.Deletes.Count > 0 || DataDrive.Moves.Count() > 0)
+          int addCount = DataDrive.Adds.Count;
+          int deleteCount = DataDrive.Deletes.Count;
+          int editCount = DataDrive.Edits.Count;
+          if (editCount > 0) {
+            addCount -= editCount;
+            deleteCount -= editCount;
+          }
+          Status = String.Format("Update Required ({0} new, {1} deleted, {2} edited)",
+            addCount, deleteCount, editCount);
+          if (deleteCount > 0 || editCount > 0)
             StatusIcon = Icons.Urgent;
           else
             StatusIcon = Icons.Caution;

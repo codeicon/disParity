@@ -80,12 +80,18 @@ namespace disParity
     /// </summary>
     public void Save()
     {
-      tempParity.Seek(0, SeekOrigin.Begin);
-      byte[] data = new byte[Parity.BlockSize];
-      UInt32 endBlock = block;
-      for (UInt32 b = startBlock; b < endBlock; b++) {
-        tempParity.Read(data, 0, Parity.BlockSize);
-        parity.WriteBlock(b, data);
+      try {
+        tempParity.Seek(0, SeekOrigin.Begin);
+        byte[] data = new byte[Parity.BlockSize];
+        UInt32 endBlock = block;
+        for (UInt32 b = startBlock; b < endBlock; b++) {
+          tempParity.Read(data, 0, Parity.BlockSize);
+          parity.WriteBlock(b, data);
+        }
+      }
+      catch (Exception e) {
+        LogFile.Log("Fatal error in ParityChange.Save(): " + e.Message);
+        throw new Exception("A fatal error occurred (" + e.Message + ") when writing to parity.  Parity data may be damaged.", e);
       }
     }
 

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Security.Cryptography;
+using Microsoft.Win32;
 
 namespace disParity
 {
@@ -16,6 +17,7 @@ namespace disParity
     private Parity parity;
     private byte[] tempBuf = new byte[Parity.BlockSize];
     private bool cancel;
+    private HashSet<string> errorFiles = new HashSet<string>(); // files that generated errors during an operation; tracked here to avoid complaining about the same file over and over
 
     // For a reportable generated during a long-running operation (Recover, Verify, etc.)
     public event EventHandler<ErrorMessageEventArgs> ErrorMessage;
@@ -53,6 +55,14 @@ namespace disParity
           Empty = false;
         drives.Add(new DataDrive(d.Path, d.Metafile, Config));
       }
+      // try to record how many drives in the registry
+      try {
+        Registry.SetValue("HKEY_CURRENT_USER\\Software\\disParity", "dc", Config.Drives.Count,
+              RegistryValueKind.DWord);
+        Registry.SetValue("HKEY_CURRENT_USER\\Software\\disParity", "mpb", MaxParityBlock(),
+              RegistryValueKind.DWord);
+      }
+      catch { }
     }
 
     /// <summary>
@@ -151,11 +161,6 @@ namespace disParity
 
         LogFile.Log("Beginning update at " + DateTime.Now);
 
-        // process all moves for all drives first, since that doesn't require changing
-        // any parity data, only the meta data
-        foreach (DataDrive d in drives)
-          d.ProcessMoves();
-
         if (cancel)
           return;
 
@@ -224,6 +229,9 @@ namespace disParity
           // make sure all progress bars are reset
           foreach (DataDrive d in drives)
             d.UpdateStatus();
+        // release memory held by scans
+        foreach (DataDrive d in drives)
+          d.UpdateFinished();
         parity.Close();
         LogFile.Log("Update complete at " + DateTime.Now);
       }
@@ -390,6 +398,8 @@ namespace disParity
       successes = 0;
       failures = 0;
       recoverTotalBlocks = 0;
+      errorFiles.Clear();
+      ReportProgress(0);
       foreach (FileRecord f in drive.Files)
         recoverTotalBlocks += f.LengthInBlocks;
       recoverBlocks = 0;
@@ -442,7 +452,6 @@ namespace disParity
         File.SetLastWriteTime(fullPath, r.LastWriteTime);
         File.SetAttributes(fullPath, r.Attributes);
         if (r.Length > 0 && !Utils.HashCodesMatch(hash.Hash, r.HashCode)) {
-          LogFile.Log("ERROR: hash verify FAILED for {0}", fullPath);
           FireErrorMessage("Hash verify failed for \"" + fullPath + "\".  Recovered file is probably corrupt.");
           return false;
         }
@@ -450,7 +459,6 @@ namespace disParity
           return true;
       }
       catch (Exception e) {
-        LogFile.Log("ERROR recovering {0} : {1}", fullPath, e.Message);
         FireErrorMessage("Error recovering \"" + fullPath + "\": " + e.Message);
         return false;
       }
@@ -463,17 +471,31 @@ namespace disParity
 
     private void RecoverBlock(DataDrive drive, UInt32 block, ParityBlock parity)
     {
+      FileRecord r;
       parity.Load(block);
       foreach (DataDrive d in drives)
-        if (d != drive)
-          if (d.ReadBlock(block, tempBuf))
-            parity.Add(tempBuf);
+        if (d != drive) {
+          string error = "";
+          try {
+            if (d.ReadBlock(block, tempBuf, out r)) {
+              parity.Add(tempBuf);
+              if (r.Modified)
+                error = String.Format("Warning: {0} has been modified.  Some recovered files may be corrupt.", r.FullPath);
+            } else if (r != null && !File.Exists(r.FullPath))
+              error = String.Format("Warning: {0} could not be found.  Some recovered files may be corrupt.", r.FullPath);
+          }
+          catch (Exception e) {
+            error = e.Message; // ReadBlock should have constructed a nice error message for us
+          }
+          if (error != "" && errorFiles.Add(error))
+            FireErrorMessage(error);
+        }
     }
 
     private bool AddToParity(FileRecord r)
     {
       string fullPath = r.FullPath;
-      // attributes may have changed since we started, refresh just in case
+      // file may have been deleted, or attributes may have changed since we scanned, so refresh
       if (!r.RefreshAttributes()) {
         LogFile.Log("{0} no longer exists.", r.FullPath);
         return false;
@@ -495,9 +517,9 @@ namespace disParity
           long required = (endBlock - MaxParityBlock()) * Parity.BlockSize;
           long available = parity.FreeSpace;
           if ((available != -1) && (available < required)) {
-            LogFile.Log("Insufficient space available on {0} to process " +
+            FireErrorMessage(String.Format("Insufficient space available on {0} to process " +
               "{1}.  File will be skipped this update. (Required: {2} " +
-              "Available: {3})", Config.ParityDir, fullPath, Utils.SmartSize(required), Utils.SmartSize(available));
+              "Available: {3})", Config.ParityDir, fullPath, Utils.SmartSize(required), Utils.SmartSize(available)));
             return false;
           }
         }
@@ -511,6 +533,7 @@ namespace disParity
         r.Drive.FireUpdateProgress("Adding  " + fullPath, r.Drive.FileCount, r.Drive.TotalFileSize, 0);
 
         if (!XORFileWithParity(r, false)) {
+          // assume FireErrorMessage was already called
           LogFile.Log("Could not add {0} to parity.  File will be skipped.", r.FullPath);
           return false;
         }
@@ -539,7 +562,8 @@ namespace disParity
         }
 
         // Recalulate parity from scratch for all blocks that contained the deleted file's data.
-        using (ParityChange change = new ParityChange(parity, Config, startBlock, r.LengthInBlocks)) {
+        using (ParityChange change = new ParityChange(parity, Config, startBlock, r.LengthInBlocks)) 
+        try {
           byte[] data = new byte[Parity.BlockSize];
           for (UInt32 b = startBlock; b < endBlock; b++) {
             change.Reset(false);
@@ -548,13 +572,13 @@ namespace disParity
                 continue;
               // Note it's possible that this file may also have been deleted. That's OK, ReadFileData 
               // returns false and we don't try to add the deleted file to the parity.
+              FileRecord f;
               try {
-                if (d.ReadBlock(b, data))
+                if (d.ReadBlock(b, data, out f))
                   change.AddData(data);
               }
               catch (Exception e) {
-                LogFile.Log("Error: {0}", e.Message);
-                LogFile.Log("Unable to remove {0}, file will be skipped this update", fullPath);
+                FireErrorMessage(e.Message);
                 return false;
               }
             }
@@ -567,6 +591,9 @@ namespace disParity
               return false;
           }
           change.Save();
+        } catch (Exception e) {
+          FireErrorMessage(String.Format("Error removing {0}: {1}", r.FullPath, e.Message));
+          return false;
         }
       }
       r.Drive.RemoveFile(r);
@@ -591,14 +618,23 @@ namespace disParity
         MD5 hash = MD5.Create();
         hash.Initialize();
         UInt32 endBlock = r.StartBlock + r.LengthInBlocks;
-        using (FileStream f = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+
+        FileStream f;
+        try {
+          f = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        }
+        catch (Exception e) {
+          FireErrorMessage(String.Format("Error opening {0}: {1}", r.FullPath, e.Message));
+          return false;
+        }
+        try {
           for (UInt32 b = r.StartBlock; b < endBlock; b++) {
             Int32 bytesRead;
             try {
               bytesRead = f.Read(data, 0, Parity.BlockSize);
             }
             catch (Exception e) {
-              LogFile.Log("Error reading {0}: {1}", r.FullPath, e.Message);
+              FireErrorMessage(String.Format("Error reading {0}: {1}", r.FullPath, e.Message));
               return false;
             }
             if (b == (endBlock - 1))
@@ -616,6 +652,14 @@ namespace disParity
             if (cancel)
               return false;
           }
+        }
+        catch (Exception e) {
+          FireErrorMessage(String.Format("Unexpected error while processing {0}: {1}", r.FullPath, e.Message));
+          return false;
+        }
+        finally {
+          f.Dispose();
+        }
 
         if (checkHash) {
           if (!Utils.HashCodesMatch(hash.Hash, r.HashCode)) {
@@ -673,7 +717,7 @@ namespace disParity
       UInt32 totalBlocks = 1; // make it one so no chance of divide-by-zero below
       foreach (DataDrive d in drives) {
         d.BeginFileEnum();
-        UInt32 scanBlocks = d.TotalBlocks;
+        UInt32 scanBlocks = d.TotalScanBlocks;
         if (scanBlocks > totalBlocks)
           totalBlocks = scanBlocks;
       }
@@ -728,11 +772,13 @@ namespace disParity
       MD5 hash = MD5.Create();
       UInt32 maxBlock = MaxParityBlock();
       UInt32 errors = 0;
+      List<FileRecord> suspectFiles = new List<FileRecord>();
 
       ReportProgress(0);
 
       TimeBasedProgressThrottling = true;
       try {
+        FileRecord r;
         ParityBlock parityBlock = new ParityBlock(parity);
         ParityBlock calculatedParityBlock = new ParityBlock(parity);
         byte[] buf = new byte[Parity.BlockSize];
@@ -740,18 +786,39 @@ namespace disParity
           parityBlock.Load(block);
           bool firstRead = true;
           foreach (DataDrive d in drives)
-            if (firstRead) {
-              if (d.ReadBlock(block, calculatedParityBlock.Data))
-                firstRead = false;
-            } else if (d.ReadBlock(block, buf))
-              calculatedParityBlock.Add(buf);
+            try {
+              if (firstRead) {
+                if (d.ReadBlock(block, calculatedParityBlock.Data, out r))
+                  firstRead = false;
+              }
+              else if (d.ReadBlock(block, buf, out r))
+                calculatedParityBlock.Add(buf);
+            }
+            catch (Exception e) {
+              FireErrorMessage(e.Message);
+            }
+          if (firstRead)
+            // no blocks were read, this block should be empty
+            calculatedParityBlock.Clear();
           if (!calculatedParityBlock.Equals(parityBlock)) {
             FireErrorMessage(String.Format("Block {0} does not match", block));
             errors++;
+            bool reported = false;
+            foreach (DataDrive dr in drives) {
+              FileRecord f = dr.FileFromBlock(block);
+              if (f != null && !suspectFiles.Contains(f)) {
+                suspectFiles.Add(f);
+                if (!reported) {
+                  FireErrorMessage("Block " + block + " contains data from the following file or files (each file will only be reported once per verify pass):");
+                  reported = true;
+                }
+                FireErrorMessage(f.FullPath);
+              }
+            }
           }
-          ReportProgress((double)block / maxBlock, String.Format("{0} of {1} blocks verified. Errors found: {2}", block, maxBlock, errors));
+          ReportProgress((double)block / maxBlock, String.Format("{0} of {1} parity blocks verified. Errors found: {2}", block, maxBlock, errors));
           if (cancel)
-            return;
+            break;
         }
       }
       finally {
@@ -780,6 +847,7 @@ namespace disParity
 
     private void FireErrorMessage(string message)
     {
+      LogFile.Log(message);
       if (ErrorMessage != null)
         ErrorMessage(this, new ErrorMessageEventArgs(message));
     }

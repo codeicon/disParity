@@ -6,13 +6,6 @@ using System.IO;
 namespace disParity
 {
 
-  public enum FileStatus
-  {
-    Unknown,
-    HashVerified,
-    HashFailed
-  }
-
   public class FileRecord
   {
     private DataDrive drive;
@@ -22,7 +15,6 @@ namespace disParity
     private FileRecord()
     {
       StartBlock = 0;
-      Status = FileStatus.Unknown;
       Skipped = false;
     }
 
@@ -44,8 +36,6 @@ namespace disParity
 
     // skipped during a create because of an error when opening - NOT USED FOR ANYTHING CURRENTLY
     public bool Skipped { get; set; }
-
-    public FileStatus Status { get; set; }
 
     static string StripRoot(string root, string path)
     {
@@ -72,7 +62,6 @@ namespace disParity
       LastWriteTime = info.LastWriteTime;
       StartBlock = 0;
       this.drive = drive;
-      Status = FileStatus.Unknown;
       Skipped = false;
     }
 

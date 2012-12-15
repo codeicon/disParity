@@ -77,7 +77,7 @@ namespace disParityUI
 
     void AddDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = !String.IsNullOrEmpty(viewModel.ParityLocation) && !viewModel.Busy;
+      e.CanExecute = !String.IsNullOrEmpty(viewModel.Config.ParityDir) && !viewModel.Busy;
     }
 
     void AddDriveExecuted(object sender, ExecutedRoutedEventArgs e)
@@ -135,7 +135,7 @@ namespace disParityUI
 
     void UpdateAllExecuted(object sender, ExecutedRoutedEventArgs e)
     {
-      viewModel.UpdateAll();
+      viewModel.Update();
       e.Handled = true;
     }
 
@@ -146,11 +146,7 @@ namespace disParityUI
 
     void RecoverDriveExecuted(object sender, ExecutedRoutedEventArgs e)
     {
-      FolderBrowserDialog d = new FolderBrowserDialog();
-      d.Description = "Choose a location to place recovered files:";
-      DialogResult r = d.ShowDialog();
-      if (r == System.Windows.Forms.DialogResult.OK)
-        viewModel.RecoverDrive((DataDriveViewModel)DriveList.SelectedItem, d.SelectedPath);
+      viewModel.Recover((DataDriveViewModel)DriveList.SelectedItem);
       e.Handled = true;
     }
 
