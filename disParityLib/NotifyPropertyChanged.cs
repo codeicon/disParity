@@ -4,10 +4,10 @@ using System.Linq;
 using System.Text;
 using System.ComponentModel;
 
-namespace disParityUI
+namespace disParity
 {
 
-  public abstract class ViewModel : INotifyPropertyChanged
+  public abstract class NotifyPropertyChanged : INotifyPropertyChanged
   {
 
     public event PropertyChangedEventHandler PropertyChanged;

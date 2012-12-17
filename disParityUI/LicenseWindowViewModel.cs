@@ -9,7 +9,7 @@ using disParity;
 namespace disParityUI
 {
 
-  public class LicenseWindowViewModel : ViewModel
+  public class LicenseWindowViewModel : NotifyPropertyChanged
   {
 
     public LicenseWindowViewModel()

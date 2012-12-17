@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -16,7 +17,8 @@ namespace disParity
     ScanRequired,
     UpdateRequired,
     UpToDate,
-    AccessError
+    AccessError,
+    ReadingFile
   }
 
   public class DataDrive : ProgressReporter
@@ -36,10 +38,7 @@ namespace disParity
 
     const UInt32 META_FILE_VERSION = 1;
 
-    public event EventHandler<StatusChangedEventArgs> StatusChanged;
-    public event EventHandler<UpdateProgressEventArgs> UpdateProgress;
     public event EventHandler<EventArgs> ScanCompleted;
-    public event EventHandler<ReadingFileEventArgs> ReadingFile;
 
     public DataDrive(string root, string metaFile, Config config)
     {
@@ -83,11 +82,7 @@ namespace disParity
 
     public IEnumerable<FileRecord> Files { get {  return files.Values; } }
 
-    public DriveStatus Status { get; private set; }
-
     public bool Scanning { get; private set; }
-
-    public int FileCount { get { return files.Count; } }
 
     public string LastError { get; private set; }
 
@@ -111,10 +106,6 @@ namespace disParity
 
     public long TotalSpace { get; private set; }
 
-    /// <summary>
-    /// Total size, in bytes, of all protected files on this drive
-    /// </summary>
-    public long TotalFileSize { get; private set; }
 
     /// <summary>
     /// Returns the total size of all files in the adds list, in blocks.
@@ -139,7 +130,9 @@ namespace disParity
       if (File.Exists(MetaFilePath))
         File.Delete(MetaFilePath);
       files.Clear();
-      Status = DriveStatus.ScanRequired;
+      FileCount = 0;
+      TotalFileSize = 0;
+      DriveStatus = DriveStatus.ScanRequired;
     }
 
     /// <summary>
@@ -148,10 +141,11 @@ namespace disParity
     public void Reset()
     {
       files.Clear();
+      FileCount = 0;
       MaxBlock = 0;
       if (File.Exists(MetaFilePath))
         LoadFileList();
-      Status = DriveStatus.ScanRequired;
+      DriveStatus = DriveStatus.ScanRequired;
     }
 
     /// <summary>
@@ -184,12 +178,13 @@ namespace disParity
             long totalSize = 0;
             foreach (FileRecord f in scanFiles)
               totalSize += f.Length;
-            LogFile.Log("{0}: Found {1} file{2} ({3} total)", Root, scanFiles.Count,
-              scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize));
-            ReportProgress(1.0, "Scan complete. Analyzing results...", true);
+            Status = "Scan complete. Analyzing results...";
+            ReportProgress(1.0);
             Compare();
+            LogFile.Log("{0}: Found {1} file{2} ({3} total) Adds: {4} Deletes: {5} Moves: {6} Edits: {7}", Root, scanFiles.Count,
+              scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize), adds.Count, deletes.Count, moves.Count, edits.Count);
             if (cancelScan) {
-              Status = DriveStatus.ScanRequired;
+              DriveStatus = DriveStatus.ScanRequired;
               return;
             }
             // process moves now as part of the scan, since they don't require changes to parity
@@ -202,8 +197,7 @@ namespace disParity
         catch (Exception e) {
           LogFile.Log("Could not scan {0}: {1}", root, e.Message);
           LastError = e.Message;
-          Status = DriveStatus.AccessError;
-          FireStatusChanged();
+          DriveStatus = DriveStatus.AccessError;
           return;
         }
       }
@@ -219,8 +213,9 @@ namespace disParity
     {
       if (cancelScan)
         return;
+      Status = "Scanning " + dir.FullName;
       if (scanProgress != null)
-        ReportProgress(scanProgress.Progress, "Scanning " + dir.FullName);
+        ReportProgress(scanProgress.Progress);
       DirectoryInfo[] subDirs;
       try {
         subDirs = dir.GetDirectories();
@@ -260,7 +255,7 @@ namespace disParity
         Scan(d, ignores, folderProgress);
         folderProgress.EndPhase();
       }
-      ReportProgress(scanProgress.Progress, "");
+      ReportProgress(scanProgress.Progress);
       string relativePath = Utils.StripRoot(root, dir.FullName);
       foreach (FileInfo f in fileInfos) {
         if (cancelScan)
@@ -293,6 +288,7 @@ namespace disParity
     public void UpdateFinished()
     {
       // Clear() adds, deletes, etc. here???
+      ReportProgress(0);
     }
 
     // Caution: Keep this thread safe!
@@ -301,28 +297,10 @@ namespace disParity
       cancelScan = true;
     }
 
-    private void FireStatusChanged()
-    {
-      if (StatusChanged != null)
-        StatusChanged(this, new StatusChangedEventArgs(Status, adds.Count, deletes.Count, edits.Count));
-    }
-
-    public void FireUpdateProgress(string file, int count, long size, double progress)
-    {
-      if (UpdateProgress != null)
-        UpdateProgress(this, new UpdateProgressEventArgs(file, count, size, progress));
-    }
-
     public void FireScanCompleted()
     {
       if (ScanCompleted != null)
         ScanCompleted(this, new EventArgs());
-    }
-
-    public void FireReadingFile(string filename)
-    {
-      if (ReadingFile != null)
-        ReadingFile(this, new ReadingFileEventArgs(filename));
     }
 
     // the "deletes" list contains FileRecords from the master files list
@@ -415,8 +393,6 @@ namespace disParity
         }
       }
 
-      LogFile.Log("Adds: {0} Deletes: {1} Moves: {2} Edits: {3}", adds.Count, deletes.Count, moves.Count, edits.Count);
-
     }
 
     /// <summary>
@@ -456,6 +432,7 @@ namespace disParity
       Debug.Assert(files.ContainsKey(filename));
       files.Remove(filename);
       SaveFileList();
+      FileCount--;
     }
 
     /// <summary>
@@ -467,6 +444,7 @@ namespace disParity
       Debug.Assert(!files.ContainsKey(filename));
       files[filename] = r;
       SaveFileList();
+      FileCount++;
     }
 
     public void ClearAdds()
@@ -478,10 +456,9 @@ namespace disParity
     public void UpdateStatus()
     {
       if (adds.Count > 0 || moves.Count > 0 || deletes.Count > 0)
-        Status = DriveStatus.UpdateRequired;
+        DriveStatus = DriveStatus.UpdateRequired;
       else
-        Status = DriveStatus.UpToDate;
-      FireStatusChanged();
+        DriveStatus = DriveStatus.UpToDate;
     }
 
     /// <summary>
@@ -524,9 +501,9 @@ namespace disParity
       using (FileStream s = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read))
       using (MD5 hash = MD5.Create()) {
         hash.Initialize();
-        byte[] buf = new byte[Parity.BlockSize];
+        byte[] buf = new byte[Parity.BLOCK_SIZE];
         int read = 0;
-        while (!cancelScan && ((read = s.Read(buf, 0, Parity.BlockSize)) > 0))
+        while (!cancelScan && ((read = s.Read(buf, 0, Parity.BLOCK_SIZE)) > 0))
           hash.TransformBlock(buf, 0, read, buf, 0);
         hash.TransformFinalBlock(buf, 0, 0);
         return hash.Hash;
@@ -567,8 +544,8 @@ namespace disParity
 
     public bool GetNextBlock(byte[] buf)
     {
-      if (buf.Length != Parity.BlockSize)
-        throw new Exception("Invalid buffer size (must be " + Parity.BlockSize + " bytes)");
+      if (buf.Length != Parity.BLOCK_SIZE)
+        throw new Exception("Invalid buffer size (must be " + Parity.BLOCK_SIZE + " bytes)");
       if (enumFile == null) {
         if (enumComplete)
           return false;
@@ -576,8 +553,7 @@ namespace disParity
           EndFileEnum();
           enumComplete = true;
           LoadFileList(); // this loads completed filesX.dat back into the master files list
-          Status = DriveStatus.UpToDate;
-          FireStatusChanged();
+          DriveStatus = DriveStatus.UpToDate;
           return false;
         }
         // TODO: Handle zero-length file here?
@@ -591,12 +567,14 @@ namespace disParity
           enumerator.MoveNext();
           return GetNextBlock(buf);
         }
-        FireUpdateProgress("Reading " + fullName, enumCount, enumSize, (double)enumBlock / (double)enumBlocks);
-        LogFile.Log("Reading {0}", fullName);
+        ReportProgress(0);
+        DriveStatus = DriveStatus.ReadingFile;
+        Status = "Reading " + fullName;
+        LogFile.Log(Status);
         hash.Initialize();
         enumerator.Current.StartBlock = enumBlock;
       }
-      int bytesRead = enumFile.Read(buf, 0, Parity.BlockSize);
+      int bytesRead = enumFile.Read(buf, 0, Parity.BLOCK_SIZE);
       if (enumFile.Position < enumFile.Length)
         hash.TransformBlock(buf, 0, bytesRead, buf, 0);
       else {
@@ -607,12 +585,14 @@ namespace disParity
         enumFile.Close();
         enumFile.Dispose();
         enumFile = null;
+        FileCount = enumCount;
+        TotalFileSize = enumSize;
         enumCount++;
         enumSize += enumerator.Current.Length;
-        Array.Clear(buf, bytesRead, Parity.BlockSize - bytesRead);
+        Array.Clear(buf, bytesRead, Parity.BLOCK_SIZE - bytesRead);
       }
       enumBlock++;
-      FireUpdateProgress("", enumCount, enumSize, (double)enumBlock / (double)enumBlocks);
+      ReportProgress((double)enumBlock / (double)enumBlocks);
       return true;
     }    
 
@@ -623,6 +603,8 @@ namespace disParity
         enumFile.Dispose();
         enumFile = null;
       }
+      ReportProgress(0);
+      UpdateStatus();
     }
 
     private FileRecord currentOpenFile;
@@ -660,9 +642,10 @@ namespace disParity
         }
         fileCloseTimer.Stop();
         fileCloseTimer.Start();
-        FireReadingFile(currentOpenFile.FullPath);
+        Status = "Reading " + currentOpenFile.FullPath;
+        DriveStatus = DriveStatus.ReadingFile;
         try {
-          currentOpenFileStream.Position = (block - r.StartBlock) * Parity.BlockSize;
+          currentOpenFileStream.Position = (block - r.StartBlock) * Parity.BLOCK_SIZE;
           int bytesRead = currentOpenFileStream.Read(data, 0, data.Length);
           while (bytesRead < data.Length)
             data[bytesRead++] = 0;
@@ -681,6 +664,7 @@ namespace disParity
           currentOpenFileStream.Dispose();
           currentOpenFileStream = null;
           currentOpenFile = null;
+          UpdateStatus();
         }
       }
     }
@@ -730,6 +714,7 @@ namespace disParity
         }
       }
       CalculateMaxBlock();
+      FileCount = files.Count;
     }
 
     private void SaveFileList()
@@ -815,6 +800,55 @@ namespace disParity
       return root;
     }
 
+    #region Properties
+
+    private string status;
+    public string Status
+    {
+      get
+      {
+        return status;
+      }
+      set
+      {
+        SetProperty(ref status, "Status", value);
+      }
+    }
+
+    private DriveStatus driveStatus;
+    public DriveStatus DriveStatus
+    {
+      get
+      {
+        return driveStatus;
+      }
+      set
+      {
+        SetProperty(ref driveStatus, "DriveStatus", value);
+      }
+    }
+
+    private int fileCount;
+    public int FileCount
+    {
+      get
+      {
+        return fileCount;
+      }
+      set
+      {
+        SetProperty(ref fileCount, "FileCount", value);
+      }
+    }
+
+    /// <summary>
+    /// Total size, in bytes, of all protected files on this drive
+    /// Not currently a "notify changed" property because it always changes in tandem with FileCount
+    /// </summary>
+    public long TotalFileSize { get; private set; }
+
+    #endregion
+
   }
 
   public class FreeNode
@@ -846,48 +880,6 @@ namespace disParity
       return result;
     }
 
-  }
-
-  public class StatusChangedEventArgs : EventArgs
-  {
-    public StatusChangedEventArgs(DriveStatus status, int addCount, int deleteCount, int moveCount)
-    {
-      Status = status;
-      AddCount = addCount;
-      DeleteCount = deleteCount;
-      MoveCount = moveCount;
-    }
-
-    public DriveStatus Status { get; private set; }
-    public int AddCount { get; private set; }
-    public int DeleteCount { get; private set; }
-    public int MoveCount { get; private set; }
-  }
-
-  public class UpdateProgressEventArgs : EventArgs
-  {
-    public UpdateProgressEventArgs(string status, int files, long size, double progress)
-    {
-      Status = status;
-      Files = files;
-      Size = size;
-      Progress = progress;
-    }
-
-    public string Status { get; private set; }
-    public int Files { get; private set; }
-    public long Size { get; private set; }
-    public double Progress { get; private set; }
-  }
-
-  public class ReadingFileEventArgs : EventArgs
-  {
-    public ReadingFileEventArgs(string filename)
-    {
-      Filename = filename;
-    }
-
-    public string Filename;
   }
 
 }

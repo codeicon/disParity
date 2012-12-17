@@ -4,11 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Windows;
 using System.Windows.Media;
+using disParity;
 
 namespace disParityUI
 {
 
-  internal class MessageWindowViewModel : ViewModel
+  internal class MessageWindowViewModel : NotifyPropertyChanged
   {
 
     public MessageWindowViewModel(string caption, string message, MessageWindowIcon icon, MessageWindowButton buttons)

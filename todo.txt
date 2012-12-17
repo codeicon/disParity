@@ -1,11 +1,6 @@
- 
-* During verify, drives that have finished early are sometimes stuck on "Reading..." the last file?
-
-* Verify needs more detailed error reporting
-
-* Buttons need tooltips
-
 * Maybe check AvailablePhysicalMemory before an update to control how much temp RAM is used?
+ 
+* Buttons need tooltips
 
 * Adding C:\ as a drive causes excessive memory use during scan.  Can we check
   for system drive?
@@ -30,8 +25,6 @@
 
 * Bring back command line
  
-* File update progress should include time to flush temp parity
-
 * "Ignore files smaller than" option
   
 * Recover should check if the destination drive has enough room first.
@@ -42,10 +35,7 @@
 
 * Update operations should report MB/sec statistics
   
-* Recover should prompt first before overwriting an existing file
-
-* Temporary storage should ALWAYS use tempRAM first and then overflow to disk
-  when necessary.
+* Recover should prompt first before overwriting an existing file?
 
 * Look for ways to speed up scans of Music drive
 

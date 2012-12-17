@@ -53,7 +53,9 @@ namespace disParity
       Console.WriteLine(msg, args);
       if (f != null)
         lock (f) {
+          f.Write(DateTime.Now + " ");
           f.WriteLine(msg, args);
+          f.Flush();
         }
     }
 

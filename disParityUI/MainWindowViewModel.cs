@@ -15,7 +15,7 @@ using disParity;
 namespace disParityUI
 {
 
-  class MainWindowViewModel : ViewModel
+  class MainWindowViewModel : NotifyPropertyChanged
   {
 
     private ObservableCollection<DataDriveViewModel> drives = new ObservableCollection<DataDriveViewModel>();
@@ -36,13 +36,13 @@ namespace disParityUI
       if (!Directory.Exists(logPath))
         Directory.CreateDirectory(logPath);
       LogFile.Open(Path.Combine(logPath, "disParity.log"), false);
-      LogFile.Log("Application launched at " + DateTime.Now);
+      LogFile.Log("Application launched");
 
       LoadConfig(appDataPath);
 
       paritySet = new ParitySet(config);
       AddDrives();
-      paritySet.ProgressReport += HandleProgressReport;
+      paritySet.PropertyChanged += HandlePropertyChanged;
 
       Left = config.MainWindowX;
       Top = config.MainWindowY;
@@ -165,7 +165,7 @@ namespace disParityUI
       config.MainWindowWidth = (int)Width;
       config.MainWindowHeight = (int)Height;
       paritySet.Close();
-      LogFile.Log("Application shutdown at " + DateTime.Now);
+      LogFile.Log("Application shutdown");
       LogFile.Close();
     }
 
@@ -216,12 +216,14 @@ namespace disParityUI
         Utils.SmartSize(totalSize), totalFiles);
     }
 
-    private void HandleProgressReport(object sender, ProgressReportEventArgs args)
+    private void HandlePropertyChanged(object sender, PropertyChangedEventArgs e)
     {
-      ProgressState = TaskbarItemProgressState.Normal;
-      Progress = args.Progress;
-      if (args.Message != "")
-        Status = args.Message;
+      if (e.PropertyName == "Progress") {
+        ProgressState = TaskbarItemProgressState.Normal;
+        Progress = paritySet.Progress;
+      }
+      else if (e.PropertyName == "Status")
+        Status = paritySet.Status;
     }
 
     public void ScanAll()

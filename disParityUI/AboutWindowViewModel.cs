@@ -7,7 +7,7 @@ using disParity;
 namespace disParityUI
 {
 
-  public class AboutWindowViewModel : ViewModel
+  public class AboutWindowViewModel : NotifyPropertyChanged
   {
 
     public AboutWindowViewModel()

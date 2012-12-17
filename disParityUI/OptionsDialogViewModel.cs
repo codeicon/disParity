@@ -10,7 +10,7 @@ using disParity;
 namespace disParityUI
 {
 
-  public class OptionsDialogViewModel : ViewModel
+  public class OptionsDialogViewModel : NotifyPropertyChanged
   {
 
     private Config config;

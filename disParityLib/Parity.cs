@@ -9,7 +9,6 @@ namespace disParity
   internal class Parity
   {
 
-    const Int32 PARITY_BLOCK_SIZE = 65536; 
     const Int32 BLOCKS_PER_FILE = 16384;
 
     private FileStream f = null;
@@ -21,7 +20,7 @@ namespace disParity
       this.config = config;
     }
 
-    public static Int32 BlockSize { get { return PARITY_BLOCK_SIZE; } }
+    public const Int32 BLOCK_SIZE = 65536;
 
     public void DeleteAll()
     {
@@ -73,9 +72,9 @@ namespace disParity
     {
       try {
         if (!OpenParityFile(block, true))
-          Array.Clear(data, 0, PARITY_BLOCK_SIZE);
+          Array.Clear(data, 0, BLOCK_SIZE);
         else
-          f.Read(data, 0, PARITY_BLOCK_SIZE);
+          f.Read(data, 0, BLOCK_SIZE);
       }
       catch (Exception e) {
         LogFile.Log("FATAL ERROR: {0}", e.Message);
@@ -88,19 +87,19 @@ namespace disParity
     public void WriteBlock(UInt32 block, byte[] data)
     {
       OpenParityFile(block, false);
-      f.Write(data, 0, PARITY_BLOCK_SIZE);
+      f.Write(data, 0, BLOCK_SIZE);
     }
 
     private static long FilePosition(UInt32 block)
     {
       UInt32 partityFileNum = block / (UInt32)BLOCKS_PER_FILE;
-      return (block - (partityFileNum * BLOCKS_PER_FILE)) * PARITY_BLOCK_SIZE;
+      return (block - (partityFileNum * BLOCKS_PER_FILE)) * BLOCK_SIZE;
     }
 
     public static UInt32 LengthInBlocks(long lengthInBytes)
     {
-      UInt32 result = (UInt32)(lengthInBytes / PARITY_BLOCK_SIZE);
-      if (result * PARITY_BLOCK_SIZE < lengthInBytes)
+      UInt32 result = (UInt32)(lengthInBytes / BLOCK_SIZE);
+      if (result * BLOCK_SIZE < lengthInBytes)
         result++;
       return result;
     }

@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.IO;
+using disParity;
 
 namespace disParityUI
 {
 
-  internal class ReportWindowViewModel : ViewModel
+  internal class ReportWindowViewModel : NotifyPropertyChanged
   {
 
     public ReportWindowViewModel(string text)

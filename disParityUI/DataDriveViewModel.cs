@@ -15,24 +15,15 @@ using System.Windows.Threading;
 namespace disParityUI
 {
 
-  class DataDriveViewModel : ViewModel
+  class DataDriveViewModel : NotifyPropertyChanged
   {
-
-    private DispatcherTimer updateStatusTimer;
 
     public DataDriveViewModel(DataDrive dataDrive)
     {
       DataDrive = dataDrive;
-      DataDrive.ProgressReport += HandleProgressReport;
-      DataDrive.StatusChanged += HandleStatusChanged;
-      DataDrive.UpdateProgress += HandleUpdateProgress;
-      DataDrive.ReadingFile += HandleReadingFile;
+      DataDrive.PropertyChanged += HandlePropertyChanged;
       UpdateStatus();
-      FileCount = String.Format("{0} ({1})", DataDrive.FileCount, Utils.SmartSize(DataDrive.TotalFileSize));
-      updateStatusTimer = new DispatcherTimer();
-      updateStatusTimer.Interval = TimeSpan.FromSeconds(1);
-      updateStatusTimer.Tick += HandleUpdateStatusTimerTick;
-      updateStatusTimer.Stop();
+      UpdateFileCount();
       UpdateAdditionalInfo();
     }
 
@@ -67,51 +58,64 @@ namespace disParityUI
           Utils.SmartSize(DataDrive.FreeSpace));
     }
 
-    private void HandleUpdateStatusTimerTick(object sender, EventArgs args)
+    private void HandlePropertyChanged(object sender, PropertyChangedEventArgs e)
     {
-      UpdateStatus();
-      updateStatusTimer.Stop();
-    }
-
-    private void HandleReadingFile(object sender, ReadingFileEventArgs args)
-    {
-      Status = "Reading " + args.Filename;
-      updateStatusTimer.Start();
-    }
-
-    private void HandleProgressReport(object sender, ProgressReportEventArgs args)
-    {
-      if (!String.IsNullOrEmpty(args.Message))
-        Status = args.Message;
-      Progress = args.Progress;
-    }
-
-    private void HandleStatusChanged(object sender, StatusChangedEventArgs args)
-    {
-      /*
-      if (args.Status == DriveStatus.UpdateRequired) {
-        Status = String.Format("Update Required ({0} new, {1} deleted, {2} moved)",
-          args.AddCount, args.DeleteCount, args.MoveCount);
-        if (args.DeleteCount > 0 || args.MoveCount > 0)
-          StatusIcon = Icons.Urgent;
+      DataDrive drive = (DataDrive)sender;
+      if (e.PropertyName == "Status")
+        if (drive.Status != "")
+          Status = drive.Status;
         else
-          StatusIcon = Icons.Caution;
-      } 
-      else
+          UpdateStatus();
+      else if (e.PropertyName == "Progress")
+        Progress = drive.Progress;
+      else if (e.PropertyName == "DriveStatus")
         UpdateStatus();
-       */
-      UpdateStatus();
-      FileCount = String.Format("{0} ({1})", DataDrive.FileCount,
-        Utils.SmartSize(DataDrive.TotalFileSize));
-      Progress = 0;
+      else if (e.PropertyName == "FileCount")
+        UpdateFileCount();
     }
 
-    private void HandleUpdateProgress(object sender, UpdateProgressEventArgs args)
+    private void UpdateFileCount()
     {
-      if (!String.IsNullOrEmpty(args.Status))
-        Status = args.Status;
-      FileCount = String.Format("{0} ({1})", args.Files, Utils.SmartSize(args.Size));
-      Progress = args.Progress;
+      if (DataDrive.FileCount == 0)
+        FileCount = "0";
+      else
+        FileCount = String.Format("{0} ({1})", DataDrive.FileCount, Utils.SmartSize(DataDrive.TotalFileSize));
+    }
+
+    private void UpdateStatus()
+    {
+      switch (DataDrive.DriveStatus) {
+        case DriveStatus.ScanRequired:
+          Status = "Unknown (scan required)";
+          StatusIcon = Icons.Unknown;
+          break;
+        case DriveStatus.UpdateRequired:
+          int addCount = DataDrive.Adds.Count;
+          int deleteCount = DataDrive.Deletes.Count;
+          int editCount = DataDrive.Edits.Count;
+          if (editCount > 0) {
+            addCount -= editCount;
+            deleteCount -= editCount;
+          }
+          Status = String.Format("Update Required ({0} new, {1} deleted, {2} edited)",
+            addCount, deleteCount, editCount);
+          if (deleteCount > 0 || editCount > 0)
+            StatusIcon = Icons.Urgent;
+          else
+            StatusIcon = Icons.Caution;
+          break;
+        case DriveStatus.UpToDate:
+          Status = "Up to date";
+          StatusIcon = Icons.Good;
+          break;
+        case DriveStatus.AccessError:
+          Status = "Error: " + DataDrive.LastError;
+          StatusIcon = Icons.Urgent;
+          break;
+        case DriveStatus.ReadingFile:
+          // don't do anything, DataDrive sets the Status property string for this
+          break;
+      }
     }
 
     #region Properties
@@ -209,38 +213,6 @@ namespace disParityUI
 
     #endregion
 
-    public void UpdateStatus()
-    {
-      switch (DataDrive.Status) {
-        case DriveStatus.ScanRequired:
-          Status = "Unknown (scan required)";
-          StatusIcon = Icons.Unknown;
-          break;
-        case DriveStatus.UpdateRequired:
-          int addCount = DataDrive.Adds.Count;
-          int deleteCount = DataDrive.Deletes.Count;
-          int editCount = DataDrive.Edits.Count;
-          if (editCount > 0) {
-            addCount -= editCount;
-            deleteCount -= editCount;
-          }
-          Status = String.Format("Update Required ({0} new, {1} deleted, {2} edited)",
-            addCount, deleteCount, editCount);
-          if (deleteCount > 0 || editCount > 0)
-            StatusIcon = Icons.Urgent;
-          else
-            StatusIcon = Icons.Caution;
-          break;
-        case DriveStatus.UpToDate:
-          Status = "Up to date";
-          StatusIcon = Icons.Good;
-          break;
-        case DriveStatus.AccessError:
-          Status = "Error: " + DataDrive.LastError;
-          StatusIcon = Icons.Urgent;
-          break;
-      }
-    }
 
   }
 

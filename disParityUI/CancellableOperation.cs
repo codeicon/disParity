@@ -107,13 +107,13 @@ namespace disParityUI
 
       anyDriveNeedsUpdate = false;
       foreach (var vm in viewModel.Drives)
-        if (AbortIfScanErrors && vm.DataDrive.Status == DriveStatus.AccessError) {
+        if (AbortIfScanErrors && vm.DataDrive.DriveStatus == DriveStatus.AccessError) {
           // FIXME: Need to report what the errors were!
           viewModel.Status = "Error(s) encountered during scan!";
           End();
           return;
         }
-        else if (vm.DataDrive.Status == DriveStatus.UpdateRequired)
+        else if (vm.DataDrive.DriveStatus == DriveStatus.UpdateRequired)
           anyDriveNeedsUpdate = true;
 
 

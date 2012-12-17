@@ -15,7 +15,7 @@ namespace disParity
     public ParityBlock(Parity parity)
     {
       this.parity = parity;
-      data = new byte[Parity.BlockSize];
+      data = new byte[Parity.BLOCK_SIZE];
     }
 
     public byte[] Data { get { return data; } }
@@ -42,7 +42,7 @@ namespace disParity
 
     public bool Equals(ParityBlock block)
     {
-      for (int i = 0; i < Parity.BlockSize; i++)
+      for (int i = 0; i < Parity.BLOCK_SIZE; i++)
         if (data[i] != block.Data[i])
           return false;
       return true;
