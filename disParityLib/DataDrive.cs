@@ -18,7 +18,8 @@ namespace disParity
     UpdateRequired,
     UpToDate,
     AccessError,
-    ReadingFile
+    ReadingFile,
+    Scanning
   }
 
   public class DataDrive : ProgressReporter
@@ -81,8 +82,6 @@ namespace disParity
     public UInt32 MaxBlock { get; private set; }
 
     public IEnumerable<FileRecord> Files { get {  return files.Values; } }
-
-    public bool Scanning { get; private set; }
 
     public string LastError { get; private set; }
 
@@ -154,8 +153,7 @@ namespace disParity
     /// </summary>
     public void Scan()
     {
-      Debug.Assert(!Scanning);
-      Scanning = true;
+      DriveStatus = DriveStatus.Scanning;
       cancelScan = false;
       ReportProgress(0);
       try {
@@ -189,7 +187,6 @@ namespace disParity
             }
             // process moves now as part of the scan, since they don't require changes to parity
             ProcessMoves();
-            UpdateStatus();
           }
           else
             LogFile.Log("{0}: Scan cancelled", Root);
@@ -202,10 +199,11 @@ namespace disParity
         }
       }
       finally {
+        ReportProgress(0);
+        UpdateStatus();
         scanFiles.Clear();
         seenFileNames.Clear();
         FireScanCompleted();
-        Scanning = false;
       }
     }
 

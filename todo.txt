@@ -1,5 +1,3 @@
-* Last progress bar stuck at 100% before recover dialog opens 
-
 * Add Hashcheck button
  
 * Adding C:\ as a drive causes excessive memory use during scan.  Can we check

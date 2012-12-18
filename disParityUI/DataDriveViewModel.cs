@@ -112,6 +112,7 @@ namespace disParityUI
           Status = "Error: " + DataDrive.LastError;
           StatusIcon = Icons.Urgent;
           break;
+        case DriveStatus.Scanning:
         case DriveStatus.ReadingFile:
           // don't do anything, DataDrive sets the Status property string for this
           break;
