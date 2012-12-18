@@ -11,6 +11,7 @@ namespace disParity
   {
 
     const string TEMP_PARITY_FILENAME = "parity.tmp";
+    const int MAX_MEMORY_LOAD = 80;
 
     private Parity parity;
     private ParityBlock parityBlock;
@@ -21,6 +22,7 @@ namespace disParity
     private string tempFileName;
     private MemoryMappedFile mmf;
     private MemoryMappedViewStream mmfStream;
+    private UInt32 lastMMFBlock;
 
     public ParityChange(Parity parity, Config config, UInt32 startBlock, UInt32 lengthInBlocks)
     {
@@ -68,10 +70,14 @@ namespace disParity
     /// </summary>
     public void Write()
     {
-      if (mmfStream != null && (mmfStream.Position < mmfStream.Capacity))
-        mmfStream.Write(parityBlock.Data, 0, Parity.BLOCK_SIZE);      
+      if (mmfStream != null && (mmfStream.Position < mmfStream.Capacity) && Utils.MemoryLoad() < MAX_MEMORY_LOAD) {
+        mmfStream.Write(parityBlock.Data, 0, Parity.BLOCK_SIZE);
+        lastMMFBlock = block + 1;
+      } 
       else {
         if (tempFileStream == null) {
+          LogFile.Log("Switching from RAM to temp file at {0}", Utils.SmartSize(mmfStream.Position));
+          mmfStream.Seek(0, SeekOrigin.Begin); // return MMF stream to its start
           // make sure temp directory exists
           if (!Directory.Exists(tempDir))
             Directory.CreateDirectory(tempDir);
@@ -87,7 +93,10 @@ namespace disParity
     {
       get
       {
-        return ((double)(saveBlock - startBlock)) / (block - startBlock);
+        if (saveBlock == 0)
+          return 0;
+        else
+          return ((double)(saveBlock - startBlock)) / (block - startBlock);
       }
     }
 
@@ -104,12 +113,12 @@ namespace disParity
         saveBlock = startBlock;
         UInt32 endBlock = block;
         if (mmfStream != null) {
-          mmfStream.Seek(0, SeekOrigin.Begin);
-          while (saveBlock < endBlock && mmfStream.Position < mmfStream.Capacity) {
+          while (saveBlock < endBlock && saveBlock < lastMMFBlock) {
             mmfStream.Read(data, 0, Parity.BLOCK_SIZE);
             parity.WriteBlock(saveBlock, data);
             saveBlock++;
           }
+          FreeMMF();
         }
         if (tempFileStream != null) {
           LogFile.Log("Flushing MMF parity took {0} seconds", (DateTime.Now - start).TotalSeconds);
@@ -125,17 +134,25 @@ namespace disParity
         LogFile.Log("Fatal error in ParityChange.Save(): " + e.Message);
         throw new Exception("A fatal error occurred (" + e.Message + ") when writing to parity.  Parity data may be damaged.", e);
       }
-      LogFile.Log("Flushing temp parity took {0} seconds", (DateTime.Now - start).TotalSeconds);
+    }
+
+    private void FreeMMF()
+    {
+      if (mmfStream != null) {
+        mmfStream.Dispose();
+        mmfStream = null;
+      }
+      if (mmf != null) {
+        mmf.Dispose();
+        mmf = null;
+      }
     }
 
     public void Dispose()
     {
-      if (mmfStream != null)
-        mmfStream.Dispose();
+      FreeMMF();
       if (tempFileStream != null)
         tempFileStream.Dispose();
-      if (mmf != null)
-        mmf.Dispose();
       if (!String.IsNullOrEmpty(tempFileName) && File.Exists(tempFileName))
         File.Delete(tempFileName);
     }

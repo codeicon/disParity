@@ -1,7 +1,7 @@
-* Maybe check AvailablePhysicalMemory before an update to control how much temp RAM is used?
- 
-* Buttons need tooltips
+* Last progress bar stuck at 100% before recover dialog opens 
 
+* Add Hashcheck button
+ 
 * Adding C:\ as a drive causes excessive memory use during scan.  Can we check
   for system drive?
 
@@ -9,9 +9,6 @@
   for recover errors.
   
 * Need way to re-create parity from scratch.
-
-* Protect against file modifications during updates causing problems by 
-  checking last modified times.
 
 * Idea: don't bother with hash check if LastWriteTime has changed, just
   assume the file has been edited.

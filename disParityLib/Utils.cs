@@ -106,6 +106,16 @@ namespace disParity
         return 0;
     }
 
+    public static uint MemoryLoad()
+    {
+      Win32.MEMORYSTATUSEX memStatus = new Win32.MEMORYSTATUSEX();
+      if (Win32.GlobalMemoryStatusEx(memStatus))
+        return memStatus.dwMemoryLoad;
+      else
+        return 0;
+    }
+
+
   }
 
 
