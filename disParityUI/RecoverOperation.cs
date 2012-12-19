@@ -81,6 +81,8 @@ namespace disParityUI
 
     protected override string Name { get { return "Recover"; } }
 
+    protected override string LowerCaseName { get { return "recover"; } }
+
     protected override bool AbortIfScanErrors { get { return false; } }
 
   }

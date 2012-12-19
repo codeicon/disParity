@@ -1,4 +1,8 @@
-* Add Hashcheck button
+* Add undelete support
+
+* Need way to re-create parity from scratch.
+
+* Warning when adding new drives that are already in the array.
  
 * Adding C:\ as a drive causes excessive memory use during scan.  Can we check
   for system drive?
@@ -6,15 +10,12 @@
 * Error messages during update need to be collected and reported the same as
   for recover errors.
   
-* Need way to re-create parity from scratch.
-
 * Idea: don't bother with hash check if LastWriteTime has changed, just
   assume the file has been edited.
   
 * Handle out-of-parity space issues robustly (should update detect and report 
   when there is not enough room on the parity drive?)
   
-* Warning when adding new drives that are already in the array.
 
 * Log file handling (UI vs. command line)
 

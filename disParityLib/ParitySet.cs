@@ -161,7 +161,7 @@ namespace disParity
         if (cancel)
           return;
 
-        LogFile.Log("Beginning update at " + DateTime.Now);
+        LogFile.Log("Beginning update");
 
         if (cancel)
           return;
@@ -235,7 +235,7 @@ namespace disParity
         foreach (DataDrive d in drives)
           d.UpdateFinished();
         parity.Close();
-        LogFile.Log("Update complete at " + DateTime.Now);
+        LogFile.Log("Update complete");
       }
 
     }
@@ -273,6 +273,12 @@ namespace disParity
         d.CancelScan();
     }
 
+    public void CancelHashcheck()
+    {
+      LogFile.Log("Hashcheck cancelled");
+      cancel = true;
+    }
+
     private bool ValidDrive(DataDrive drive)
     {
       foreach (DataDrive d in drives)
@@ -281,19 +287,56 @@ namespace disParity
       return false;
     }
 
-    public void HashCheck(DataDrive drive = null)
+    public void HashCheck(DataDrive drive)
     {
+      cancel = false;
+      int files = 0;
       int failures = 0;
-      if (drive != null) {
-        if (!ValidDrive(drive))
-          return;
-        else
-          failures = drive.HashCheck();
+      UInt32 totalBlocks = 0;
+      foreach (FileRecord r in drive.Files)
+        totalBlocks += r.LengthInBlocks;
+      ReportProgress(0);
+      UInt32 blocks = 0;
+      byte[] buf = new byte[Parity.BLOCK_SIZE];
+      try {
+        using (MD5 hash = MD5.Create()) {
+          foreach (FileRecord r in drive.Files) {
+            files++;
+            if (r.Length == 0) {
+              continue;
+            }
+            drive.ReportProgress(0);
+            drive.Status = "Checking " + r.FullPath;
+            hash.Initialize();
+            int read = 0;
+            int b = 0;
+            using (FileStream s = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read)) {
+              while (!cancel && ((read = s.Read(buf, 0, Parity.BLOCK_SIZE)) > 0)) {
+                hash.TransformBlock(buf, 0, read, buf, 0);
+                drive.ReportProgress((double)b++ / r.LengthInBlocks);
+                ReportProgress((double)blocks++ / totalBlocks);
+              }
+            }
+            if (cancel)
+              return;
+            hash.TransformFinalBlock(buf, 0, 0);
+            if (!Utils.HashCodesMatch(hash.Hash, r.HashCode)) {
+              FireErrorMessage(r.FullPath + " hash check failed");
+              failures++;
+            }
+            Status = String.Format("Hash check in progress.  Files checked: {0} Failures: {1}", files, failures);
+          }
+          drive.Status = "";
+          if (failures == 0)
+            Status = "Hash check of " + drive.Root + " complete.  No errors found";
+          else
+            Status = "Hash check of " + drive.Root + " complete.  Errors: " + failures;
+        }
       }
-      else
-        foreach (DataDrive d in drives)
-          failures += d.HashCheck();
-      LogFile.Log("Hash failure(s): {0}", failures);
+      finally {
+        drive.ReportProgress(0);
+        drive.Status = "";
+      }
     }
 
     /// <summary>
@@ -803,57 +846,56 @@ namespace disParity
       UInt32 maxBlock = MaxParityBlock();
       UInt32 errors = 0;
       List<FileRecord> suspectFiles = new List<FileRecord>();
+      DateTime lastStatus = DateTime.Now;
+      TimeSpan minTimeDelta = TimeSpan.FromMilliseconds(100); // don't update status more than 10x per second
 
       ReportProgress(0);
 
-      TimeBasedProgressThrottling = true;
-      try {
-        FileRecord r;
-        ParityBlock parityBlock = new ParityBlock(parity);
-        ParityBlock calculatedParityBlock = new ParityBlock(parity);
-        byte[] buf = new byte[Parity.BLOCK_SIZE];
-        for (UInt32 block = 0; block < maxBlock; block++) {
-          parityBlock.Load(block);
-          bool firstRead = true;
-          foreach (DataDrive d in drives)
-            try {
-              if (firstRead) {
-                if (d.ReadBlock(block, calculatedParityBlock.Data, out r))
-                  firstRead = false;
-              }
-              else if (d.ReadBlock(block, buf, out r))
-                calculatedParityBlock.Add(buf);
+      FileRecord r;
+      ParityBlock parityBlock = new ParityBlock(parity);
+      ParityBlock calculatedParityBlock = new ParityBlock(parity);
+      byte[] buf = new byte[Parity.BLOCK_SIZE];
+      for (UInt32 block = 0; block < maxBlock; block++) {
+        parityBlock.Load(block);
+        bool firstRead = true;
+        foreach (DataDrive d in drives)
+          try {
+            if (firstRead) {
+              if (d.ReadBlock(block, calculatedParityBlock.Data, out r))
+                firstRead = false;
             }
-            catch (Exception e) {
-              FireErrorMessage(e.Message);
-            }
-          if (firstRead)
-            // no blocks were read, this block should be empty
-            calculatedParityBlock.Clear();
-          if (!calculatedParityBlock.Equals(parityBlock)) {
-            FireErrorMessage(String.Format("Block {0} does not match", block));
-            errors++;
-            bool reported = false;
-            foreach (DataDrive dr in drives) {
-              FileRecord f = dr.FileFromBlock(block);
-              if (f != null && !suspectFiles.Contains(f)) {
-                suspectFiles.Add(f);
-                if (!reported) {
-                  FireErrorMessage("Block " + block + " contains data from the following file or files (each file will only be reported once per verify pass):");
-                  reported = true;
-                }
-                FireErrorMessage(f.FullPath);
+            else if (d.ReadBlock(block, buf, out r))
+              calculatedParityBlock.Add(buf);
+          }
+          catch (Exception e) {
+            FireErrorMessage(e.Message);
+          }
+        if (firstRead)
+          // no blocks were read, this block should be empty
+          calculatedParityBlock.Clear();
+        if (!calculatedParityBlock.Equals(parityBlock)) {
+          FireErrorMessage(String.Format("Block {0} does not match", block));
+          errors++;
+          bool reported = false;
+          foreach (DataDrive dr in drives) {
+            FileRecord f = dr.FileFromBlock(block);
+            if (f != null && !suspectFiles.Contains(f)) {
+              suspectFiles.Add(f);
+              if (!reported) {
+                FireErrorMessage("Block " + block + " contains data from the following file or files (each file will only be reported once per verify pass):");
+                reported = true;
               }
+              FireErrorMessage(f.FullPath);
             }
           }
-          Status = String.Format("{0} of {1} parity blocks verified. Errors found: {2}", block, maxBlock, errors);
-          ReportProgress((double)block / maxBlock);
-          if (cancel)
-            break;
         }
-      }
-      finally {
-        TimeBasedProgressThrottling = false;
+        if ((DateTime.Now - lastStatus) > minTimeDelta) {
+          Status = String.Format("{0} of {1} parity blocks verified. Errors found: {2}", block, maxBlock, errors);
+          lastStatus = DateTime.Now;
+        }
+        ReportProgress((double)block / maxBlock);
+        if (cancel)
+          break;
       }
 
     }

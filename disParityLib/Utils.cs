@@ -31,6 +31,8 @@ namespace disParity
 
     public static bool HashCodesMatch(byte[] h1, byte[] h2)
     {
+      if (h1 == null || h2 == null)
+        return false;
       if (h1.Length != h2.Length)
         return false;
       for (int i = 0; i < h1.Length; i++)

@@ -37,6 +37,8 @@ namespace disParityUI
 
     protected override string Name { get { return "Update"; } }
 
+    protected override string LowerCaseName { get { return "update"; } }
+
   }
 
 }

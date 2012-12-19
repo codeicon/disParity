@@ -179,7 +179,7 @@ namespace disParity
             Status = "Scan complete. Analyzing results...";
             ReportProgress(1.0);
             Compare();
-            LogFile.Log("{0}: Found {1} file{2} ({3} total) Adds: {4} Deletes: {5} Moves: {6} Edits: {7}", Root, scanFiles.Count,
+            LogFile.Log("Scan of {0} complete. Found {1} file{2} ({3} total) Adds: {4} Deletes: {5} Moves: {6} Edits: {7}", Root, scanFiles.Count,
               scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize), adds.Count, deletes.Count, moves.Count, edits.Count);
             if (cancelScan) {
               DriveStatus = DriveStatus.ScanRequired;
@@ -206,6 +206,7 @@ namespace disParity
         FireScanCompleted();
       }
     }
+    
 
     private void Scan(DirectoryInfo dir, List<Regex> ignores, ProgressEstimator progress = null)
     {
@@ -347,6 +348,8 @@ namespace disParity
               // probably the same file, but we need to check the hash to be sure
               if (hashCode == null)
                 hashCode = ComputeHash(a);
+              if (cancelScan)
+                return;
               if (Utils.HashCodesMatch(hashCode, d.HashCode)) {
                 LogFile.Log("{0} moved to {1}", Utils.MakeFullPath(root, d.Name), Utils.MakeFullPath(root, a.Name));
                 moves[d.Name.ToLower()] = a;
@@ -455,7 +458,7 @@ namespace disParity
     {
       if (adds.Count > 0 || moves.Count > 0 || deletes.Count > 0)
         DriveStatus = DriveStatus.UpdateRequired;
-      else
+      else if (DriveStatus != DriveStatus.ScanRequired)
         DriveStatus = DriveStatus.UpToDate;
     }
 
@@ -495,7 +498,6 @@ namespace disParity
     /// </summary>
     private byte[] ComputeHash(FileRecord r)
     {
-      // ComputeHash(stream) is nice, but it's not cancellable, so we can't use it
       using (FileStream s = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read))
       using (MD5 hash = MD5.Create()) {
         hash.Initialize();
@@ -503,7 +505,15 @@ namespace disParity
         int read = 0;
         while (!cancelScan && ((read = s.Read(buf, 0, Parity.BLOCK_SIZE)) > 0))
           hash.TransformBlock(buf, 0, read, buf, 0);
+        if (cancelScan)
+          return null;
         hash.TransformFinalBlock(buf, 0, 0);
+        /* Uncomment to see hash values
+        StringBuilder sb = new StringBuilder();
+        foreach (byte b in hash.Hash)
+          sb.Append(String.Format("{0:X2}", b));
+        Status = sb.ToString();
+         */
         return hash.Hash;
       }
     }
@@ -549,6 +559,7 @@ namespace disParity
           return false;
         if (!enumerator.MoveNext()) {
           EndFileEnum();
+          adds.Clear();
           enumComplete = true;
           LoadFileList(); // this loads completed filesX.dat back into the master files list
           DriveStatus = DriveStatus.UpToDate;
@@ -565,7 +576,6 @@ namespace disParity
           enumerator.MoveNext();
           return GetNextBlock(buf);
         }
-        ReportProgress(0);
         DriveStatus = DriveStatus.ReadingFile;
         Status = "Reading " + fullName;
         LogFile.Log(Status);

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using disParity;
 
 namespace disParityUI
@@ -109,7 +110,7 @@ namespace disParityUI
       foreach (var vm in viewModel.Drives)
         if (AbortIfScanErrors && vm.DataDrive.DriveStatus == DriveStatus.AccessError) {
           // FIXME: Need to report what the errors were!
-          viewModel.Status = "Error(s) encountered during scan!";
+          viewModel.Status = "Error(s) encountered during scan";
           End();
           return;
         }
@@ -117,7 +118,12 @@ namespace disParityUI
           anyDriveNeedsUpdate = true;
 
 
-      Run();
+      // I don't like calling Run() on the ScanCompleted callback from DataDrive's scan thread,
+      // so run it on the main UI thread instead.
+      Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+      {
+        Run();
+      }));
 
     }
 
@@ -162,6 +168,7 @@ namespace disParityUI
 
     protected void End()
     {
+      CheckForErrors();
       viewModel.ParitySet.ErrorMessage -= HandleErrorMessage;
       viewModel.StopProgress();
       inProgress = false;
@@ -192,6 +199,17 @@ namespace disParityUI
       }
     }
 
+    protected virtual bool CheckForErrors()
+    {
+      if (errorMessages.Count == 0)
+        return false;
+      if (MessageWindow.Show(viewModel.Owner, "Errors detected", "Errors were encountered during the " + LowerCaseName + 
+        ".  Would you like to see a list of errors?", MessageWindowIcon.Error, MessageWindowButton.YesNo) == true)
+        ReportWindow.Show(viewModel.Owner, errorMessages);
+      return true;
+    }
+
+
     protected void DisplayUpToDateStatus()
     {
       long totalSize = 0;
@@ -210,6 +228,8 @@ namespace disParityUI
     /// Name of this operation
     /// </summary>
     abstract protected string Name { get; }
+
+    abstract protected string LowerCaseName { get; }
 
     /// <summary>
     /// Whether or not this operation should be preceded by a scan

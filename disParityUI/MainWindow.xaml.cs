@@ -42,6 +42,10 @@ namespace disParityUI
       timer.Start();
     }
 
+    private void MenuItemDelete_Click(object sender, RoutedEventArgs e)
+    {
+    }
+
     private void HandleInitialized(object sender, EventArgs args)
     {
       if (SingleInstance.AlreadyRunning()) {
@@ -141,7 +145,8 @@ namespace disParityUI
 
     void RecoverDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = !viewModel.Busy && (DriveList.SelectedItems.Count == 1);
+      e.CanExecute = !viewModel.Busy && (DriveList.SelectedItems.Count == 1) &&
+        ((DataDriveViewModel)DriveList.SelectedItem).DataDrive.FileCount > 0;
     }
 
     void RecoverDriveExecuted(object sender, ExecutedRoutedEventArgs e)
@@ -193,6 +198,19 @@ namespace disParityUI
       viewModel.Cancel();
       e.Handled = true;
     }
+
+    void HashcheckCanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+      e.CanExecute = !viewModel.Busy && (DriveList.SelectedItems.Count == 1) &&
+        ((DataDriveViewModel)DriveList.SelectedItem).DataDrive.FileCount > 0;
+    }
+
+    void HashcheckExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+      viewModel.Hashcheck((DataDriveViewModel)DriveList.SelectedItem);
+      e.Handled = true;
+    }
+
 
     #endregion
 

@@ -144,8 +144,8 @@ namespace disParity.CmdLine
           case Command.HashCheck:
             if (driveNum != -1)
               set.HashCheck(set.Drives[driveNum]);
-            else
-              set.HashCheck();
+            //else
+            //  set.HashCheck();
             break;
         }
       }

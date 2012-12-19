@@ -261,6 +261,13 @@ namespace disParityUI
       operationInProgress.Begin();
     }
 
+    public void Hashcheck(DataDriveViewModel drive)
+    {
+      operationInProgress = new HashcheckOperation(this);
+      operationInProgress.Finished += HandleOperationFinished;
+      operationInProgress.Begin(drive);
+    }
+
     public void Verify()
     {
       operationInProgress = new VerifyOperation(this);

@@ -20,6 +20,7 @@ namespace disParityUI
     public static RoutedUICommand About;
     public static RoutedUICommand CancelOperation;
     public static RoutedUICommand Verify;
+    public static RoutedUICommand Hashcheck;
 
     static Commands()
     {
@@ -33,6 +34,7 @@ namespace disParityUI
       About = new RoutedUICommand("About...", "About", typeof(MainWindow));
       CancelOperation = new RoutedUICommand("Cancel", "Cancel", typeof(MainWindow));
       Verify = new RoutedUICommand("Verify", "Verify", typeof(MainWindow));
+      Hashcheck = new RoutedUICommand("Hashcheck", "Hashcheck", typeof(MainWindow));
     }
 
   }

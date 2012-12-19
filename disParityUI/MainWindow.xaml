@@ -24,6 +24,7 @@
     <CommandBinding Command="ui:Commands.About" Executed="AboutExecuted"/>
     <CommandBinding Command="ui:Commands.CancelOperation" CanExecute="CancelCanExecute" Executed="CancelExecuted"/>
     <CommandBinding Command="ui:Commands.Verify" CanExecute="VerifyCanExecute" Executed="VerifyExecuted"/>
+    <CommandBinding Command="ui:Commands.Hashcheck" CanExecute="HashcheckCanExecute" Executed="HashcheckExecuted"/>
   </Window.CommandBindings>
   <Window.TaskbarItemInfo >
     <TaskbarItemInfo ProgressState="{Binding Path=ProgressState}" ProgressValue="{Binding Path=Progress}" />
@@ -40,6 +41,30 @@
       <RowDefinition Height="25"/>
     </Grid.RowDefinitions>
     <ListBox Name="DriveList" Margin="10,10,10,0" ItemsSource="{Binding Path=Drives}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" Background="#BEAB83">
+      <ListBox.Resources>
+        <ContextMenu x:Key="DriveMenu">
+          <MenuItem Header="Scan" Command="ui:Commands.ScanDrive" ToolTip="Scan drive for changes">
+            <MenuItem.Icon>
+              <Image Source="/disParityUI;component/Icons/scan.ico" />
+            </MenuItem.Icon>
+          </MenuItem>
+          <MenuItem Header="Remove" Command="ui:Commands.RemoveDrive" ToolTip="Remove drive from the array">
+            <MenuItem.Icon>
+              <Image Source="/disParityUI;component/Icons/remove.ico" />
+            </MenuItem.Icon>
+          </MenuItem>
+          <MenuItem Header="Hashcheck" Command="ui:Commands.Hashcheck" ToolTip="Look for drive corruption by checking file hash values">
+            <MenuItem.Icon>
+              <Image Source="/disParityUI;component/Icons/hashcheck.ico" />
+            </MenuItem.Icon>
+          </MenuItem>
+          <MenuItem Header="Recover..." Command="ui:Commands.RecoverDrive" ToolTip="Recover files from this drive to another location">
+            <MenuItem.Icon>
+              <Image Source="/disParityUI;component/Icons/recover.ico" />
+            </MenuItem.Icon>
+          </MenuItem>
+        </ContextMenu>
+      </ListBox.Resources>
         <ListBox.ItemTemplate>
           <DataTemplate>
           <Border Name="DriveBorder" Margin="0,1,1,1" BorderThickness="1" BorderBrush="Black" CornerRadius="5">
@@ -95,6 +120,7 @@
             </Trigger>
 
           </Style.Triggers>
+          <Setter Property="ContextMenu" Value="{StaticResource DriveMenu}"/>
         </Style>
       </ListBox.ItemContainerStyle>
     </ListBox>
@@ -120,25 +146,29 @@
     </DockPanel>
     <StackPanel Margin="0,10,10,10" Grid.Column="1" Orientation="Vertical">
       <Button Command="ui:Commands.AddDrive" Content="Add Drive..." ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
-        <Button.ToolTip>"Add a new drive to the array"</Button.ToolTip>
+        <Button.ToolTip>Add a new drive to the array</Button.ToolTip>
       </Button>
+      <!--
       <Button Margin="0,10,0,0" Command="ui:Commands.RemoveDrive" Content="Remove Drive"  ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Remove selected drive from the array</Button.ToolTip>
       </Button>
       <Button Margin="0,10,0,0" Command="ui:Commands.ScanDrive" Content="Scan Drive" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Scan selected drive for changes</Button.ToolTip>
-      </Button>
+      </Button> -->
       <Button Margin="0,10,0,0" Command="ui:Commands.ScanAll" Content="Scan All" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Scan all drives for changes</Button.ToolTip>
       </Button>
       <Button Margin="0,10,0,0" Command="ui:Commands.UpdateAll" Content="Update All" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Update backup to reflect latest changes on all drives</Button.ToolTip>
       </Button>
-      <Button Margin="0,10,0,0" Command="ui:Commands.RecoverDrive" Content="Recover Drive..." ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
+      <!-- <Button Margin="0,10,0,0" Command="ui:Commands.RecoverDrive" Content="Recover Drive..." ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Recover selected drive</Button.ToolTip>
       </Button>
+      <Button Margin="0,10,0,0" Command="ui:Commands.Hashcheck" Content="Hashcheck" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
+        <Button.ToolTip>Look for corruption on selected drive be checking file hash values</Button.ToolTip>
+      </Button> -->
       <Button Margin="0,10,0,0" Command="ui:Commands.Verify" Content="Verify" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
-        <Button.ToolTip>Verify that backup image is correct</Button.ToolTip>
+        <Button.ToolTip>Verify that the backup image is correct</Button.ToolTip>
       </Button>
       <Button Margin="0,10,0,0" Command="ui:Commands.Options" Content="Options..." ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Configure disParity</Button.ToolTip>
@@ -146,6 +176,7 @@
       <Button Margin="0,10,0,0" Command="ui:Commands.About" Content="About..." ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Remove a drive from the array</Button.ToolTip>
       </Button>
+      <TextBlock Margin="5,10,5,0" TextWrapping="Wrap">Right-click on a drive for more options</TextBlock>
     </StackPanel>
   </Grid>
 </Window>

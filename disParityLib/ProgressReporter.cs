@@ -12,7 +12,6 @@ namespace disParity
   public class ProgressReporter : NotifyPropertyChanged
   {
 
-    private DateTime lastReport;
     private const double MIN_PROGRESS_DELTA = 0.001;
     private TimeSpan minTimeDelta = TimeSpan.FromMilliseconds(100); // max. 10x per second
 
@@ -20,20 +19,12 @@ namespace disParity
     {
       DateTime now = DateTime.Now;
 
-      if (!force && progress != 0.0)
-        if (TimeBasedProgressThrottling) {
-          if (now - lastReport < minTimeDelta)
-            return;
-        }
-        else if ((progress - this.progress) < MIN_PROGRESS_DELTA)
+      if (!force && progress != 0.0 && ((progress - this.progress) < MIN_PROGRESS_DELTA))
           return;
 
       Progress = progress;
-      lastReport = now;
 
     }
-
-    protected bool TimeBasedProgressThrottling { set; private get; }
 
     private double progress;
     public double Progress

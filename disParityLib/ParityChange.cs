@@ -121,7 +121,9 @@ namespace disParity
           FreeMMF();
         }
         if (tempFileStream != null) {
+#if DEBUG
           LogFile.Log("Flushing MMF parity took {0} seconds", (DateTime.Now - start).TotalSeconds);
+#endif
           tempFileStream.Seek(0, SeekOrigin.Begin);
           while (saveBlock < endBlock) {
             tempFileStream.Read(data, 0, Parity.BLOCK_SIZE);

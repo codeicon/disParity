@@ -32,6 +32,9 @@ namespace disParityUI
     {
       Status = "Removing " + drive.Root + "...";
       viewModel.ParitySet.RemoveAllFiles(drive.DataDrive);
+      // can't remove the drive if there were errors removing any files
+      if (CheckForErrors())
+        return;
       if (!cancelled)
         RemoveEmptyDrive(drive);
     }
@@ -39,6 +42,16 @@ namespace disParityUI
     protected override void CancelOperation()
     {
       viewModel.ParitySet.CancelRemoveAll();
+    }
+
+    protected override bool CheckForErrors()
+    {
+      if (errorMessages.Count == 0)
+        return false;
+      if (MessageWindow.Show(viewModel.Owner, "Errors detected", "Errors were encountered while trying to remove the drive." +
+        " Would you like to see a list of errors?", MessageWindowIcon.Error, MessageWindowButton.YesNo) == true)
+        ReportWindow.Show(viewModel.Owner, errorMessages);
+      return true;
     }
 
     /// <summary>
@@ -58,8 +71,9 @@ namespace disParityUI
       Status = vm.DataDrive.Root + " removed";
     }
 
-
     protected override string Name { get { return "Remove drive"; } }
+
+    protected override string LowerCaseName { get { return "remove drive"; } }
 
     protected override bool ScanFirst { get { return false; } }
 

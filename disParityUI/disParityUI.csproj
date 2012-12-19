@@ -57,6 +57,7 @@
     <Compile Include="AboutWindowViewModel.cs" />
     <Compile Include="CancellableOperation.cs" />
     <Compile Include="Commands.cs" />
+    <Compile Include="HashcheckOperation.cs" />
     <Compile Include="Icons.cs" />
     <Compile Include="LicenseWindow.xaml.cs">
       <DependentUpon>LicenseWindow.xaml</DependentUpon>
@@ -150,10 +151,22 @@
     <Resource Include="Icon.ico" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="StatusCaution.ico" />
-    <Resource Include="StatusGood.ico" />
-    <Resource Include="StatusUnknown.ico" />
-    <Resource Include="StatusUrgent.ico" />
+    <Resource Include="Icons\StatusCaution.ico" />
+    <Resource Include="Icons\StatusGood.ico" />
+    <Resource Include="Icons\StatusUnknown.ico" />
+    <Resource Include="Icons\StatusUrgent.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Icons\scan.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Icons\remove.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Icons\hashcheck.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Icons\recover.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
