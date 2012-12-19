@@ -1,14 +1,13 @@
+* Add Hashcheck All
+
 * Add undelete support
 
+* Right-click menu option to show files in next update
+ 
 * Need way to re-create parity from scratch.
 
-* Warning when adding new drives that are already in the array.
- 
 * Adding C:\ as a drive causes excessive memory use during scan.  Can we check
   for system drive?
-
-* Error messages during update need to be collected and reported the same as
-  for recover errors.
   
 * Idea: don't bother with hash check if LastWriteTime has changed, just
   assume the file has been edited.

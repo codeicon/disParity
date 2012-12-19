@@ -287,56 +287,127 @@ namespace disParity
       return false;
     }
 
-    public void HashCheck(DataDrive drive)
+    public void HashCheck(DataDrive driveToCheck = null)
     {
       cancel = false;
+      if (driveToCheck != null)
+        LogFile.Log("Beginning hash check for " + driveToCheck.Root);
+      else
+        LogFile.Log("Beginning hash check for all drives");
+
       int files = 0;
       int failures = 0;
-      UInt32 totalBlocks = 0;
-      foreach (FileRecord r in drive.Files)
-        totalBlocks += r.LengthInBlocks;
+      int inProgres = 0;
+      long totalBlocksAllDrives = 0;
+      long blocks = 0;
+
+      if (driveToCheck != null)
+        totalBlocksAllDrives = driveToCheck.TotalFileBlocks;
+      else
+        foreach (DataDrive d in drives)
+          totalBlocksAllDrives += d.TotalFileBlocks;
+
       ReportProgress(0);
-      UInt32 blocks = 0;
-      byte[] buf = new byte[Parity.BLOCK_SIZE];
-      try {
-        using (MD5 hash = MD5.Create()) {
-          foreach (FileRecord r in drive.Files) {
-            files++;
-            if (r.Length == 0) {
-              continue;
-            }
-            drive.ReportProgress(0);
-            drive.Status = "Checking " + r.FullPath;
-            hash.Initialize();
-            int read = 0;
-            int b = 0;
-            using (FileStream s = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read)) {
-              while (!cancel && ((read = s.Read(buf, 0, Parity.BLOCK_SIZE)) > 0)) {
-                hash.TransformBlock(buf, 0, read, buf, 0);
-                drive.ReportProgress((double)b++ / r.LengthInBlocks);
-                ReportProgress((double)blocks++ / totalBlocks);
+
+      foreach (DataDrive drive in drives) {
+        if (driveToCheck != null && drive != driveToCheck)
+          continue;
+
+        DataDrive d = drive;
+        Interlocked.Increment(ref inProgres);
+        Task.Factory.StartNew(() => {
+          try {
+            UInt32 b = 0;
+            UInt32 totalBlocks = d.TotalFileBlocks;
+            byte[] buf = new byte[Parity.BLOCK_SIZE];
+            LogFile.Log("Starting hashcheck for " + d.Root);
+            d.ReportProgress(0);
+            using (MD5 hash = MD5.Create())
+              foreach (FileRecord r in d.Files) {
+                Interlocked.Increment(ref files);
+                // skip zero length files
+                if (r.Length == 0)
+                  continue;
+                // make sure file exists
+                if (!File.Exists(r.FullPath)) {
+                  FireErrorMessage(r.FullPath + " not found.  Skipping hash check for this file.");
+                  b += r.LengthInBlocks;
+                  Interlocked.Add(ref blocks, r.LengthInBlocks);
+                  continue;
+                }
+                // warn if file has been modified
+                if (r.Modified)
+                  FireErrorMessage("Warning: " + r.FullPath + " has been modified.  Hashcheck will probably fail.");
+                d.Status = "Reading " + r.FullPath;
+                LogFile.Log(d.Status);
+                hash.Initialize();
+                int read = 0;
+                try {
+                  using (FileStream s = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read)) {
+                    while (!cancel && ((read = s.Read(buf, 0, Parity.BLOCK_SIZE)) > 0)) {
+                      hash.TransformBlock(buf, 0, read, buf, 0);
+                      d.ReportProgress((double)b++ / totalBlocks);
+                      Interlocked.Increment(ref blocks);
+                    }
+                  }
+                }
+                catch (Exception e) {
+                  FireErrorMessage("Error reading " + r.FullPath + ": " + e.Message);
+                  // progress will be little off after this point, but this is very unlikely anyway so let it be
+                  continue;
+                }
+                if (cancel) {
+                  d.Status = "";
+                  return;
+                }
+                hash.TransformFinalBlock(buf, 0, 0);
+                if (!Utils.HashCodesMatch(hash.Hash, r.HashCode)) {
+                  FireErrorMessage(r.FullPath + " hash check failed");
+                  Interlocked.Increment(ref failures);
+                }
               }
+            d.Status = "";
+            if (failures == 0) {
+              if (driveToCheck == null)
+                d.Status = "Hash check complete.  No errors found.";
+              LogFile.Log("Hash check of " + d.Root + " complete.  No errors found.");
             }
-            if (cancel)
-              return;
-            hash.TransformFinalBlock(buf, 0, 0);
-            if (!Utils.HashCodesMatch(hash.Hash, r.HashCode)) {
-              FireErrorMessage(r.FullPath + " hash check failed");
-              failures++;
+            else {
+              if (driveToCheck == null)
+                d.Status = "Hash check complete.  Errors: " + failures;
+              LogFile.Log("Hash check of " + d.Root + " complete.  Errors: " + failures);
             }
-            Status = String.Format("Hash check in progress.  Files checked: {0} Failures: {1}", files, failures);
           }
-          drive.Status = "";
-          if (failures == 0)
-            Status = "Hash check of " + drive.Root + " complete.  No errors found";
-          else
-            Status = "Hash check of " + drive.Root + " complete.  Errors: " + failures;
-        }
+          catch (Exception e) {
+            d.Status = "Hashcheck failed: " + e.Message;
+            LogFile.Log("Hashcheck of " + d.Root + " failed: " + e.Message);
+          }
+          finally {
+            d.ReportProgress(0);
+            Interlocked.Decrement(ref inProgres);
+          }
+        });
+
       }
-      finally {
-        drive.ReportProgress(0);
-        drive.Status = "";
+
+      // wait for all hashcheck threads to complete
+      while (inProgres > 0) {
+        Status = String.Format("Hash check in progress.  Files checked: {0} Failures: {1}", files, failures);
+        ReportProgress((double)blocks / totalBlocksAllDrives);
+        Thread.Sleep(100);        
       }
+
+      string status;
+      if (driveToCheck != null)
+        status = "Hash check of " + driveToCheck.Root + " complete.";
+      else
+        status = "Hash check of all drives complete.";
+      if (failures == 0)
+        Status = status;
+      else
+        Status = status + "  Errors: " + failures;
+      if (driveToCheck != null)
+        LogFile.Log(Status);
     }
 
     /// <summary>

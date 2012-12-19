@@ -174,6 +174,27 @@ namespace disParityUI
     /// </summary>
     public void AddDrive(string path)
     {
+      string root = Path.GetPathRoot(path);
+
+      if (String.Compare(root, Path.GetPathRoot(Config.ParityDir), true) == 0) {
+        bool? result = MessageWindow.Show(owner, "Duplicate drives detected!", "The path you selected appears to be on same drive as your parity.\n\n" +
+          "This is not recommended.  If the drive fails, disParity will not be able to recover any of your data.\n\n" +
+          "Are you sure you want to add this drive?", MessageWindowIcon.Error, MessageWindowButton.YesNo);
+        if (result == false)
+          return;
+      }
+
+      foreach (DataDrive d in paritySet.Drives)
+        if (String.Compare(root, Path.GetPathRoot(d.Root), true) == 0) {
+          bool? result = MessageWindow.Show(owner, "Duplicate drives detected!", "The path you selected appears to be on a drive that is already part of the array.\n\n" +
+            "This is not recommended.  If the drive fails, disParity will not be able to recover any of your data.\n\n" +
+            "Are you sure you want to add this drive?", MessageWindowIcon.Error, MessageWindowButton.YesNo);
+          if (result == false)
+            return;
+          else if (result == true)
+            break;
+        }
+
       AddDrive(paritySet.AddDrive(path));
       UpdateStartupMessage();
     }
@@ -261,7 +282,7 @@ namespace disParityUI
       operationInProgress.Begin();
     }
 
-    public void Hashcheck(DataDriveViewModel drive)
+    public void Hashcheck(DataDriveViewModel drive = null)
     {
       operationInProgress = new HashcheckOperation(this);
       operationInProgress.Finished += HandleOperationFinished;

@@ -19,6 +19,7 @@ namespace disParityUI
 
     private int runningScans;
     private double[] scanProgress;
+    private object syncObject = new object();
 
     protected MainWindowViewModel viewModel;
     protected bool cancelled;
@@ -129,7 +130,9 @@ namespace disParityUI
 
     private void HandleErrorMessage(object sender, ErrorMessageEventArgs args)
     {
-      errorMessages.Add(args.Message);
+      lock (syncObject) {
+        errorMessages.Add(args.Message);
+      }
     }
 
     /// <summary>

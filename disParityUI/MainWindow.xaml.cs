@@ -42,10 +42,6 @@ namespace disParityUI
       timer.Start();
     }
 
-    private void MenuItemDelete_Click(object sender, RoutedEventArgs e)
-    {
-    }
-
     private void HandleInitialized(object sender, EventArgs args)
     {
       if (SingleInstance.AlreadyRunning()) {
@@ -210,6 +206,19 @@ namespace disParityUI
       viewModel.Hashcheck((DataDriveViewModel)DriveList.SelectedItem);
       e.Handled = true;
     }
+
+    void HashcheckAllCanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+      e.CanExecute = !viewModel.Busy && DriveList.HasItems;
+    }
+
+    void HashcheckAllExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+      viewModel.Hashcheck();
+      e.Handled = true;
+    }
+
+
 
 
     #endregion

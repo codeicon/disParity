@@ -25,6 +25,7 @@
     <CommandBinding Command="ui:Commands.CancelOperation" CanExecute="CancelCanExecute" Executed="CancelExecuted"/>
     <CommandBinding Command="ui:Commands.Verify" CanExecute="VerifyCanExecute" Executed="VerifyExecuted"/>
     <CommandBinding Command="ui:Commands.Hashcheck" CanExecute="HashcheckCanExecute" Executed="HashcheckExecuted"/>
+    <CommandBinding Command="ui:Commands.HashcheckAll" CanExecute="HashcheckAllCanExecute" Executed="HashcheckAllExecuted"/>
   </Window.CommandBindings>
   <Window.TaskbarItemInfo >
     <TaskbarItemInfo ProgressState="{Binding Path=ProgressState}" ProgressValue="{Binding Path=Progress}" />
@@ -167,15 +168,16 @@
       <Button Margin="0,10,0,0" Command="ui:Commands.Hashcheck" Content="Hashcheck" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Look for corruption on selected drive be checking file hash values</Button.ToolTip>
       </Button> -->
+      <Button Margin="0,10,0,0" Command="ui:Commands.HashcheckAll" Content="Hashcheck All" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
+        <Button.ToolTip>Check file hashes on all drives</Button.ToolTip>
+      </Button>
       <Button Margin="0,10,0,0" Command="ui:Commands.Verify" Content="Verify" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Verify that the backup image is correct</Button.ToolTip>
       </Button>
       <Button Margin="0,10,0,0" Command="ui:Commands.Options" Content="Options..." ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Configure disParity</Button.ToolTip>
       </Button>
-      <Button Margin="0,10,0,0" Command="ui:Commands.About" Content="About..." ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
-        <Button.ToolTip>Remove a drive from the array</Button.ToolTip>
-      </Button>
+      <Button Margin="0,10,0,0" Command="ui:Commands.About" Content="About"/>
       <TextBlock Margin="5,10,5,0" TextWrapping="Wrap">Right-click on a drive for more options</TextBlock>
     </StackPanel>
   </Grid>

@@ -122,6 +122,20 @@ namespace disParity
     }
 
     /// <summary>
+    /// Returns the total size of all proteced files on this drive, in blocks.
+    /// </summary>
+    public UInt32 TotalFileBlocks
+    {
+      get
+      {
+        UInt32 result = 0;
+        foreach (FileRecord r in files.Values)
+          result += r.LengthInBlocks;
+        return result;
+      }
+    }
+
+    /// <summary>
     /// Clears all state of the DataDrive, resetting to empty (deletes on-disk meta data as well.)
     /// </summary>
     public void Clear()
@@ -272,7 +286,7 @@ namespace disParity
             break;
           }
         if (ignore) {
-          LogFile.Log("Skipping {0} because it matches an ignore...", f.FullName);
+          LogFile.Log("Skipping {0} because it matches an ignore", f.FullName);
           continue;
         }
         FileRecord r = new FileRecord(f, relativePath, this);

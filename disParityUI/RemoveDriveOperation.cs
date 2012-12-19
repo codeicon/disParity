@@ -15,14 +15,11 @@ namespace disParityUI
     protected override bool PrepareOperation()
     {
 
-      if (drive.DataDrive.FileCount == 0) {
-        RemoveEmptyDrive(drive);
-        return false;
+      if (drive.DataDrive.FileCount > 0) {
+        string message = String.Format("Are you sure you want to remove {0} from the backup?", drive.Root);
+        if (MessageWindow.Show(viewModel.Owner, "Confirm drive removal", message, MessageWindowIcon.Question, MessageWindowButton.YesNo) == false)
+          return false;
       }
-
-      string message = String.Format("Are you sure you want to remove {0} from the backup?", drive.Root);
-      if (MessageWindow.Show(viewModel.Owner, "Confirm drive removal", message, MessageWindowIcon.Question, MessageWindowButton.YesNo) == false)
-        return false;
 
       return true;
 
@@ -30,8 +27,10 @@ namespace disParityUI
 
     protected override void DoOperation()
     {
-      Status = "Removing " + drive.Root + "...";
-      viewModel.ParitySet.RemoveAllFiles(drive.DataDrive);
+      if (drive.DataDrive.FileCount > 0) {
+        Status = "Removing " + drive.Root + "...";
+        viewModel.ParitySet.RemoveAllFiles(drive.DataDrive);
+      }
       // can't remove the drive if there were errors removing any files
       if (CheckForErrors())
         return;

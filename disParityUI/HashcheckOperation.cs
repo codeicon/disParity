@@ -13,7 +13,10 @@ namespace disParityUI
 
     protected override void DoOperation()
     {
-      viewModel.ParitySet.HashCheck(drive.DataDrive);
+      if (drive != null)
+        viewModel.ParitySet.HashCheck(drive.DataDrive);
+      else
+        viewModel.ParitySet.HashCheck();
     }
 
     protected override void CancelOperation()

@@ -43,6 +43,18 @@ namespace disParityUI
 
     public void SetNewParityLocation(string path)
     {
+      string root = Path.GetPathRoot(path);
+      foreach (DataDrive d in paritySet.Drives)
+        if (String.Compare(root, Path.GetPathRoot(d.Root), true) == 0) {
+          bool? result = MessageWindow.Show(Owner, "Duplicate drives detected!", "The selected parity location appears to be on one of your data drives.\n\n" +
+            "This is not recommended.  If the drive fails, disParity will not be able to recover any of your data.\n\n" +
+            "Are you sure you want to store parity on this drive?", MessageWindowIcon.Error, MessageWindowButton.YesNo);
+          if (result == false)
+            return;
+          else if (result == true)
+            break;
+        }
+
       DirectoryInfo dirInfo;
       bool empty;
       try {
