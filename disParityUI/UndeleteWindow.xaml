@@ -1,0 +1,23 @@
+﻿<Window x:Class="disParityUI.UndeleteWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        Title="UndeleteWindow" Height="300" Width="300">
+    <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="25"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="50"/>
+    </Grid.RowDefinitions>
+    <TextBox Grid.Row="0">Please select files to restore:</TextBox>
+    <xctk:CheckListBox Grid.Row="1"
+                            DisplayMemberPath="Color"
+                            ValueMemberPath="Level" 
+                            SelectedMemberPath="IsSelected"
+                            SelectedValue="{Binding SelectedValue}"
+                            SelectedItems="{Binding SelectedItems}" />    
+    <Button Grid.Row="2" Width="72" Height="25" Content="OK" HorizontalAlignment="Left" VerticalAlignment="Center" IsDefault="True" Click="HandleOKClick" Margin="109,14,0,12" />
+    <Button Grid.Row="2" Width="70" Height="25" Content="Cancel" HorizontalAlignment="Right" VerticalAlignment="Center" IsCancel="True" Margin="0,13,12,13" />
+
+  </Grid>
+</Window>

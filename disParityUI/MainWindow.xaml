@@ -26,6 +26,7 @@
     <CommandBinding Command="ui:Commands.Verify" CanExecute="VerifyCanExecute" Executed="VerifyExecuted"/>
     <CommandBinding Command="ui:Commands.Hashcheck" CanExecute="HashcheckCanExecute" Executed="HashcheckExecuted"/>
     <CommandBinding Command="ui:Commands.HashcheckAll" CanExecute="HashcheckAllCanExecute" Executed="HashcheckAllExecuted"/>
+    <CommandBinding Command="ui:Commands.Undelete" CanExecute="UndeleteCanExecute" Executed="UndeleteExecuted"/>
   </Window.CommandBindings>
   <Window.TaskbarItemInfo >
     <TaskbarItemInfo ProgressState="{Binding Path=ProgressState}" ProgressValue="{Binding Path=Progress}" />
@@ -64,6 +65,11 @@
               <Image Source="/disParityUI;component/Icons/recover.ico" />
             </MenuItem.Icon>
           </MenuItem>
+          <!--<MenuItem Header="Undelete..." Command="ui:Commands.Undelete" ToolTip="Restore edit or deleted files">
+            <MenuItem.Icon>
+              <Image Source="/disParityUI;component/Icons/recover.ico" />
+            </MenuItem.Icon>
+          </MenuItem>-->
         </ContextMenu>
       </ListBox.Resources>
         <ListBox.ItemTemplate>

@@ -9,11 +9,10 @@ using disParity;
 
 namespace disParityUI
 {
-  /// <summary>
-  /// Interaction logic for App.xaml
-  /// </summary>
+
   public partial class App : Application
   {
+
     protected override void OnStartup(StartupEventArgs e)
     {
       // Don't install the unhandled exception handler in debug builds, we want to be
@@ -21,6 +20,7 @@ namespace disParityUI
 #if !DEBUG
       AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(HandleUnhandledException);
 #endif
+      base.OnStartup(e);
     }
 
     static void HandleUnhandledException(object sender, UnhandledExceptionEventArgs args)

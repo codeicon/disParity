@@ -26,7 +26,12 @@ namespace disParity
           File.Move(filename, newName);
         }
       }
-      f = new StreamWriter(filename, true);
+      try {
+        f = new StreamWriter(filename, true);
+      }
+      catch {
+        // suppress any errors opening the log file
+      }
       Verbose = verbose;
     }
 
@@ -50,13 +55,34 @@ namespace disParity
 
     public static void Log(string msg, params object[] args)
     {
-      Console.WriteLine(msg, args);
-      if (f != null)
-        lock (f) {
-          f.Write(DateTime.Now + " ");
-          f.WriteLine(msg, args);
-          f.Flush();
-        }
+      try {
+        Console.WriteLine(msg, args);
+        if (f != null)
+          lock (f) {
+            f.Write(DateTime.Now + " ");
+            f.WriteLine(msg, args);
+            f.Flush();
+          }
+      }
+      catch {
+        // suppress any errors writing to log file
+      }
+    }
+
+    public static void Log(string msg)
+    {
+      try {
+        Console.WriteLine(msg);
+        if (f != null)
+          lock (f) {
+            f.Write(DateTime.Now + " ");
+            f.WriteLine(msg);
+            f.Flush();
+          }
+      }
+      catch {
+        // suppress any errors writing to log file
+      }
     }
 
     public static void VerboseLog(string msg, params object[] args)

@@ -1,0 +1,68 @@
+<html>
+<head>
+<title>disParity</title>
+<STYLE>BODY {
+	BACKGROUND: #ffffff
+}
+P {
+	FONT-SIZE: 10pt; 
+  FONT-FAMILY: verdana,arial,geneva,helvetica;
+  MARGIN: 2em;
+}
+P.head {
+	FONT-SIZE: 14pt; COLOR: #ffffff; FONT-FAMILY: verdana,arial,geneva,helvetica
+}
+P.head1 {
+	FONT-WEIGHT: bold; FONT-SIZE: 10pt; COLOR: #005000; FONT-FAMILY: verdana,arial,geneva,helvetica
+}
+UL {
+	FONT-SIZE: 10pt; FONT-FAMILY: verdana,arial,geneva,helvetica
+}
+OL {
+	FONT-SIZE: 10pt; FONT-FAMILY: verdana,arial,geneva,helvetica
+}
+ul li {
+margin-top: 10px;
+}
+A:link {
+	COLOR: #7b91f2
+}
+A:visited {
+	COLOR: #5362a3
+}
+.indent {
+  MARGIN-LEFT: 4em; LINE-HEIGHT: 120%
+}
+</STYLE>
+<body>
+<p align="center">
+Release notes for disParity beta 
+</font>
+<p>
+<i>Changes in version 0.29 released Wednesday, December 19, 2012</i>
+<ul class="indent">
+<li>Moved drive-specific commands (Scan, Recover, etc.) out of the main button panel and into a right-click menu on the drive panel.</li>
+<li>Added support for file hash checking.  "Hashcheck" re-computes the hash value for every file on a drive  
+and compares it against the saved hash.  Hashcheck errors indicate the possibility of corruption on a drive.  </li>  
+<li>Added a Verify button.  Verify exhaustively re-computes every parity block and compares it with the on-disk parity.  Verify errors indicate 
+the possibility of either file corruption or (more likely) a bug in disParity. </li>  
+<li>The time to flush temp parity is now included in the per-file progress bar during Update.</li>
+<li>Temp RAM is now used for ALL files during an update; files that are larger than temp RAM fall back to the on-disk temp file when temp RAM is full.  This significantly improves Update times for large files.</li>  
+<li>System memory load is now monitored during updates to make sure that high values for the "Max Temp RAM" setting won't severely impact the 
+system.  If memory load gets too high, disParity now switches to the on-disk temp file immediately (rather than waiting to reach Max Temp RAM first.)  This basically elliminates the risk of destabilizing your system by setting the "Max Temp RAM" option too high.</li>   
+<li>Attempts to add the same drive more than once (or different paths on the same drive) are detected and warned against.  Ignore this warning at your own risk!  disParity will not be able to recover any data from a lost drive if that drive appears more than once in the array (either as data or as parity.)</li>
+<li>Buttons on the main button panel now have tooltips.</li>
+<li>File moves and renames (which are time-consuming to detect since files must be hashed) are now processed as part of the Scan phase rather than the Update phase.</li>
+<li>Disk space used and free for the parity drive are now displayed in main window.</li>
+<li>General log file and error handling improvements.</li>
+</ul>           
+
+<p align=center>
+<font size="-2">
+<br>
+&copy; Copyright 2012 <a href="http://www.disparitysolutions.com">Disparity Solutions, LLC</a>
+<br>
+All Rights Reserved
+</font>
+</body>
+</html>

@@ -17,7 +17,8 @@
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject />
+    <StartupObject>
+    </StartupObject>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationIcon>Icon.ico</ApplicationIcon>
@@ -74,6 +75,10 @@
     </Compile>
     <Compile Include="ReportWindowViewModel.cs" />
     <Compile Include="ScanOperation.cs" />
+    <Compile Include="UndeleteOperation.cs" />
+    <Compile Include="UndeleteWindow.xaml.cs">
+      <DependentUpon>UndeleteWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="UpdateOperation.cs" />
     <Compile Include="VerifyOperation.cs" />
     <Compile Include="WindowUtils.cs" />
@@ -107,6 +112,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="ReportWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UndeleteWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

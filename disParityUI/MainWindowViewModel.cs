@@ -289,6 +289,13 @@ namespace disParityUI
       operationInProgress.Begin(drive);
     }
 
+    public void Undelete(DataDriveViewModel drive)
+    {
+      operationInProgress = new UndeleteOperation(this);
+      operationInProgress.Finished += HandleOperationFinished;
+      operationInProgress.Begin(drive);
+    }
+
     public void Verify()
     {
       operationInProgress = new VerifyOperation(this);

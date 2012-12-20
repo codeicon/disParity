@@ -218,6 +218,18 @@ namespace disParityUI
       e.Handled = true;
     }
 
+    void UndeleteCanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+      e.CanExecute = !viewModel.Busy && (DriveList.SelectedItems.Count == 1) &&
+        ((((DataDriveViewModel)DriveList.SelectedItem).DataDrive.Deletes.Count > 0) || 
+         (((DataDriveViewModel)DriveList.SelectedItem).DataDrive.Edits.Count > 0));
+    }
+
+    void UndeleteExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+      viewModel.Undelete((DataDriveViewModel)DriveList.SelectedItem);
+      e.Handled = true;
+    }
 
 
 

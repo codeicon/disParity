@@ -309,6 +309,10 @@ namespace disParity
 
       ReportProgress(0);
 
+      // If a drive encounters a serious problem during its hash check, this will be set
+      Exception fatalException = null;
+
+      // Start hashcheck tasks for each drive
       foreach (DataDrive drive in drives) {
         if (driveToCheck != null && drive != driveToCheck)
           continue;
@@ -379,8 +383,9 @@ namespace disParity
             }
           }
           catch (Exception e) {
-            d.Status = "Hashcheck failed: " + e.Message;
-            LogFile.Log("Hashcheck of " + d.Root + " failed: " + e.Message);
+            d.Status = "Hash check failed: " + e.Message;
+            LogFile.Log("Hash check of " + d.Root + " failed: " + e.Message);
+            fatalException = e; // this will halt the hash check of all drives below
           }
           finally {
             d.ReportProgress(0);
@@ -392,6 +397,12 @@ namespace disParity
 
       // wait for all hashcheck threads to complete
       while (inProgres > 0) {
+        if (fatalException != null) {
+          // something serious happened to one of the drives?
+          cancel = true; // stop all the other tasks
+          // CancallableOperation will catch this and log it
+          throw fatalException;
+        }
         Status = String.Format("Hash check in progress.  Files checked: {0} Failures: {1}", files, failures);
         ReportProgress((double)blocks / totalBlocksAllDrives);
         Thread.Sleep(100);        
