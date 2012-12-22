@@ -65,11 +65,11 @@
               <Image Source="/disParityUI;component/Icons/recover.ico" />
             </MenuItem.Icon>
           </MenuItem>
-          <!--<MenuItem Header="Undelete..." Command="ui:Commands.Undelete" ToolTip="Restore edit or deleted files">
+          <MenuItem Header="Undelete..." Command="ui:Commands.Undelete" ToolTip="Restore modified or deleted files">
             <MenuItem.Icon>
-              <Image Source="/disParityUI;component/Icons/recover.ico" />
+              <Image Source="/disParityUI;component/Icons/undelete.ico" />
             </MenuItem.Icon>
-          </MenuItem>-->
+          </MenuItem>
         </ContextMenu>
       </ListBox.Resources>
         <ListBox.ItemTemplate>

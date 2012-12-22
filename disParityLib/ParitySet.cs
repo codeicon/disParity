@@ -279,6 +279,12 @@ namespace disParity
       cancel = true;
     }
 
+    public void CancelUndelete()
+    {
+      LogFile.Log("Undelete cancelled");
+      cancel = true;
+    }
+
     private bool ValidDrive(DataDrive drive)
     {
       foreach (DataDrive d in drives)
@@ -540,6 +546,60 @@ namespace disParity
           }
           failures++;
         }
+    }
+
+    public void Undelete(DataDrive drive, List<string> fileNames)
+    {
+      List<FileRecord> files = new List<FileRecord>();
+
+      foreach (FileRecord r in drive.Deletes)
+        if (fileNames.Contains(r.FullPath))
+          files.Add(r);
+      foreach (FileRecord r in drive.Edits)
+        if (fileNames.Contains(r.FullPath))
+          files.Add(r);
+
+      if (files.Count == 0) {
+        LogFile.Log("No files to undelete.");
+        return;
+      }
+
+      LogFile.Log("Beginning undelete for {0} file{1}", files.Count, files.Count == 1 ? "" : "s");
+
+      cancel = false;
+      recoverTotalBlocks = 0;
+      errorFiles.Clear();
+      ReportProgress(0);
+
+      try {
+        foreach (FileRecord r in files)
+          recoverTotalBlocks += r.LengthInBlocks;
+        recoverBlocks = 0;
+        int errors = 0;
+        int restored = 0;
+        foreach (FileRecord r in files) {
+          if (RecoverFile(r, drive.Root)) {
+            restored++;
+            drive.Edits.Remove(r);
+            drive.Deletes.Remove(r);
+          } 
+          else if (!cancel)
+            errors++;
+          if (cancel)
+            break;
+          else {
+            string statusMsg = String.Format("{0} file{1} restored.", restored, restored == 1 ? "" : "s");
+            if (errors > 0)
+              statusMsg += " Errors: " + errors;
+            Status = statusMsg;
+          }
+        }
+      }
+      finally {
+        drive.ReportProgress(0);
+        drive.Status = "";
+      }
+
     }
 
     private bool RecoverFile(FileRecord r, string path)

@@ -1,5 +1,6 @@
+* Undelete menu item needs icon
 
-* Add undelete support
+* Really need to detect and handle running out of space on the temp drive
 
 * Right-click menu option to show files in next update
  

@@ -97,6 +97,11 @@ namespace disParityUI
             addCount -= editCount;
             deleteCount -= editCount;
           }
+          if (addCount == 0 && deleteCount == 0 && editCount == 0) {
+            Status = "Up to date";
+            StatusIcon = Icons.Good;
+            break;
+          }
           Status = String.Format("Update Required ({0} new, {1} deleted, {2} edited)",
             addCount, deleteCount, editCount);
           if (deleteCount > 0 || editCount > 0)

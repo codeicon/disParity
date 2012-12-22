@@ -49,7 +49,8 @@ the possibility of either file corruption or (more likely) a bug in disParity. <
 <li>The time to flush temp parity is now included in the per-file progress bar during Update.</li>
 <li>Temp RAM is now used for ALL files during an update; files that are larger than temp RAM fall back to the on-disk temp file when temp RAM is full.  This significantly improves Update times for large files.</li>  
 <li>System memory load is now monitored during updates to make sure that high values for the "Max Temp RAM" setting won't severely impact the 
-system.  If memory load gets too high, disParity now switches to the on-disk temp file immediately (rather than waiting to reach Max Temp RAM first.)  This basically elliminates the risk of destabilizing your system by setting the "Max Temp RAM" option too high.</li>   
+system.  If memory load gets too high, disParity now switches to the on-disk temp file 
+immediately (rather than waiting to reach Max Temp RAM first.)  This greatly reduces the risk of destabilizing your system by setting the "Max Temp RAM" option too high.</li>   
 <li>Attempts to add the same drive more than once (or different paths on the same drive) are detected and warned against.  Ignore this warning at your own risk!  disParity will not be able to recover any data from a lost drive if that drive appears more than once in the array (either as data or as parity.)</li>
 <li>Buttons on the main button panel now have tooltips.</li>
 <li>File moves and renames (which are time-consuming to detect since files must be hashed) are now processed as part of the Scan phase rather than the Update phase.</li>

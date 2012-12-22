@@ -38,7 +38,7 @@ namespace disParity
           UInt32 id = GetID(out firstRun);
           int dc, mpb;
           GetStats(out dc, out mpb);
-          string url = @"http://www.vilett.com/disParity/ping.php?id=" + id.ToString() + (firstRun ? "firstRun=1" : "") +
+          string url = @"http://www.vilett.com/disParity/ping.php?id=" + id.ToString() + (firstRun ? "&firstRun=1" : "") +
             "&dc=" + dc + "&mpb=" + mpb + "&ver=" + Version.VersionString;
           WebClient webClient = new WebClient();
           byte[] buf = webClient.DownloadData(new System.Uri(url));
