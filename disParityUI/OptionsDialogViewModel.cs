@@ -34,6 +34,25 @@ namespace disParityUI
       MaxTempRAM = (int)config.MaxTempRAM;
       IgnoreHidden = config.IgnoreHidden;
       TempDir = config.TempDir;
+      MonitorDrives = config.MonitorDrives;
+      UpdateDelay = config.UpdateDelay;
+      switch (config.UpdateMode) {
+        case UpdateMode.NoAction:
+          NoAction = true;
+          ScanOnly = false;
+          ScanAndUpdate = false;
+          break;
+        case UpdateMode.ScanOnly:
+          NoAction = false;
+          ScanOnly = true;
+          ScanAndUpdate = false;
+          break;
+        case UpdateMode.ScanAndUpdate:
+          NoAction = false;
+          ScanOnly = false;
+          ScanAndUpdate = true;
+          break;
+      }
       foreach (string i in config.Ignores)
         if (String.IsNullOrEmpty(ignores))
           ignores = i;
@@ -136,6 +155,15 @@ namespace disParityUI
       }
       config.MaxTempRAM = (uint)MaxTempRAM;
       config.IgnoreHidden = IgnoreHidden;
+      config.MonitorDrives = MonitorDrives;
+      config.UpdateDelay = UpdateDelay;
+      if (NoAction)
+        config.UpdateMode = UpdateMode.NoAction;
+      else if (ScanOnly)
+        config.UpdateMode = UpdateMode.ScanOnly;
+      else if (ScanAndUpdate)
+        config.UpdateMode = UpdateMode.ScanAndUpdate;
+
       config.TempDir = TempDir;
       config.Ignores.Clear();
       if (!String.IsNullOrEmpty(ignores)) {
@@ -262,6 +290,70 @@ namespace disParityUI
       }
     }
 
+    private bool monitorDrives;
+    public bool MonitorDrives
+    {
+      get
+      {
+        return monitorDrives;
+      }
+      set
+      {
+        SetProperty(ref monitorDrives, "MonitorDrives", value);
+      }
+    }
+
+    private bool noAction;
+    public bool NoAction
+    {
+      get
+      {
+        return noAction;
+      }
+      set
+      {
+        SetProperty(ref noAction, "NoAction", value);
+      }
+    }
+
+    private bool scanOnly;
+    public bool ScanOnly
+    {
+      get
+      {
+        return scanOnly;
+      }
+      set
+      {
+        SetProperty(ref scanOnly, "ScanOnly", value);
+      }
+    }
+
+    private bool scanAndUpdate;
+    public bool ScanAndUpdate
+    {
+      get
+      {
+        return scanAndUpdate;
+      }
+      set
+      {
+        SetProperty(ref scanAndUpdate, "ScanAndUpdate", value);
+      }
+    }
+
+    private UInt32 updateDelay;
+    public UInt32 UpdateDelay
+    {
+      get
+      {
+        return updateDelay;
+      }
+      set
+      {
+        SetProperty(ref updateDelay, "UpdateDelay", value);
+      }
+    }
     #endregion
 
   }

@@ -1,4 +1,4 @@
-* Undelete menu item needs icon
+* Handle long path names
 
 * Really need to detect and handle running out of space on the temp drive
 

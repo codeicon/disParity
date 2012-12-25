@@ -8,6 +8,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -18,21 +19,36 @@ namespace disParityUI
   class DataDriveViewModel : NotifyPropertyChanged
   {
 
-    public DataDriveViewModel(DataDrive dataDrive)
+    private DateTime nextAutoScan;
+    private System.Timers.Timer autoScanTimer;
+    private Config config;
+
+    private const int AUTO_SCAN_DELAY = 5; // time in seconds between changes detected and automatic scan
+
+    public DataDriveViewModel(DataDrive dataDrive, Config config)
     {
+      this.config = config;
       DataDrive = dataDrive;
       DataDrive.PropertyChanged += HandlePropertyChanged;
+      DataDrive.ChangesDetected += HandleChangesDetected;
       UpdateStatus();
       UpdateFileCount();
       UpdateAdditionalInfo();
+
+      autoScanTimer = new System.Timers.Timer(1000);
+      autoScanTimer.AutoReset = true;
+      autoScanTimer.Elapsed += HandleAutoScanTimer;
     }
 
-    public void Scan()
+    public void Scan(bool auto)
     {
+      if (DataDrive.Scanning)
+        return;
+      autoScanTimer.Stop();
       Task.Factory.StartNew(() =>
       {
         try {
-          DataDrive.Scan();
+          DataDrive.Scan(auto);
           UpdateAdditionalInfo();
         }
         catch (Exception e) {
@@ -56,6 +72,26 @@ namespace disParityUI
         AdditionalInfo = String.Format("{0} used {1} free",
           Utils.SmartSize(DataDrive.TotalSpace - DataDrive.FreeSpace),
           Utils.SmartSize(DataDrive.FreeSpace));
+    }
+
+    private void HandleChangesDetected(object sender, EventArgs e)
+    {
+      autoScanTimer.Stop();
+      if (config.UpdateMode != UpdateMode.NoAction) {
+        autoScanTimer.Start();
+        nextAutoScan = DateTime.Now + TimeSpan.FromSeconds(AUTO_SCAN_DELAY);
+      }
+    }
+
+    private void HandleAutoScanTimer(object sender, ElapsedEventArgs args)
+    {
+      if (nextAutoScan > DateTime.Now)
+        DataDrive.Status = String.Format("Changes detected.  Scanning drive in {0}...",
+          (nextAutoScan - DateTime.Now).ToString(@"m\:ss"));
+      else {
+        autoScanTimer.Stop();
+        Scan(true);
+      }
     }
 
     private void HandlePropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -86,7 +122,6 @@ namespace disParityUI
     {
       switch (DataDrive.DriveStatus) {
         case DriveStatus.ScanRequired:
-          Status = "Unknown (scan required)";
           StatusIcon = Icons.Unknown;
           break;
         case DriveStatus.UpdateRequired:
@@ -102,8 +137,7 @@ namespace disParityUI
             StatusIcon = Icons.Good;
             break;
           }
-          Status = String.Format("Update Required ({0} new, {1} deleted, {2} edited)",
-            addCount, deleteCount, editCount);
+          Status = String.Format("Update Required ({0} new, {1} deleted, {2} edited)", addCount, deleteCount, editCount);
           if (deleteCount > 0 || editCount > 0)
             StatusIcon = Icons.Urgent;
           else

@@ -113,6 +113,7 @@ namespace disParity
         saveBlock = startBlock;
         UInt32 endBlock = block;
         if (mmfStream != null) {
+          mmfStream.Seek(0, SeekOrigin.Begin); // return MMF stream to its start (it may still be at the end if on-disk temp was never used)
           while (saveBlock < endBlock && saveBlock < lastMMFBlock) {
             mmfStream.Read(data, 0, Parity.BLOCK_SIZE);
             parity.WriteBlock(saveBlock, data);

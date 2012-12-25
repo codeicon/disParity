@@ -1069,6 +1069,18 @@ namespace disParity
 
     #region Properties
 
+    public DateTime LastChanges
+    {
+      get
+      {
+        DateTime lastChanges = DateTime.MinValue;
+        foreach (DataDrive d in drives)
+          if (d.LastChanges > lastChanges)
+            lastChanges = d.LastChanges;
+        return lastChanges;
+      }
+    }
+
     private string status;
     public string Status
     {

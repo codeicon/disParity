@@ -28,10 +28,6 @@ namespace disParityUI
         Status = "Verify cancelled." + ((errorMessages.Count == 0) ? "" : (" Errors found: " + errorMessages.Count));
       else if (errorMessages.Count == 0)
         Status = "Verify complete.  " + ((errorMessages.Count == 0) ? "No errors found." : (" Errors found: " + errorMessages.Count));
-      if (errorMessages.Count > 0) {
-        if (MessageWindow.Show(viewModel.Owner, "Errors detected", "Errors were found during the verify.  Would you like to see a list of errors?", MessageWindowIcon.Error, MessageWindowButton.YesNo) == true)
-          ReportWindow.Show(viewModel.Owner, errorMessages);
-      }
 
     }
 

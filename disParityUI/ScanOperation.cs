@@ -24,7 +24,7 @@ namespace disParityUI
     protected override void DoOperation()
     {
       if (anyDriveNeedsUpdate)
-        Status = "Changes detected.  Update required."; 
+        Status = "Update required."; 
       else
         DisplayUpToDateStatus();
     }

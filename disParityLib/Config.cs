@@ -8,6 +8,13 @@ using System.Text;
 namespace disParity
 {
 
+  public enum UpdateMode
+  {
+    NoAction,
+    ScanOnly,
+    ScanAndUpdate
+  }
+
   public class Config
   {
 
@@ -16,6 +23,9 @@ namespace disParity
     const Int32 VERSION = 1;
     const UInt32 DEFAULT_MAX_TEMP_RAM = 512;
     const bool DEFAULT_IGNORE_HIDDEN = true;
+    const bool DEFAULT_MONITOR_DRIVES = true;
+    const UpdateMode DEFAULT_UPDATE_MODE = UpdateMode.ScanAndUpdate;
+    const int DEFAULT_UPDATE_DELAY = 1;
     const int DEFAULT_MAIN_WINDOW_X = 200;
     const int DEFAULT_MAIN_WINDOW_Y = 200;
     const int DEFAULT_MAIN_WINDOW_WIDTH = 640;
@@ -30,6 +40,9 @@ namespace disParity
       MainWindowY = DEFAULT_MAIN_WINDOW_Y;
       MainWindowWidth = DEFAULT_MAIN_WINDOW_WIDTH;
       MainWindowHeight = DEFAULT_MAIN_WINDOW_HEIGHT;
+      MonitorDrives = DEFAULT_MONITOR_DRIVES;
+      UpdateDelay = DEFAULT_UPDATE_DELAY;
+      UpdateMode = DEFAULT_UPDATE_MODE;
       Ignores = new List<string>();
       Drives = new List<Drive>();
     }
@@ -91,6 +104,27 @@ namespace disParity
                 reader.Read();
                 IgnoreHidden = (reader.Value == "true") ? true : false;
                 reader.Read();
+              }
+              else if (reader.Name == "MonitorDrives") {
+                reader.Read();
+                MonitorDrives = (reader.Value == "true") ? true : false;
+                reader.Read();
+              }
+              else if (reader.Name == "UpdateDelay") {
+                reader.Read();
+                UpdateDelay = Convert.ToUInt32(reader.Value);
+                reader.Read();
+              }
+              else if (reader.Name == "UpdateMode") {
+                reader.Read();
+                int mode = Convert.ToInt32(reader.Value);
+                reader.Read();
+                if (mode == 1)
+                  UpdateMode = UpdateMode.NoAction;
+                else if (mode == 2)
+                  UpdateMode = UpdateMode.ScanOnly;
+                else if (mode == 3)
+                  UpdateMode = UpdateMode.ScanAndUpdate;
               }
               else if (reader.Name == "Ignores") {
                 for (; ; ) {
@@ -176,6 +210,23 @@ namespace disParity
         if (IgnoreHidden != DEFAULT_IGNORE_HIDDEN)
           writer.WriteElementString("IgnoreHidden", IgnoreHidden ? "true" : "false");
 
+        if (MonitorDrives != DEFAULT_MONITOR_DRIVES)
+          writer.WriteElementString("MonitorDrives", MonitorDrives ? "true" : "false");
+
+        if (UpdateDelay != DEFAULT_UPDATE_DELAY)
+          writer.WriteElementString("UpdateDelay", UpdateDelay.ToString());
+
+        if (UpdateMode != DEFAULT_UPDATE_MODE) {
+          int mode = 0;
+          if (UpdateMode == UpdateMode.NoAction)
+            mode = 1;
+          else if (UpdateMode == UpdateMode.ScanOnly)
+            mode = 2;
+          else if (UpdateMode == UpdateMode.ScanAndUpdate)
+            mode = 3;
+          writer.WriteElementString("UpdateMode", mode.ToString());
+        }
+
         if (Ignores.Count > 0) {
           writer.WriteStartElement("Ignores");
           foreach (string i in Ignores)
@@ -206,8 +257,6 @@ namespace disParity
           writer.WriteEndElement();
         }
         writer.WriteEndElement();
-
-
 
         writer.WriteEndElement();
 
@@ -256,6 +305,13 @@ namespace disParity
     public int MainWindowX { get; set; }
 
     public int MainWindowY { get; set; }
+
+    public bool MonitorDrives { get; set; }
+
+    public UInt32 UpdateDelay { get; set; }
+
+    public UpdateMode UpdateMode { get; set; }
+
   }
 
   public class Drive

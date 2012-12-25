@@ -20,6 +20,7 @@ namespace disParityUI
     private int runningScans;
     private double[] scanProgress;
     private object syncObject = new object();
+    private bool scanError;
 
     protected MainWindowViewModel viewModel;
     protected bool cancelled;
@@ -39,6 +40,8 @@ namespace disParityUI
       viewModel = vm;
       inProgress = false;
       scanning = false;
+      anyDriveNeedsUpdate = false;
+      scanError = false;
     }
 
     public virtual void Begin(DataDriveViewModel selectedDrive = null)
@@ -58,7 +61,7 @@ namespace disParityUI
             Interlocked.Increment(ref runningScans);
             vm.PropertyChanged += HandleDataDrivePropertyChanged;
             vm.DataDrive.ScanCompleted += HandleScanCompleted;
-            vm.Scan(); // runs in a separate Task
+            vm.Scan(false); // runs in a separate Task
           }
       }
       else
@@ -87,12 +90,18 @@ namespace disParityUI
       }
     }
 
-    private void HandleScanCompleted(object sender, EventArgs args)
+    private void HandleScanCompleted(object sender, ScanCompletedEventArgs args)
     {
       ((DataDrive)sender).ScanCompleted -= HandleScanCompleted;
       foreach (DataDriveViewModel vm in viewModel.Drives) 
         if (vm.DataDrive == sender)
           vm.PropertyChanged -= HandleDataDrivePropertyChanged;
+
+      if (args.UpdateNeeded)
+        anyDriveNeedsUpdate = true;
+
+      if (args.Error)
+        scanError = true;
 
       Interlocked.Decrement(ref runningScans);
       if (runningScans > 0)
@@ -107,16 +116,12 @@ namespace disParityUI
         return;
       }
 
-      anyDriveNeedsUpdate = false;
-      foreach (var vm in viewModel.Drives)
-        if (AbortIfScanErrors && vm.DataDrive.DriveStatus == DriveStatus.AccessError) {
-          // FIXME: Need to report what the errors were!
-          viewModel.Status = "Error(s) encountered during scan";
-          End();
-          return;
-        }
-        else if (vm.DataDrive.DriveStatus == DriveStatus.UpdateRequired)
-          anyDriveNeedsUpdate = true;
+      if (scanError && AbortIfScanErrors) {
+        // FIXME: Need to report what the errors were!
+        viewModel.Status = "Error(s) encountered during scan";
+        End();
+        return;
+      }
 
 
       // I don't like calling Run() on the ScanCompleted callback from DataDrive's scan thread,

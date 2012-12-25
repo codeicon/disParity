@@ -36,10 +36,13 @@ namespace disParity
     private bool cancelScan;
     private Timer fileCloseTimer;
     private object fileCloseLock = new object();
+    private FileSystemWatcher watcher;
 
     const UInt32 META_FILE_VERSION = 1;
+    const int MAX_PATH = 260;
 
-    public event EventHandler<EventArgs> ScanCompleted;
+    public event EventHandler<ScanCompletedEventArgs> ScanCompleted;
+    public event EventHandler<EventArgs> ChangesDetected;
 
     public DataDrive(string root, string metaFile, Config config)
     {
@@ -70,6 +73,44 @@ namespace disParity
       fileCloseTimer = new Timer(1000); // keep cached read files open for at most one second
       fileCloseTimer.AutoReset = false;
       fileCloseTimer.Elapsed += HandleFileCloseTimer;
+
+      if (config.MonitorDrives)
+        EnableWatcher();
+
+      LastScanStart = DateTime.MinValue;
+      LastChanges = DateTime.Now - TimeSpan.FromSeconds(55); // REMOVEME
+    }
+
+    public void EnableWatcher()
+    {
+      //if (watcher == null) {
+      //  watcher = new FileSystemWatcher();
+      //  watcher.Path = Root;
+      //  watcher.Filter = "*.*";
+      //  watcher.IncludeSubdirectories = true;
+      //  watcher.Created += HandleWatcherEvent;
+      //  watcher.Changed += HandleWatcherEvent;
+      //  watcher.Deleted += HandleWatcherEvent;
+      //  watcher.Renamed += HandleWatcherEvent;
+      //  watcher.EnableRaisingEvents = true;
+      //}
+    }
+
+    public void DisableWatcher()
+    {
+      if (watcher != null) {
+        watcher.Dispose();
+        watcher = null;
+      }
+    }
+
+    private void HandleWatcherEvent(object sender, FileSystemEventArgs args)
+    {
+      LogFile.Log("Changes detected on " + Root);
+      LastChanges = DateTime.Now;
+      if (ChangesDetected != null)
+        ChangesDetected(this, new EventArgs());
+      DriveStatus = DriveStatus.ScanRequired;
     }
 
     private string MetaFilePath
@@ -145,6 +186,7 @@ namespace disParity
       files.Clear();
       FileCount = 0;
       TotalFileSize = 0;
+      Status = "Scan required";
       DriveStatus = DriveStatus.ScanRequired;
     }
 
@@ -158,6 +200,7 @@ namespace disParity
       MaxBlock = 0;
       if (File.Exists(MetaFilePath))
         LoadFileList();
+      Status = "Scan required";
       DriveStatus = DriveStatus.ScanRequired;
     }
 
@@ -165,11 +208,17 @@ namespace disParity
     /// Scans the drive from 'root' down, generating the current list of files on the drive.
     /// Files that should not be protected (e.g. Hidden files) are not included.
     /// </summary>
-    public void Scan()
+    public void Scan(bool auto = false)
     {
+      Debug.Assert(!Scanning);
+      if (Scanning)
+        return; // shouldn't happen
+      Scanning = true;
       DriveStatus = DriveStatus.Scanning;
       cancelScan = false;
       ReportProgress(0);
+      LastScanStart = DateTime.Now;
+      bool error = false;
       try {
 
         // Convert list of ignores to a list of Regex
@@ -196,6 +245,7 @@ namespace disParity
             LogFile.Log("Scan of {0} complete. Found {1} file{2} ({3} total) Adds: {4} Deletes: {5} Moves: {6} Edits: {7}", Root, scanFiles.Count,
               scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize), adds.Count, deletes.Count, moves.Count, edits.Count);
             if (cancelScan) {
+              Status = "Scan required";
               DriveStatus = DriveStatus.ScanRequired;
               return;
             }
@@ -209,6 +259,7 @@ namespace disParity
           LogFile.Log("Could not scan {0}: {1}", root, e.Message);
           LastError = e.Message;
           DriveStatus = DriveStatus.AccessError;
+          error = true;
           return;
         }
       }
@@ -217,7 +268,8 @@ namespace disParity
         UpdateStatus();
         scanFiles.Clear();
         seenFileNames.Clear();
-        FireScanCompleted();
+        FireScanCompleted(cancelScan, error, adds.Count > 0 || deletes.Count > 0, auto);
+        Scanning = false;
       }
     }
     
@@ -226,6 +278,10 @@ namespace disParity
     {
       if (cancelScan)
         return;
+      if (dir.FullName.Length >= MAX_PATH) {
+        LogFile.Log("Warning: skipping folder \"" + dir.FullName + "\" because the path is too long.");
+        return;
+      }
       Status = "Scanning " + dir.FullName;
       if (scanProgress != null)
         ReportProgress(scanProgress.Progress);
@@ -273,6 +329,13 @@ namespace disParity
       foreach (FileInfo f in fileInfos) {
         if (cancelScan)
           return;
+        // have to use Path.Combine here because accessing the f.FullName property throws
+        // an exception if the path is too long
+        string fullName = Path.Combine(dir.FullName, f.Name);
+        if (fullName.Length >= MAX_PATH) {
+          LogFile.Log("Warning: skipping \"" + fullName + "\" because the path is too long");
+          continue;
+        }
         if (f.Attributes == (FileAttributes)(-1))
           continue;
         if (config.IgnoreHidden && (f.Attributes & FileAttributes.Hidden) != 0)
@@ -286,7 +349,7 @@ namespace disParity
             break;
           }
         if (ignore) {
-          LogFile.Log("Skipping {0} because it matches an ignore", f.FullName);
+          LogFile.Log("Skipping \"{0}\" because it matches an ignore", f.FullName);
           continue;
         }
         FileRecord r = new FileRecord(f, relativePath, this);
@@ -310,10 +373,10 @@ namespace disParity
       cancelScan = true;
     }
 
-    public void FireScanCompleted()
+    public void FireScanCompleted(bool cancelled, bool error, bool updateNeeded, bool auto)
     {
       if (ScanCompleted != null)
-        ScanCompleted(this, new EventArgs());
+        ScanCompleted(this, new ScanCompletedEventArgs(cancelled, error, updateNeeded, auto));
     }
 
     // the "deletes" list contains FileRecords from the master files list
@@ -470,7 +533,9 @@ namespace disParity
 
     public void UpdateStatus()
     {
-      if (adds.Count > 0 || moves.Count > 0 || deletes.Count > 0)
+      if (LastChanges > LastScanStart)
+        DriveStatus = DriveStatus.ScanRequired;
+      else if (adds.Count > 0 || edits.Count > 0 || deletes.Count > 0)
         DriveStatus = DriveStatus.UpdateRequired;
       else if (DriveStatus != DriveStatus.ScanRequired)
         DriveStatus = DriveStatus.UpToDate;
@@ -863,13 +928,57 @@ namespace disParity
       }
     }
 
+    private bool scanning;
+    public bool Scanning
+    {
+      get
+      {
+        return scanning;
+      }
+      private set
+      {
+        SetProperty(ref scanning, "Scanning", value);
+      }
+    }
+
+    private DateTime lastChanges;
+    public DateTime LastChanges 
+    {
+      get
+      {
+        return lastChanges;
+      }
+      private set
+      {
+        SetProperty(ref lastChanges, "LastChanges", value);
+      }
+    }
+
     /// <summary>
     /// Total size, in bytes, of all protected files on this drive
     /// Not currently a "notify changed" property because it always changes in tandem with FileCount
     /// </summary>
     public long TotalFileSize { get; private set; }
 
+    public DateTime LastScanStart { get; private set; }
+
+
     #endregion
+
+  }
+
+  public class ScanCompletedEventArgs : EventArgs
+  {
+    public ScanCompletedEventArgs(bool cancelled, bool error, bool updateNeeded, bool auto)
+    {
+      UpdateNeeded = updateNeeded;
+      Auto = auto;
+    }
+
+    public bool Cancelled { get; private set; }
+    public bool Error { get; private set; }
+    public bool UpdateNeeded { get; private set; }
+    public bool Auto { get; private set; }
 
   }
 

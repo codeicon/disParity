@@ -10,11 +10,18 @@ namespace disParityUI
   internal class UpdateOperation : CancellableOperation
   {
 
-    public UpdateOperation(MainWindowViewModel vm) : base(vm) { }
+    private bool scanFirst = true;
+
+    public UpdateOperation(MainWindowViewModel vm, bool scanFirst) : base(vm) 
+    {
+      this.scanFirst = scanFirst;
+    }
 
     protected override void DoOperation()
     {
-      if (anyDriveNeedsUpdate) {
+      if (scanFirst && !anyDriveNeedsUpdate)
+        DisplayUpToDateStatus();
+      else {
         viewModel.ParitySet.Update();
         if (cancelled)
           Status = "Update cancelled";
@@ -25,8 +32,6 @@ namespace disParityUI
         } else
           DisplayUpToDateStatus();
       }
-      else
-        DisplayUpToDateStatus();
 
     }
 
@@ -39,6 +44,7 @@ namespace disParityUI
 
     protected override string LowerCaseName { get { return "update"; } }
 
+    protected override bool ScanFirst { get { return scanFirst; } }
   }
 
 }

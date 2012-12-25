@@ -7,61 +7,111 @@
         Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"        
         SizeToContent="Height"
         Title="disParity Options" Width="558" ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
-    <Grid>
+  <Grid>
     <Grid.RowDefinitions>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="45"/>
     </Grid.RowDefinitions>
-    <GroupBox Grid.Row="0" BorderThickness="1" Margin="5" Header="Parity Location">
-      <StackPanel Orientation="Vertical" Margin="5">
-        <TextBlock Margin="2" TextWrapping="Wrap">This is the location where parity data for your backup is stored.  It is strongly recommended that parity be stored on a dedicated drive that is not used for any other purpose.</TextBlock>
-        <Grid Margin="0,5,0,0">
-          <Border HorizontalAlignment="Stretch" Margin="0,0,100,0" BorderThickness="1" BorderBrush="Black" SnapsToDevicePixels="True">
-            <TextBlock Margin="2" Text="{Binding Path=ParityDir}"/>
-          </Border>
-          <Button HorizontalAlignment="Right" Click="HandleSetLocationClick" IsEnabled="{Binding Path=CanSetLocation}" Width="94">Set Location...</Button>
-        </Grid>
-      </StackPanel>
-    </GroupBox>
-    <GroupBox Grid.Row="1" BorderThickness="1" Margin="5" Header="Temporary Storage">
-      <StackPanel Orientation="Vertical" Margin="5">
-        <StackPanel Orientation="Horizontal">
-          <TextBlock Margin="2" TextWrapping="Wrap">Temporarily use up to</TextBlock>
-          <xctk:IntegerUpDown Margin="4,0,4,0" MinWidth="50" FormatString="N0" Value="{Binding Path=MaxTempRAM}" 
+    <TabControl Margin="5" Height="450" Grid.Row="0">
+      <TabItem Header="General">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <GroupBox Grid.Row="0" BorderThickness="1" Margin="5" Header="Parity Location">
+            <StackPanel Orientation="Vertical" Margin="5">
+              <TextBlock Margin="2" TextWrapping="Wrap">This is the location where parity data for your backup is stored.  It is strongly recommended that parity be stored on a dedicated drive that is not used for any other purpose.</TextBlock>
+              <Grid Margin="0,5,0,0">
+                <Border HorizontalAlignment="Stretch" Margin="0,0,100,0" BorderThickness="1" BorderBrush="Black" SnapsToDevicePixels="True">
+                  <TextBlock Margin="2" Text="{Binding Path=ParityDir}"/>
+                </Border>
+                <Button HorizontalAlignment="Right" Click="HandleSetLocationClick" IsEnabled="{Binding Path=CanSetLocation}" Width="94">Set Location...</Button>
+              </Grid>
+            </StackPanel>
+          </GroupBox>
+          <GroupBox Grid.Row="1" BorderThickness="1" Margin="5" Header="Temporary Storage">
+            <StackPanel Orientation="Vertical" Margin="5">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Margin="2" TextWrapping="Wrap">Temporarily use up to</TextBlock>
+                <xctk:IntegerUpDown Margin="4,0,4,0" MinWidth="50" FormatString="N0" Value="{Binding Path=MaxTempRAM}" 
            Minimum="{Binding Path=MaxTempRAMIncrement}" Maximum="{Binding Path=MaximumMaxTempRam}" Increment="{Binding Path=MaxTempRAMIncrement}"/>
-          <TextBlock Margin="2" TextWrapping="Wrap">MB of RAM for updates.</TextBlock>
-        </StackPanel>
-        <TextBlock Margin="2" TextWrapping="Wrap">Warning! Setting this value too high can lead to performance problems when processing large files.  As a rule it should not be set higher than one half of total physical RAM in the system.</TextBlock>
-        <TextBlock Margin="2" >For larger files, temporarily use this location on disk:</TextBlock>
-        <Grid Margin="0,5,0,0">
-          <Border HorizontalAlignment="Stretch" Margin="0,0,115,0" BorderThickness="1" BorderBrush="Black" SnapsToDevicePixels="True">
-            <TextBlock Margin="2" Text="{Binding Path=TempDir}"/>
-          </Border>
-          <Button HorizontalAlignment="Right" Click="HandleChangeTempDirClick" Width="110">Change Location...</Button>
-        </Grid>
-      </StackPanel>
-    </GroupBox>
-    <GroupBox Grid.Row="2" BorderThickness="1" Margin="5" Header="Import Settings">
-      <Grid>
-      <TextBlock Margin="5">If you are upgrading from an older version you can import your configuration:</TextBlock>
-      <Button Width="90" Content="Import..." HorizontalAlignment="Right" VerticalAlignment="Center" Click="HandleImportClick"/>
-      </Grid>
-    </GroupBox>
-    <GroupBox Grid.Row="3" BorderThickness="1" Margin="5" Header="Ignore Filter">
-      <Grid Margin="5">
-        <CheckBox IsChecked="{Binding Path=IgnoreHidden}" HorizontalAlignment="Left">Ignore hidden folders and files</CheckBox>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-          <TextBlock Width="200" TextWrapping="Wrap">File names to ignore, one per line.  May contain wildcard characters * and ?
+                <TextBlock Margin="2" TextWrapping="Wrap">MB of RAM for updates.</TextBlock>
+              </StackPanel>
+              <TextBlock Margin="2" TextWrapping="Wrap">Warning! Setting this value too high can lead to performance problems when processing large files.  As a rule it should not be set higher than one half of total physical RAM in the system.</TextBlock>
+              <TextBlock Margin="2" >For larger files, temporarily use this location on disk:</TextBlock>
+              <Grid Margin="0,5,0,0">
+                <Border HorizontalAlignment="Stretch" Margin="0,0,115,0" BorderThickness="1" BorderBrush="Black" SnapsToDevicePixels="True">
+                  <TextBlock Margin="2" Text="{Binding Path=TempDir}"/>
+                </Border>
+                <Button HorizontalAlignment="Right" Click="HandleChangeTempDirClick" Width="110">Change Location...</Button>
+              </Grid>
+            </StackPanel>
+          </GroupBox>
+          <GroupBox Grid.Row="2" BorderThickness="1" Margin="5" Header="Import Settings">
+            <Grid>
+              <TextBlock Margin="5">If you are upgrading from an older version you can import your configuration:</TextBlock>
+              <Button Width="90" Content="Import..." HorizontalAlignment="Right" VerticalAlignment="Center" Click="HandleImportClick"/>
+            </Grid>
+          </GroupBox>
+          <GroupBox Grid.Row="3" BorderThickness="1" Margin="5" Header="Ignore Filter">
+            <Grid Margin="5">
+              <CheckBox IsChecked="{Binding Path=IgnoreHidden}" HorizontalAlignment="Left">Ignore hidden folders and files</CheckBox>
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <TextBlock Width="200" TextWrapping="Wrap">File names to ignore, one per line.  May contain wildcard characters * and ?
             (example: *.txt):</TextBlock>
-          <TextBox TextWrapping="Wrap" AcceptsReturn="True" Margin="5,0,0,0" Width="80" Height="40" VerticalScrollBarVisibility="Visible" Text="{Binding Path=Ignores}">
-          </TextBox>
-        </StackPanel>
-      </Grid>
-    </GroupBox>
-    <Button Grid.Row="4" Width="72" Height="25" Content="OK" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="363,4,0,6" IsDefault="True" Click="HandleOKClick"/>
-    <Button Grid.Row="4" Width="70" Height="25" Content="Cancel" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,4,12,6" IsCancel="True" />
+                <TextBox TextWrapping="Wrap" AcceptsReturn="True" Margin="5,0,0,0" Width="80" Height="40" VerticalScrollBarVisibility="Visible" Text="{Binding Path=Ignores}">
+                </TextBox>
+              </StackPanel>
+            </Grid>
+          </GroupBox>
+        </Grid>
+      </TabItem>
+      <!--
+      <TabItem Header="Automatic Updates">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <Grid.Resources>
+            <Style x:Key="RBStyle" TargetType="{x:Type FrameworkElement}">
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding Path=MonitorDrives}" Value="False">
+                  <Setter Property="IsEnabled" Value="False"/>
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </Grid.Resources>
+          <CheckBox Margin="10,15,5,5" Grid.Row="0" IsChecked="{Binding Path=MonitorDrives}">Monitor drives for changes</CheckBox>
+          <Label Style="{StaticResource RBStyle}" Margin="23,0,0,0" Grid.Row="1">When a change is detected:</Label>
+          <RadioButton Style="{StaticResource RBStyle}" GroupName="UpdateOptions" Margin="35,7,0,0" Grid.Row="2" IsChecked="{Binding Path=NoAction}">Indicate changes have occurred but take no further action</RadioButton>
+          <RadioButton Style="{StaticResource RBStyle}" GroupName="UpdateOptions" Margin="35,7,0,0" Grid.Row="3" IsChecked="{Binding Path=ScanOnly}">Automatically scan the drive to determine what changed</RadioButton>
+          <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="35,7,0,0" Style="{StaticResource RBStyle}">
+            <RadioButton  GroupName="UpdateOptions" IsChecked="{Binding Path=ScanAndUpdate}">Scan the drive, then automatically update parity after</RadioButton>
+            <xctk:IntegerUpDown Style="{StaticResource RBStyle}" Margin="4,0,4,0" MinWidth="40" FormatString="N0" Value="{Binding Path=UpdateDelay}" 
+             Minimum="1"/>
+            <TextBlock Text="minutes of inactivity">
+              <TextBlock.Style>
+                <Style TargetType="{x:Type TextBlock}">
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding Path=MonitorDrives}" Value="False">
+                      <Setter Property="Foreground" Value="{x:Static SystemColors.GrayTextBrush}"/>
+                    </DataTrigger>
+                  </Style.Triggers>                
+                </Style>
+              </TextBlock.Style>              
+            </TextBlock>
+          </StackPanel>
+        </Grid>
+      </TabItem>-->
+    </TabControl>
+    <Button Grid.Row="1" Width="72" Height="25" Content="OK" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="363,4,0,6" IsDefault="True" Click="HandleOKClick"/>
+    <Button Grid.Row="1" Width="70" Height="25" Content="Cancel" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,4,12,6" IsCancel="True" />
   </Grid>
 </Window>

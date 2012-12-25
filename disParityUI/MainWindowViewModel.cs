@@ -23,7 +23,9 @@ namespace disParityUI
     private Window owner;
     private OptionsDialogViewModel optionsViewModel;
     private Config config;
-    private CancellableOperation operationInProgress;
+    private System.Timers.Timer updateTimer;
+
+    private static CancellableOperation operationInProgress;
 
     public MainWindowViewModel(Window owner)
     {
@@ -42,7 +44,7 @@ namespace disParityUI
 
       paritySet = new ParitySet(config);
       AddDrives();
-      paritySet.PropertyChanged += HandlePropertyChanged;
+      paritySet.PropertyChanged += HandleParitySetPropertyChanged;
 
       Left = config.MainWindowX;
       Top = config.MainWindowY;
@@ -52,6 +54,10 @@ namespace disParityUI
       UpdateStartupMessage();
       UpdateParityStatus();
 
+      updateTimer = new System.Timers.Timer(1000);
+      updateTimer.AutoReset = true;
+      updateTimer.Elapsed += HandleUpdateTimer;
+      
     }
 
     private void LoadConfig(string appDataPath)
@@ -112,6 +118,12 @@ namespace disParityUI
         optionsViewModel.ConfigImported = false;
       }
 
+      foreach (DataDriveViewModel d in drives)
+        if (Config.MonitorDrives)
+          d.DataDrive.EnableWatcher();
+        else
+          d.DataDrive.DisableWatcher();
+
       UpdateStartupMessage();
       UpdateParityStatus();
       if (StartupMessage == "")
@@ -149,8 +161,7 @@ namespace disParityUI
 
     public OptionsDialogViewModel GetOptionsDialogViewModel()
     {
-      if (optionsViewModel == null)
-        optionsViewModel = new OptionsDialogViewModel(paritySet);
+      optionsViewModel = new OptionsDialogViewModel(paritySet);
       return optionsViewModel;
     }
 
@@ -208,8 +219,9 @@ namespace disParityUI
 
     private void AddDrive(DataDrive drive)
     {
-      DataDriveViewModel vm = new DataDriveViewModel(drive);
+      DataDriveViewModel vm = new DataDriveViewModel(drive, config);
       drives.Add(vm);
+      drive.PropertyChanged += HandleDateDrivePropertyChanged;
     }
 
     /// <summary>
@@ -217,13 +229,13 @@ namespace disParityUI
     /// </summary>
     public void DriveRemoved(DataDriveViewModel drive)
     {
+      drive.DataDrive.PropertyChanged -= HandleDateDrivePropertyChanged;
       // Can only modify the drives collection on the main thread
       Application.Current.Dispatcher.Invoke(new Action(() =>
       {
         drives.Remove(drive);
       }));
     }
-
 
     private void DisplayUpToDateStatus()
     {
@@ -237,7 +249,7 @@ namespace disParityUI
         Utils.SmartSize(totalSize), totalFiles);
     }
 
-    private void HandlePropertyChanged(object sender, PropertyChangedEventArgs e)
+    private void HandleParitySetPropertyChanged(object sender, PropertyChangedEventArgs e)
     {
       if (e.PropertyName == "Progress") {
         ProgressState = TaskbarItemProgressState.Normal;
@@ -245,6 +257,31 @@ namespace disParityUI
       }
       else if (e.PropertyName == "Status")
         Status = paritySet.Status;
+    }
+
+    private void HandleDateDrivePropertyChanged(object sender, PropertyChangedEventArgs e)
+    {
+      //DataDrive drive = (DataDrive)sender;
+      //if (e.PropertyName == "DriveStatus") {
+      //  if (drive.DriveStatus == DriveStatus.UpdateRequired)
+      //    if (config.MonitorDrives && config.UpdateMode == UpdateMode.ScanAndUpdate)
+      //      updateTimer.Start();
+      //}         
+    }
+
+    private void HandleUpdateTimer(object sender, System.Timers.ElapsedEventArgs args)
+    {
+      if (operationInProgress != null && operationInProgress.Running)
+        return;
+      DateTime nextAutoUpdate = paritySet.LastChanges + TimeSpan.FromMinutes(config.UpdateDelay); 
+      if (DateTime.Now > nextAutoUpdate) {
+        updateTimer.Stop();
+        Update(false); // don't scan first because we know there haven't been any changes
+      }
+      else {
+        Status = String.Format("Update required.  Automatic update in {0}...",
+          (nextAutoUpdate - DateTime.Now).ToString(@"m\:ss"));
+      }
     }
 
     public void ScanAll()
@@ -275,9 +312,9 @@ namespace disParityUI
       operationInProgress.Begin(drive);
     }
 
-    public void Update()
+    public void Update(bool scanFirst = true)
     {
-      operationInProgress = new UpdateOperation(this);
+      operationInProgress = new UpdateOperation(this, scanFirst);
       operationInProgress.Finished += HandleOperationFinished;
       operationInProgress.Begin();
     }
@@ -386,7 +423,7 @@ namespace disParityUI
       }
     }
 
-    public bool Busy
+    public static bool Busy
     {
       get
       {
