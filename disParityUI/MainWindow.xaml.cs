@@ -62,7 +62,7 @@ namespace disParityUI
 
     private void HandleClosing(object sender, CancelEventArgs args)
     {
-      if (MainWindowViewModel.Busy) {
+      if (viewModel.Busy) {
         MessageWindow.Show(this, "Operation in progress", "Please cancel the current operation before closing disParity", MessageWindowIcon.Caution, MessageWindowButton.OK);
         args.Cancel = true;
       }
@@ -77,7 +77,7 @@ namespace disParityUI
 
     void AddDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = !String.IsNullOrEmpty(viewModel.Config.ParityDir) && !MainWindowViewModel.Busy;
+      e.CanExecute = !String.IsNullOrEmpty(viewModel.Config.ParityDir) && !viewModel.Busy;
     }
 
     void AddDriveExecuted(object sender, ExecutedRoutedEventArgs e)
@@ -92,7 +92,7 @@ namespace disParityUI
 
     void RemoveDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = !MainWindowViewModel.Busy && (DriveList.SelectedItems.Count == 1);
+      e.CanExecute = !viewModel.Busy && (DriveList.SelectedItems.Count == 1);
     }
 
     void RemoveDriveExecuted(object sender, ExecutedRoutedEventArgs e)
@@ -104,7 +104,7 @@ namespace disParityUI
 
     void ScanDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = !MainWindowViewModel.Busy && (DriveList.SelectedItems.Count == 1);
+      e.CanExecute = !viewModel.Busy && (DriveList.SelectedItems.Count == 1);
     }
 
     void ScanDriveExecuted(object sender, ExecutedRoutedEventArgs e)
@@ -116,7 +116,7 @@ namespace disParityUI
 
     void ScanAllCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = !MainWindowViewModel.Busy && DriveList.HasItems;
+      e.CanExecute = !viewModel.Busy && DriveList.HasItems;
     }
 
     void ScanAllExecuted(object sender, ExecutedRoutedEventArgs e)
@@ -127,7 +127,7 @@ namespace disParityUI
 
     void UpdateAllCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      if (MainWindowViewModel.Busy || viewModel.Drives.Count == 0)
+      if (viewModel.Busy || viewModel.Drives.Count == 0)
         e.CanExecute = false;
       else
         e.CanExecute = true;
@@ -141,7 +141,7 @@ namespace disParityUI
 
     void RecoverDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = !MainWindowViewModel.Busy && (DriveList.SelectedItems.Count == 1) &&
+      e.CanExecute = !viewModel.Busy && (DriveList.SelectedItems.Count == 1) &&
         ((DataDriveViewModel)DriveList.SelectedItem).DataDrive.FileCount > 0;
     }
 
@@ -153,7 +153,7 @@ namespace disParityUI
 
     void VerifyCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      if (MainWindowViewModel.Busy || viewModel.Drives.Count == 0)
+      if (viewModel.Busy || viewModel.Drives.Count == 0)
         e.CanExecute = false;
       else
         e.CanExecute = true;
@@ -167,7 +167,7 @@ namespace disParityUI
 
     void OptionsCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = !MainWindowViewModel.Busy;
+      e.CanExecute = !viewModel.Busy;
     }
 
     void OptionsExecuted(object sender, ExecutedRoutedEventArgs e)
@@ -186,7 +186,7 @@ namespace disParityUI
 
     void CancelCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = MainWindowViewModel.Busy;
+      e.CanExecute = viewModel.Busy;
     }
 
     void CancelExecuted(object sender, ExecutedRoutedEventArgs e)
@@ -197,7 +197,7 @@ namespace disParityUI
 
     void HashcheckCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = !MainWindowViewModel.Busy && (DriveList.SelectedItems.Count == 1) &&
+      e.CanExecute = !viewModel.Busy && (DriveList.SelectedItems.Count == 1) &&
         ((DataDriveViewModel)DriveList.SelectedItem).DataDrive.FileCount > 0;
     }
 
@@ -209,7 +209,7 @@ namespace disParityUI
 
     void HashcheckAllCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = !MainWindowViewModel.Busy && DriveList.HasItems;
+      e.CanExecute = !viewModel.Busy && DriveList.HasItems;
     }
 
     void HashcheckAllExecuted(object sender, ExecutedRoutedEventArgs e)
@@ -220,9 +220,8 @@ namespace disParityUI
 
     void UndeleteCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = !MainWindowViewModel.Busy && (DriveList.SelectedItems.Count == 1) &&
-        ((((DataDriveViewModel)DriveList.SelectedItem).DataDrive.Deletes.Count > 0) || 
-         (((DataDriveViewModel)DriveList.SelectedItem).DataDrive.Edits.Count > 0));
+      e.CanExecute = !viewModel.Busy && (DriveList.SelectedItems.Count == 1) &&
+        (((DataDriveViewModel)DriveList.SelectedItem).DataDrive.Deletes.Count > 0);
     }
 
     void UndeleteExecuted(object sender, ExecutedRoutedEventArgs e)

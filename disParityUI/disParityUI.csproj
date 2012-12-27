@@ -68,6 +68,7 @@
       <DependentUpon>MessageWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="MessageWindowViewModel.cs" />
+    <Compile Include="OperationManager.cs" />
     <Compile Include="RecoverOperation.cs" />
     <Compile Include="RemoveDriveOperation.cs" />
     <Compile Include="ReportWindow.xaml.cs">

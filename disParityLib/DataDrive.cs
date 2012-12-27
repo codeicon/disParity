@@ -243,7 +243,7 @@ namespace disParity
             ReportProgress(1.0);
             Compare();
             LogFile.Log("Scan of {0} complete. Found {1} file{2} ({3} total) Adds: {4} Deletes: {5} Moves: {6} Edits: {7}", Root, scanFiles.Count,
-              scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize), adds.Count, deletes.Count, moves.Count, edits.Count);
+              scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize), adds.Count, deletes.Count, moves.Count, editCount);
             if (cancelScan) {
               Status = "Scan required";
               DriveStatus = DriveStatus.ScanRequired;
@@ -387,10 +387,7 @@ namespace disParity
     private List<FileRecord> adds = new List<FileRecord>();
     public List<FileRecord> Adds { get { return adds; } }
 
-    // the "edits" list contains FileRecords from the master files list
-    // Note that edited files are also in the deletes and adds list
-    private List<FileRecord> edits = new List<FileRecord>();
-    public List<FileRecord> Edits { get { return edits; } }
+    private int editCount;
 
     // the "moves" dictionary maps old file names to new entries from the scanFiles list
     private Dictionary<string, FileRecord> moves = new Dictionary<string, FileRecord>();
@@ -404,7 +401,7 @@ namespace disParity
       adds.Clear();
       deletes.Clear();
       moves.Clear();
-      edits.Clear();
+      editCount = 0;
 
       // build list of new files we haven't seen before (adds)
       foreach (FileRecord r in scanFiles)
@@ -458,13 +455,13 @@ namespace disParity
           // because it has the new attributes and we want those saved later.  The old value goes
           // into the edits and deletes lists.
           if (kvp.Value.Length != n.Length) {
-            edits.Add(kvp.Value);
+            editCount++;
             deletes.Add(kvp.Value);
             adds.Add(n);
           } else if (kvp.Value.LastWriteTime != n.LastWriteTime)
             // length hasn't changed but timestamp says file was modified, check hash code to be sure it has changed
             if (!HashCheck(kvp.Value)) {
-              edits.Add(kvp.Value);
+              editCount++;
               deletes.Add(kvp.Value);
               adds.Add(n);
             }
@@ -525,17 +522,11 @@ namespace disParity
       FileCount++;
     }
 
-    public void ClearAdds()
-    {
-      adds.Clear();
-      UpdateStatus();
-    }
-
     public void UpdateStatus()
     {
       if (LastChanges > LastScanStart)
         DriveStatus = DriveStatus.ScanRequired;
-      else if (adds.Count > 0 || edits.Count > 0 || deletes.Count > 0)
+      else if (adds.Count > 0 || deletes.Count > 0)
         DriveStatus = DriveStatus.UpdateRequired;
       else if (DriveStatus != DriveStatus.ScanRequired)
         DriveStatus = DriveStatus.UpToDate;
@@ -852,6 +843,23 @@ namespace disParity
           MaxBlock = endBlock;
         TotalFileSize += r.Length;
       }
+    }
+
+    /// <summary>
+    /// If the adds list contains a file with the given name, remove it.
+    /// Called during undelete in case the restored file was actually an edit.
+    /// </summary>
+    /// <param name="name"></param>
+    public void MaybeRemoveAddByName(string name)
+    {
+      FileRecord found = null;
+      foreach (FileRecord r in adds)
+        if (String.Compare(name, r.FullPath, true) == 0) {
+          found = r;
+          break;
+        }
+      if (found != null)
+        adds.Remove(found);
     }
 
     /// <summary>

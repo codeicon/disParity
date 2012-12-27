@@ -24,8 +24,7 @@ namespace disParityUI
     private OptionsDialogViewModel optionsViewModel;
     private Config config;
     private System.Timers.Timer updateTimer;
-
-    private static CancellableOperation operationInProgress;
+    private OperationManager operationManager;
 
     public MainWindowViewModel(Window owner)
     {
@@ -57,6 +56,9 @@ namespace disParityUI
       updateTimer = new System.Timers.Timer(1000);
       updateTimer.AutoReset = true;
       updateTimer.Elapsed += HandleUpdateTimer;
+
+      operationManager = new OperationManager(this);
+      operationManager.OperationFinished += HandleOperationFinished;
       
     }
 
@@ -134,7 +136,7 @@ namespace disParityUI
     {
       if (String.IsNullOrEmpty(config.ParityDir))
         StartupMessage = "Welcome to disParity!\r\n\r\n" +
-          "To use disParity you must first specify a location where the parity data will be stored.  This location should be a dedicated drive which is at least as large as the largest drive you want to protect.\r\n\r\n" +
+          "To use disParity you must first specify a location where the parity data will be stored.  This location should be on a dedicated drive which is at least as large as the largest drive you want to protect.\r\n\r\n" +
           "Press the 'Options...' button on the right.";
       else if (drives.Count == 0)
         StartupMessage = "Add one or more drives to be backed up by pressing the 'Add Drive' button.";
@@ -187,26 +189,30 @@ namespace disParityUI
     {
       string root = Path.GetPathRoot(path);
 
+      bool warned = false;
       if (String.Compare(root, Path.GetPathRoot(Config.ParityDir), true) == 0) {
         bool? result = MessageWindow.Show(owner, "Duplicate drives detected!", "The path you selected appears to be on same drive as your parity.\n\n" +
           "This is not recommended.  If the drive fails, disParity will not be able to recover any of your data.\n\n" +
           "Are you sure you want to add this drive?", MessageWindowIcon.Error, MessageWindowButton.YesNo);
         if (result == false)
           return;
+        warned = true;
       }
 
-      foreach (DataDrive d in paritySet.Drives)
-        if (String.Compare(root, Path.GetPathRoot(d.Root), true) == 0) {
-          bool? result = MessageWindow.Show(owner, "Duplicate drives detected!", "The path you selected appears to be on a drive that is already part of the array.\n\n" +
-            "This is not recommended.  If the drive fails, disParity will not be able to recover any of your data.\n\n" +
-            "Are you sure you want to add this drive?", MessageWindowIcon.Error, MessageWindowButton.YesNo);
-          if (result == false)
-            return;
-          else if (result == true)
-            break;
-        }
+      if (!warned) // so we don't warn twice if the data and parity drives are already on the same drive as this one
+        foreach (DataDrive d in paritySet.Drives)
+          if (String.Compare(root, Path.GetPathRoot(d.Root), true) == 0) {
+            bool? result = MessageWindow.Show(owner, "Duplicate drives detected!", "The path you selected appears to be on a drive that is already part of the array.\n\n" +
+              "This is not recommended.  If the drive fails, disParity will not be able to recover any of your data.\n\n" +
+              "Are you sure you want to add this drive?", MessageWindowIcon.Error, MessageWindowButton.YesNo);
+            if (result == false)
+              return;
+            else if (result == true)
+              break;
+          }
 
-      AddDrive(paritySet.AddDrive(path));
+      DataDriveViewModel vm = AddDrive(paritySet.AddDrive(path));
+      ScanDrive(vm);
       UpdateStartupMessage();
     }
 
@@ -217,11 +223,13 @@ namespace disParityUI
         AddDrive(d);
     }
 
-    private void AddDrive(DataDrive drive)
+    private DataDriveViewModel AddDrive(DataDrive drive)
     {
       DataDriveViewModel vm = new DataDriveViewModel(drive, config);
       drives.Add(vm);
       drive.PropertyChanged += HandleDateDrivePropertyChanged;
+      drive.ScanCompleted += HandleScanCompleted;
+      return vm;
     }
 
     /// <summary>
@@ -230,6 +238,7 @@ namespace disParityUI
     public void DriveRemoved(DataDriveViewModel drive)
     {
       drive.DataDrive.PropertyChanged -= HandleDateDrivePropertyChanged;
+      drive.DataDrive.ScanCompleted -= HandleScanCompleted;
       // Can only modify the drives collection on the main thread
       Application.Current.Dispatcher.Invoke(new Action(() =>
       {
@@ -269,9 +278,17 @@ namespace disParityUI
       //}         
     }
 
+    private void HandleScanCompleted(object sender, ScanCompletedEventArgs args)
+    {
+      //if (!args.Auto || args.Cancelled || args.Error || !args.UpdateNeeded)
+      //  return;
+      //if (config.MonitorDrives && config.UpdateMode == UpdateMode.ScanAndUpdate)
+      //  updateTimer.Start();
+    }
+
     private void HandleUpdateTimer(object sender, System.Timers.ElapsedEventArgs args)
     {
-      if (operationInProgress != null && operationInProgress.Running)
+      if (operationManager.Busy)
         return;
       DateTime nextAutoUpdate = paritySet.LastChanges + TimeSpan.FromMinutes(config.UpdateDelay); 
       if (DateTime.Now > nextAutoUpdate) {
@@ -286,70 +303,52 @@ namespace disParityUI
 
     public void ScanAll()
     {
-      operationInProgress = new ScanOperation(this);
-      operationInProgress.Finished += HandleOperationFinished;
-      operationInProgress.Begin();
+      operationManager.Begin(new ScanOperation());
     }
 
     public void ScanDrive(DataDriveViewModel drive)
     {
-      operationInProgress = new ScanOperation(this);
-      operationInProgress.Finished += HandleOperationFinished;
-      operationInProgress.Begin(drive);
+      operationManager.Begin(new ScanOperation(), drive);
     }
 
     public void Recover(DataDriveViewModel drive)
     {
-      operationInProgress = new RecoverOperation(this);
-      operationInProgress.Finished += HandleOperationFinished;
-      operationInProgress.Begin(drive);
+      operationManager.Begin(new RecoverOperation(), drive);
     }
 
     public void RemoveDrive(DataDriveViewModel drive)
     {
-      operationInProgress = new RemoveDriveOperation(this);
-      operationInProgress.Finished += HandleOperationFinished;
-      operationInProgress.Begin(drive);
+      operationManager.Begin(new RemoveDriveOperation(), drive);
     }
 
     public void Update(bool scanFirst = true)
     {
-      operationInProgress = new UpdateOperation(this, scanFirst);
-      operationInProgress.Finished += HandleOperationFinished;
-      operationInProgress.Begin();
+      operationManager.Begin(new UpdateOperation(scanFirst));
     }
 
     public void Hashcheck(DataDriveViewModel drive = null)
     {
-      operationInProgress = new HashcheckOperation(this);
-      operationInProgress.Finished += HandleOperationFinished;
-      operationInProgress.Begin(drive);
+      operationManager.Begin(new HashcheckOperation(), drive);
     }
 
     public void Undelete(DataDriveViewModel drive)
     {
-      operationInProgress = new UndeleteOperation(this);
-      operationInProgress.Finished += HandleOperationFinished;
-      operationInProgress.Begin(drive);
+      operationManager.Begin(new UndeleteOperation(), drive);
     }
 
     public void Verify()
     {
-      operationInProgress = new VerifyOperation(this);
-      operationInProgress.Finished += HandleOperationFinished;
-      operationInProgress.Begin();
+      operationManager.Begin(new VerifyOperation());
     }
 
-    private void HandleOperationFinished()
+    private void HandleOperationFinished(object sender, EventArgs args)
     {
-      operationInProgress.Finished -= HandleOperationFinished;
       UpdateParityStatus();
     }
 
     public void Cancel()
     {
-      if (operationInProgress != null)
-        operationInProgress.Cancel();
+      operationManager.Cancel();
     }
 
     public void StartProgress()
@@ -423,11 +422,11 @@ namespace disParityUI
       }
     }
 
-    public static bool Busy
+    public bool Busy
     {
       get
       {
-        return (operationInProgress != null && operationInProgress.Running);
+        return operationManager.Busy;
       }
     }
 

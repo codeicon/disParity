@@ -1,3 +1,5 @@
+* Verify needs a "auto repair"
+
 * Handle long path names
 
 * Really need to detect and handle running out of space on the temp drive

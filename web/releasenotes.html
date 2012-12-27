@@ -39,7 +39,14 @@ A:visited {
 Release notes for disParity beta 
 </font>
 <p>
-<i>Changes in version 0.30 released Tuesday, December 25, 2012</i>
+<i>Changes in version 0.31 beta released Wednesday, December 26, 2012</i>
+<ul class="indent">
+<li>Fixed two more parity corruption bugs, one of which has actually been around for years and even affects the command line version.  Again, run Verify to see if you have been affected.</li>
+<li>Fixed "Object reference not set to an instance of an object" error when recovering a drive.</li>
+<li>"Edits" are no longer tracked separately from adds and deletes.  This was causing too many issues (e.g. edited files would appear twice in the Undelete dialog.)  Any edited file will appear after a scan as 1 deleted file and 1 added file, since they are processed during an update first by removing the old file and then adding the new file.</li>  
+</ul>
+<p>
+<i>Changes in version 0.30 beta released Tuesday, December 25, 2012</i>
 <ul class="indent">
 <li>Fixed a parity corruption bug introduced in version 0.29.  The bug affected Updates done where files smaller than the "Max Temp RAM" setting were added or removed.  To see if you were affected by this bug, press the Verify button.  If Verify reports errors (it may take a while), you should rebuild your backup.  To rebuild your backup:
 <ol>
@@ -50,10 +57,10 @@ Release notes for disParity beta
 </ol>
 </li>
 <li>The drive panel right-click menu now has a "undelete" option.  This will restore any files that have been edited or deleted since the last update.  You can choose which files to restore in the dialog that comes up.</li>
-<li>Better handling for files and folders with names longer than 260 characters (a hard limit imposed by .NET).  The files still won't be backed up but they shouldn't cause any other problems. 
+<li>Better handling for files and folders with names longer than 260 characters (a hard limit imposed by .NET).  The files won't be backed up but they shouldn't cause any other problems. 
 </ul>
 <p>
-<i>Changes in version 0.29 released Wednesday, December 19, 2012</i>
+<i>Changes in version 0.29 beta released Wednesday, December 19, 2012</i>
 <ul class="indent">
 <li>Moved drive-specific commands (Scan, Recover, etc.) out of the main button panel and into a right-click menu on the drive panel.</li>
 <li>Added support for file hash checking.  "Hashcheck" re-computes the hash value for every file on a drive  

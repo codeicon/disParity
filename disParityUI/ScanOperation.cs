@@ -9,15 +9,20 @@ namespace disParityUI
   internal class ScanOperation : CancellableOperation
   {
 
-    public ScanOperation(MainWindowViewModel vm) : base(vm) { }
+    private bool auto;
 
-    public override void Begin(DataDriveViewModel selectedDrive = null)
+    public ScanOperation(bool auto = false) : base() 
+    {
+      this.auto = auto;
+    }
+
+    public override void Begin(MainWindowViewModel viewModel, DataDriveViewModel selectedDrive = null)
     {
       if (viewModel.Drives.Count == 0)
         End();  // nothing to do
       else {
         scanDrive = selectedDrive;
-        base.Begin();
+        base.Begin(viewModel);
       }
     }
 

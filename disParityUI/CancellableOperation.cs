@@ -21,12 +21,14 @@ namespace disParityUI
     private double[] scanProgress;
     private object syncObject = new object();
     private bool scanError;
+    private bool auto;
 
     protected MainWindowViewModel viewModel;
     protected bool cancelled;
     protected bool scanning;
     protected bool inProgress;
     protected bool anyDriveNeedsUpdate;
+    protected bool suppressErrorCheck;
     protected List<string> errorMessages = new List<string>();
     protected DataDriveViewModel drive; // the drive this operation is running on, if any
     protected DataDriveViewModel scanDrive; // scan ONLY this drive
@@ -35,18 +37,20 @@ namespace disParityUI
     public delegate void FinishedDelegate();
     public event FinishedDelegate Finished;
 
-    public CancellableOperation(MainWindowViewModel vm)
+    public CancellableOperation(bool auto = false)
     {
-      viewModel = vm;
       inProgress = false;
       scanning = false;
       anyDriveNeedsUpdate = false;
       scanError = false;
+      suppressErrorCheck = false;
+      this.auto = auto;
     }
 
-    public virtual void Begin(DataDriveViewModel selectedDrive = null)
+    public virtual void Begin(MainWindowViewModel viewModel, DataDriveViewModel selectedDrive = null)
     {
       cancelled = false;
+      this.viewModel = viewModel;
       viewModel.ParitySet.ErrorMessage += HandleErrorMessage;
       viewModel.StartProgress();
       inProgress = true;
@@ -61,7 +65,7 @@ namespace disParityUI
             Interlocked.Increment(ref runningScans);
             vm.PropertyChanged += HandleDataDrivePropertyChanged;
             vm.DataDrive.ScanCompleted += HandleScanCompleted;
-            vm.Scan(false); // runs in a separate Task
+            vm.Scan(auto); // runs in a separate Task
           }
       }
       else
@@ -209,7 +213,7 @@ namespace disParityUI
 
     protected virtual bool CheckForErrors()
     {
-      if (errorMessages.Count == 0)
+      if (errorMessages.Count == 0 || suppressErrorCheck)
         return false;
       if (MessageWindow.Show(viewModel.Owner, "Errors detected", "Errors were encountered during the " + LowerCaseName + 
         ".  Would you like to see a list of errors?", MessageWindowIcon.Error, MessageWindowButton.YesNo) == true)

@@ -9,8 +9,6 @@ namespace disParityUI
   class HashcheckOperation : CancellableOperation
   {
 
-    public HashcheckOperation(MainWindowViewModel vm) : base(vm) { }
-
     protected override void DoOperation()
     {
       if (drive != null)

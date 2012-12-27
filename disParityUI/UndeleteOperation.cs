@@ -13,16 +13,12 @@ namespace disParityUI
 
     private List<string> filesToRestore;
 
-    public UndeleteOperation(MainWindowViewModel vm) : base(vm) { }
-
     protected override bool PrepareOperation()
     {
-      if (drive.DataDrive.Edits.Count == 0 && drive.DataDrive.Deletes.Count == 0)
+      if (drive.DataDrive.Deletes.Count == 0)
         return false;
 
       List<string> files = new List<string>();
-      foreach (FileRecord r in drive.DataDrive.Edits)
-        files.Add(r.FullPath);
       foreach (FileRecord r in drive.DataDrive.Deletes)
         files.Add(r.FullPath);
 

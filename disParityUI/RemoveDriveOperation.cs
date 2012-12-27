@@ -10,8 +10,6 @@ namespace disParityUI
   internal class RemoveDriveOperation : CancellableOperation
   {
 
-    public RemoveDriveOperation(MainWindowViewModel vm) : base(vm) { }
-
     protected override bool PrepareOperation()
     {
 

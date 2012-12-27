@@ -109,7 +109,7 @@
             </TextBlock>
           </StackPanel>
         </Grid>
-      </TabItem>-->
+      </TabItem> -->
     </TabControl>
     <Button Grid.Row="1" Width="72" Height="25" Content="OK" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="363,4,0,6" IsDefault="True" Click="HandleOKClick"/>
     <Button Grid.Row="1" Width="70" Height="25" Content="Cancel" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,4,12,6" IsCancel="True" />

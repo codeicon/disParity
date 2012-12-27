@@ -23,12 +23,14 @@ namespace disParity
     private MemoryMappedFile mmf;
     private MemoryMappedViewStream mmfStream;
     private UInt32 lastMMFBlock;
+    private bool writingToMMF;
 
     public ParityChange(Parity parity, Config config, UInt32 startBlock, UInt32 lengthInBlocks)
     {
       this.parity = parity;
       this.startBlock = startBlock;
       tempDir = config.TempDir;
+      writingToMMF = true;
       UInt32 maxMMFBlocks = Parity.LengthInBlocks((long)config.MaxTempRAM * 1024 * 1024);
       UInt32 mmfBlocks = (lengthInBlocks < maxMMFBlocks) ? lengthInBlocks : maxMMFBlocks;
       try {
@@ -39,6 +41,7 @@ namespace disParity
         // We'll use a temp file only
         mmf = null;
         mmfStream = null;
+        writingToMMF = false;
       }
       tempFileStream = null;
       parityBlock = new ParityBlock(parity);
@@ -70,7 +73,7 @@ namespace disParity
     /// </summary>
     public void Write()
     {
-      if (mmfStream != null && (mmfStream.Position < mmfStream.Capacity) && Utils.MemoryLoad() < MAX_MEMORY_LOAD) {
+      if (writingToMMF && (mmfStream.Position < mmfStream.Capacity) && Utils.MemoryLoad() < MAX_MEMORY_LOAD) {
         mmfStream.Write(parityBlock.Data, 0, Parity.BLOCK_SIZE);
         lastMMFBlock = block + 1;
       } 
@@ -78,6 +81,7 @@ namespace disParity
         if (tempFileStream == null) {
           LogFile.Log("Switching from RAM to temp file at {0}", Utils.SmartSize(mmfStream.Position));
           mmfStream.Seek(0, SeekOrigin.Begin); // return MMF stream to its start
+          writingToMMF = false;
           // make sure temp directory exists
           if (!Directory.Exists(tempDir))
             Directory.CreateDirectory(tempDir);

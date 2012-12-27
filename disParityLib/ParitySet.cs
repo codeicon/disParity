@@ -555,9 +555,6 @@ namespace disParity
       foreach (FileRecord r in drive.Deletes)
         if (fileNames.Contains(r.FullPath))
           files.Add(r);
-      foreach (FileRecord r in drive.Edits)
-        if (fileNames.Contains(r.FullPath))
-          files.Add(r);
 
       if (files.Count == 0) {
         LogFile.Log("No files to undelete.");
@@ -580,8 +577,8 @@ namespace disParity
         foreach (FileRecord r in files) {
           if (RecoverFile(r, drive.Root)) {
             restored++;
-            drive.Edits.Remove(r);
             drive.Deletes.Remove(r);
+            drive.MaybeRemoveAddByName(r.FullPath);
           } 
           else if (!cancel)
             errors++;
@@ -984,9 +981,9 @@ namespace disParity
     public void Verify()
     {
       cancel = false;
+      VerifyErrors = 0;
       MD5 hash = MD5.Create();
       UInt32 maxBlock = MaxParityBlock();
-      UInt32 errors = 0;
       List<FileRecord> suspectFiles = new List<FileRecord>();
       DateTime lastStatus = DateTime.Now;
       TimeSpan minTimeDelta = TimeSpan.FromMilliseconds(100); // don't update status more than 10x per second
@@ -1017,7 +1014,7 @@ namespace disParity
           calculatedParityBlock.Clear();
         if (!calculatedParityBlock.Equals(parityBlock)) {
           FireErrorMessage(String.Format("Block {0} does not match", block));
-          errors++;
+          VerifyErrors++;
           bool reported = false;
           foreach (DataDrive dr in drives) {
             FileRecord f = dr.FileFromBlock(block);
@@ -1032,7 +1029,7 @@ namespace disParity
           }
         }
         if ((DateTime.Now - lastStatus) > minTimeDelta) {
-          Status = String.Format("{0} of {1} parity blocks verified. Errors found: {2}", block, maxBlock, errors);
+          Status = String.Format("{0} of {1} parity blocks verified. Errors found: {2}", block, maxBlock, VerifyErrors);
           lastStatus = DateTime.Now;
         }
         ReportProgress((double)block / maxBlock);
@@ -1068,6 +1065,8 @@ namespace disParity
     }
 
     #region Properties
+
+    public int VerifyErrors { get; private set; }
 
     public DateTime LastChanges
     {

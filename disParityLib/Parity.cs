@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
+using System.Diagnostics;
 
 namespace disParity
 {
@@ -40,13 +41,11 @@ namespace disParity
     private bool OpenParityFile(UInt32 block, bool readOnly)
     {
       UInt32 partityFileNum = block / (UInt32)BLOCKS_PER_FILE;
+      long position = FilePosition(block);
       if (f != null && partityFileNum == currentParityFile) {
-        long position = FilePosition(block);
-        if (f.Position != position) {
-          if (readOnly && position > f.Length)
-            return false;
-          f.Position = position;
-        }
+        if (readOnly && position >= f.Length)
+          return false;
+        f.Position = position;
         return true;
       }
       Close();
@@ -55,7 +54,9 @@ namespace disParity
         return false;
       f = new FileStream(fileName, FileMode.OpenOrCreate,  FileAccess.ReadWrite);
       currentParityFile = partityFileNum;
-      f.Position = FilePosition(block);
+      if (readOnly && position >= f.Length)
+        return false;
+      f.Position = position;
       return true;
     }
 
@@ -73,8 +74,10 @@ namespace disParity
       try {
         if (!OpenParityFile(block, true))
           Array.Clear(data, 0, BLOCK_SIZE);
-        else
-          f.Read(data, 0, BLOCK_SIZE);
+        else {
+          int bytesRead = f.Read(data, 0, BLOCK_SIZE);
+          Debug.Assert(bytesRead == BLOCK_SIZE);
+        }
       }
       catch (Exception e) {
         LogFile.Log("FATAL ERROR: {0}", e.Message);

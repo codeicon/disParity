@@ -13,19 +13,17 @@ namespace disParityUI
 
     private string recoverPath;
 
-    public RecoverOperation(MainWindowViewModel vm) : base(vm) { }
-
-    public override void Begin(DataDriveViewModel selectedDrive = null)
+    public override void Begin(MainWindowViewModel viewModel, DataDriveViewModel selectedDrive = null)
     {
       skipDrive = selectedDrive;
-      base.Begin();
+      base.Begin(viewModel, selectedDrive);
     }
 
     protected override bool PrepareOperation()
     {
       // check if there are changes on other drives that could mess up the recover
       foreach (DataDriveViewModel vm in viewModel.Drives)
-        if (vm != drive && (vm.DataDrive.Deletes.Count > 0 || vm.DataDrive.Edits.Count > 0)) {
+        if (vm != drive && (vm.DataDrive.Deletes.Count > 0)) {
           if (MessageWindow.Show(viewModel.Owner, "Changes detected", "Other drives have changes which may prevent a complete recovery.  Would you like to recover anyway?", MessageWindowIcon.Caution, MessageWindowButton.OKCancel) != true)
             return false;
         }
@@ -52,6 +50,7 @@ namespace disParityUI
       Status = "Recovering " + drive.Root + " to " + recoverPath + "...";
       int successes;
       int failures;
+      suppressErrorCheck = true; // tell base class to not report errors, we'll do that here
       viewModel.ParitySet.Recover(drive.DataDrive, recoverPath, out successes, out failures);
       if (cancelled) {
         Status = "Recover cancelled";

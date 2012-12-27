@@ -90,7 +90,7 @@ namespace disParityUI
           (nextAutoScan - DateTime.Now).ToString(@"m\:ss"));
       else {
         autoScanTimer.Stop();
-        Scan(true);
+        OperationManager.Instance.Begin(new ScanOperation(true));
       }
     }
 
@@ -127,18 +127,13 @@ namespace disParityUI
         case DriveStatus.UpdateRequired:
           int addCount = DataDrive.Adds.Count;
           int deleteCount = DataDrive.Deletes.Count;
-          int editCount = DataDrive.Edits.Count;
-          if (editCount > 0) {
-            addCount -= editCount;
-            deleteCount -= editCount;
-          }
-          if (addCount == 0 && deleteCount == 0 && editCount == 0) {
+          if (addCount == 0 && deleteCount == 0) {
             Status = "Up to date";
             StatusIcon = Icons.Good;
             break;
           }
-          Status = String.Format("Update Required ({0} new, {1} deleted, {2} edited)", addCount, deleteCount, editCount);
-          if (deleteCount > 0 || editCount > 0)
+          Status = String.Format("Update Required ({0} new, {1} deleted)", addCount, deleteCount);
+          if (deleteCount > 0)
             StatusIcon = Icons.Urgent;
           else
             StatusIcon = Icons.Caution;

@@ -12,7 +12,7 @@ namespace disParityUI
 
     private bool scanFirst = true;
 
-    public UpdateOperation(MainWindowViewModel vm, bool scanFirst) : base(vm) 
+    public UpdateOperation(bool scanFirst) : base() 
     {
       this.scanFirst = scanFirst;
     }
