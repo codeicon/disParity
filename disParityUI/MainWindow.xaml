@@ -178,7 +178,7 @@
         <Button.ToolTip>Check file hashes on all drives</Button.ToolTip>
       </Button>
       <Button Margin="0,10,0,0" Command="ui:Commands.Verify" Content="Verify" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
-        <Button.ToolTip>Verify that the backup image is correct</Button.ToolTip>
+        <Button.ToolTip>Verify that the backup image is correct.  Try to repair any errors.</Button.ToolTip>
       </Button>
       <Button Margin="0,10,0,0" Command="ui:Commands.Options" Content="Options..." ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Configure disParity</Button.ToolTip>

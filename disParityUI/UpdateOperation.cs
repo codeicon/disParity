@@ -40,7 +40,7 @@ namespace disParityUI
       viewModel.ParitySet.CancelUpdate();
     }
 
-    protected override string Name { get { return "Update"; } }
+    public override string Name { get { return "Update"; } }
 
     protected override string LowerCaseName { get { return "update"; } }
 

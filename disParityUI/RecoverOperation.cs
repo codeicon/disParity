@@ -78,7 +78,7 @@ namespace disParityUI
       viewModel.ParitySet.CancelRecover();
     }
 
-    protected override string Name { get { return "Recover"; } }
+    public override string Name { get { return "Recover"; } }
 
     protected override string LowerCaseName { get { return "recover"; } }
 

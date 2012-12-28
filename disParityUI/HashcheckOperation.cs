@@ -22,7 +22,7 @@ namespace disParityUI
       viewModel.ParitySet.CancelHashcheck();
     }
 
-    protected override string Name { get { return "Hash check"; } }
+    public override string Name { get { return "Hash check"; } }
 
     protected override string LowerCaseName { get { return "hash check"; } }
 

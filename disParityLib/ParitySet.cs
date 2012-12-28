@@ -536,16 +536,21 @@ namespace disParity
       foreach (FileRecord f in drive.Files)
         recoverTotalBlocks += f.LengthInBlocks;
       recoverBlocks = 0;
-      foreach (FileRecord f in drive.Files)
-        if (RecoverFile(f, path))
-          successes++;
-        else {
-          if (cancel) {
-            drive.ReportProgress(0);
-            return;
+      try {
+        foreach (FileRecord f in drive.Files)
+          if (RecoverFile(f, path))
+            successes++;
+          else {
+            if (cancel)
+              return;
+            failures++;
           }
-          failures++;
-        }
+      }
+      finally {
+        ReportProgress(0);
+        drive.ReportProgress(0);
+        drive.Status = "";
+      }
     }
 
     public void Undelete(DataDrive drive, List<string> fileNames)
@@ -626,7 +631,6 @@ namespace disParity
             if (cancel) {
               f.Close();
               File.Delete(fullPath);
-              r.Drive.UpdateStatus();
               return false;
             }
           }
@@ -886,6 +890,7 @@ namespace disParity
 
         FlushTempParity(r.Drive, change); // commit the parity change to disk
       }
+      r.Drive.ReportProgress(0);
       return true;
     }
 
@@ -982,6 +987,7 @@ namespace disParity
     {
       cancel = false;
       VerifyErrors = 0;
+      VerifyRecovers = 0;
       MD5 hash = MD5.Create();
       UInt32 maxBlock = MaxParityBlock();
       List<FileRecord> suspectFiles = new List<FileRecord>();
@@ -1016,20 +1022,38 @@ namespace disParity
           FireErrorMessage(String.Format("Block {0} does not match", block));
           VerifyErrors++;
           bool reported = false;
+          bool canRecover = true;
           foreach (DataDrive dr in drives) {
             FileRecord f = dr.FileFromBlock(block);
-            if (f != null && !suspectFiles.Contains(f)) {
+            if (f == null)
+              continue;
+            if (f.Modified)
+              canRecover = false;
+            if (!suspectFiles.Contains(f)) {
               suspectFiles.Add(f);
               if (!reported) {
                 FireErrorMessage("Block " + block + " contains data from the following file or files (each file will only be reported once per verify pass):");
                 reported = true;
               }
-              FireErrorMessage(f.FullPath);
+              string error = f.FullPath;
+              if (!File.Exists(f.FullPath))
+                error += " (MISSING)";
+              else if (f.Modified)
+                error += " (MODIFIED)";
+              FireErrorMessage(error);
             }
           }
+          if (canRecover) {
+            parity.WriteBlock(block, calculatedParityBlock.Data);
+            FireErrorMessage("Block " + block + " repaired.");
+            VerifyRecovers++;
+          }
+          else
+            FireErrorMessage("Cannot repair block + " + block + " because one or more files are modified or missing.");
         }
         if ((DateTime.Now - lastStatus) > minTimeDelta) {
-          Status = String.Format("{0} of {1} parity blocks verified. Errors found: {2}", block, maxBlock, VerifyErrors);
+          Status = String.Format("{0} of {1} parity blocks verified. Errors found: {2} Errors fixed: {3}", 
+            block, maxBlock, VerifyErrors, VerifyRecovers);
           lastStatus = DateTime.Now;
         }
         ReportProgress((double)block / maxBlock);
@@ -1067,6 +1091,8 @@ namespace disParity
     #region Properties
 
     public int VerifyErrors { get; private set; }
+
+    public int VerifyRecovers { get; private set; }
 
     public DateTime LastChanges
     {

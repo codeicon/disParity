@@ -18,12 +18,11 @@ namespace disParityUI
 
     public override void Begin(MainWindowViewModel viewModel, DataDriveViewModel selectedDrive = null)
     {
+      base.Begin(viewModel);
       if (viewModel.Drives.Count == 0)
         End();  // nothing to do
-      else {
+      else
         scanDrive = selectedDrive;
-        base.Begin(viewModel);
-      }
     }
 
     protected override void DoOperation()
@@ -39,7 +38,7 @@ namespace disParityUI
       // nothing to cancel
     }
 
-    protected override string Name { get { return "Scan"; } }
+    public override string Name { get { return "Scan"; } }
 
     protected override string LowerCaseName { get { return "scan"; } }
 

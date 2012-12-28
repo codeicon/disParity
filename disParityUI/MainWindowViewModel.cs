@@ -37,7 +37,7 @@ namespace disParityUI
       if (!Directory.Exists(logPath))
         Directory.CreateDirectory(logPath);
       LogFile.Open(Path.Combine(logPath, "disParity.log"), false);
-      LogFile.Log("Application launched");
+      LogFile.Log("Application launched (version {0})", disParity.Version.VersionString);
 
       LoadConfig(appDataPath);
 
@@ -139,7 +139,8 @@ namespace disParityUI
           "To use disParity you must first specify a location where the parity data will be stored.  This location should be on a dedicated drive which is at least as large as the largest drive you want to protect.\r\n\r\n" +
           "Press the 'Options...' button on the right.";
       else if (drives.Count == 0)
-        StartupMessage = "Add one or more drives to be backed up by pressing the 'Add Drive' button.";
+        StartupMessage = "Add one or more drives to be backed up by pressing the 'Add Drive' button.\n\n" +
+          "When you are done adding all of your drives, press the 'Update All' button to build the backup.";
       else
         StartupMessage = "";
     }

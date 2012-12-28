@@ -50,7 +50,7 @@ namespace disParityUI
     // not sure if we should scan first before undelete or not.  For now, not.
     protected override bool ScanFirst { get { return false; } }
 
-    protected override string Name { get { return "Undelete"; } }
+    public override string Name { get { return "Undelete"; } }
 
     protected override string LowerCaseName { get { return "undelete"; } }
 

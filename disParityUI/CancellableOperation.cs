@@ -239,7 +239,7 @@ namespace disParityUI
     /// <summary>
     /// Name of this operation
     /// </summary>
-    abstract protected string Name { get; }
+    abstract public string Name { get; }
 
     abstract protected string LowerCaseName { get; }
 

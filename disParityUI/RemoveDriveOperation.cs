@@ -68,7 +68,7 @@ namespace disParityUI
       Status = vm.DataDrive.Root + " removed";
     }
 
-    protected override string Name { get { return "Remove drive"; } }
+    public override string Name { get { return "Remove drive"; } }
 
     protected override string LowerCaseName { get { return "remove drive"; } }
 

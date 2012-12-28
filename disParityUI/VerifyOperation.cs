@@ -24,8 +24,11 @@ namespace disParityUI
 
       if (cancelled)
         Status = "Verify cancelled." + ((errorMessages.Count == 0) ? "" : (" Errors found: " + errorMessages.Count));
+      else if (errorMessages.Count == 0)
+        Status = "Verify complete. No errors found.";
       else
-        Status = "Verify complete.  " + ((errorMessages.Count == 0) ? "No errors found." : (" Errors found: " + viewModel.ParitySet.VerifyErrors));
+        Status = String.Format("Verify complete. Errors found: {0} Errors fixed: {1}",
+          viewModel.ParitySet.VerifyErrors, viewModel.ParitySet.VerifyRecovers);
 
     }
 
@@ -34,7 +37,7 @@ namespace disParityUI
       viewModel.ParitySet.CancelVerify();
     }
 
-    protected override string Name { get { return "Verify"; } }
+    public override string Name { get { return "Verify"; } }
 
     protected override string LowerCaseName { get { return "verify"; } }
 

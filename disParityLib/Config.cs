@@ -21,7 +21,7 @@ namespace disParity
     private string filename;
 
     const Int32 VERSION = 1;
-    const UInt32 DEFAULT_MAX_TEMP_RAM = 512;
+    const UInt32 DEFAULT_MAX_TEMP_RAM = 1024;
     const bool DEFAULT_IGNORE_HIDDEN = true;
     const bool DEFAULT_MONITOR_DRIVES = true;
     const UpdateMode DEFAULT_UPDATE_MODE = UpdateMode.ScanAndUpdate;

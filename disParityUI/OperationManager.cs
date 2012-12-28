@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Diagnostics;
+using disParity;
 
 namespace disParityUI
 {
@@ -24,10 +25,16 @@ namespace disParityUI
 
     public void Begin(CancellableOperation operation, DataDriveViewModel drive = null)
     {
-      Debug.Assert(!Busy);
-      operation.Finished += HandleOperationFinished;
-      operationInProgress = operation;
-      operation.Begin(vm, drive);
+      try {
+        Debug.Assert(!Busy);
+        operation.Finished += HandleOperationFinished;
+        operationInProgress = operation;
+        operation.Begin(vm, drive);
+      }
+      catch (Exception e) {
+        App.LogCrash(e);
+        LogFile.Log("Exception trying to begin {0}: {1} ", operation.Name, e.Message);
+      }
     }
 
     public void Cancel()
