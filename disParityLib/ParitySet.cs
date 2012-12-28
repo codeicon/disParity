@@ -161,11 +161,6 @@ namespace disParity
         if (cancel)
           return;
 
-        LogFile.Log("Beginning update");
-
-        if (cancel)
-          return;
-
         ReportProgress(0);
         // count total blocks for this update, for progress reporting
         currentUpdateBlocks = 0;
@@ -243,7 +238,6 @@ namespace disParity
     // Caution: Keep this thread safe!
     public void CancelUpdate()
     {
-      LogFile.Log("Update cancelled");
       cancel = true;
       // in case we are still doing the pre-update scan
       foreach (DataDrive d in drives)
@@ -253,20 +247,17 @@ namespace disParity
     // Caution: Keep this thread safe!
     public void CancelRecover()
     {
-      LogFile.Log("Recover cancelled");
       cancel = true;
     }
 
     public void CancelRemoveAll()
     {
-      LogFile.Log("Remove all cancelled");
       cancel = true;
     }
 
     // Caution: Keep this thread safe!
     public void CancelVerify()
     {
-      LogFile.Log("Verify cancelled");
       cancel = true;
       // in case we are still doing the pre-verify scan
       foreach (DataDrive d in drives)
@@ -275,13 +266,11 @@ namespace disParity
 
     public void CancelHashcheck()
     {
-      LogFile.Log("Hashcheck cancelled");
       cancel = true;
     }
 
     public void CancelUndelete()
     {
-      LogFile.Log("Undelete cancelled");
       cancel = true;
     }
 
@@ -296,10 +285,6 @@ namespace disParity
     public void HashCheck(DataDrive driveToCheck = null)
     {
       cancel = false;
-      if (driveToCheck != null)
-        LogFile.Log("Beginning hash check for " + driveToCheck.Root);
-      else
-        LogFile.Log("Beginning hash check for all drives");
 
       int files = 0;
       int failures = 0;

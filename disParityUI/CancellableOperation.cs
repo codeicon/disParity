@@ -127,7 +127,6 @@ namespace disParityUI
         return;
       }
 
-
       // I don't like calling Run() on the ScanCompleted callback from DataDrive's scan thread,
       // so run it on the main UI thread instead.
       Application.Current.Dispatcher.BeginInvoke(new Action(() =>
@@ -150,6 +149,7 @@ namespace disParityUI
     private void Run()
     {
 
+      LogFile.Log("Beginning " + Name);
       if (!PrepareOperation()) {
         Status = Name + " cancelled";
         End();
@@ -164,8 +164,12 @@ namespace disParityUI
       {
         try {
           DoOperation();
-          if (cancelled)
+          if (cancelled) {
+            LogFile.Log(Name + " cancelled.");
             viewModel.Status = Name + " cancelled.";
+          }
+          else
+            LogFile.Log(Name + " complete.");
         }
         catch (Exception e) {
           App.LogCrash(e);
@@ -206,6 +210,7 @@ namespace disParityUI
           vm.DataDrive.CancelScan();
       }
       else {
+        LogFile.Log("Cancelling " + Name);
         viewModel.Status = "Cancelling " + Name + "...";        
         CancelOperation();
       }

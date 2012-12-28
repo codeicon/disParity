@@ -723,7 +723,7 @@ namespace disParity
         Status = "Reading " + currentOpenFile.FullPath;
         DriveStatus = DriveStatus.ReadingFile;
         try {
-          currentOpenFileStream.Position = (block - r.StartBlock) * Parity.BLOCK_SIZE;
+          currentOpenFileStream.Position = ((long)(block - r.StartBlock)) * Parity.BLOCK_SIZE;
           int bytesRead = currentOpenFileStream.Read(data, 0, data.Length);
           while (bytesRead < data.Length)
             data[bytesRead++] = 0;
