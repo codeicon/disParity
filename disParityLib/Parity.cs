@@ -102,7 +102,7 @@ namespace disParity
     public static UInt32 LengthInBlocks(long lengthInBytes)
     {
       UInt32 result = (UInt32)(lengthInBytes / BLOCK_SIZE);
-      if (result * BLOCK_SIZE < lengthInBytes)
+      if ((long)result * BLOCK_SIZE < lengthInBytes)
         result++;
       return result;
     }

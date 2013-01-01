@@ -12,7 +12,7 @@ using System.Windows;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Disparity Solutions, LLC")]
 [assembly: AssemblyProduct("disParity")]
-[assembly: AssemblyCopyright("Copyright © Disparity Solutions, LLC 2012")]
+[assembly: AssemblyCopyright("Copyright © Disparity Solutions, LLC 2013")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -51,4 +51,4 @@ using System.Windows;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyFileVersion("0.32")]
+[assembly: AssemblyFileVersion("0.33")]

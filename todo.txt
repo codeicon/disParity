@@ -1,4 +1,3 @@
-* Verify needs a "auto repair"
 
 * Handle long path names
 

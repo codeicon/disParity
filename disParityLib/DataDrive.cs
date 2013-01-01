@@ -624,6 +624,7 @@ namespace disParity
     {
       if (buf.Length != Parity.BLOCK_SIZE)
         throw new Exception("Invalid buffer size (must be " + Parity.BLOCK_SIZE + " bytes)");
+
       if (enumFile == null) {
         if (enumComplete)
           return false;
@@ -635,7 +636,12 @@ namespace disParity
           DriveStatus = DriveStatus.UpToDate;
           return false;
         }
-        // TODO: Handle zero-length file here?
+        // Check for zero-length files
+        if (enumerator.Current.Length == 0) {
+          AppendFileRecord(enumerator.Current);
+          enumCount++;
+          return GetNextBlock(buf);
+        }
         string fullName = Utils.MakeFullPath(root, enumerator.Current.Name);
         try {
           enumFile = new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -643,7 +649,7 @@ namespace disParity
         catch (Exception e) {
           LogFile.Log("Error opening {0} for reading: {1}", fullName, e.Message);
           enumerator.Current.Skipped = true;
-          enumerator.MoveNext();
+          enumFile = null; // just to be sure
           return GetNextBlock(buf);
         }
         DriveStatus = DriveStatus.ReadingFile;
@@ -652,6 +658,7 @@ namespace disParity
         hash.Initialize();
         enumerator.Current.StartBlock = enumBlock;
       }
+
       int bytesRead = enumFile.Read(buf, 0, Parity.BLOCK_SIZE);
       if (enumFile.Position < enumFile.Length)
         hash.TransformBlock(buf, 0, bytesRead, buf, 0);
@@ -663,15 +670,17 @@ namespace disParity
         enumFile.Close();
         enumFile.Dispose();
         enumFile = null;
-        FileCount = enumCount;
-        TotalFileSize = enumSize;
         enumCount++;
         enumSize += enumerator.Current.Length;
+        TotalFileSize = enumSize;
+        FileCount = enumCount;
         Array.Clear(buf, bytesRead, Parity.BLOCK_SIZE - bytesRead);
       }
+
       enumBlock++;
       ReportProgress((double)enumBlock / (double)enumBlocks);
       return true;
+
     }    
 
     public void EndFileEnum()
