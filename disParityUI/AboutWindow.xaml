@@ -6,7 +6,7 @@
         ResizeMode="NoResize"
         WindowStyle="ToolWindow"
         Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"                  
-        Title="About disParity" Height="270" Width="300">
+        Title="About disParity" Height="250" Width="300">
     <Grid>
     <StackPanel Orientation="Vertical">
       <TextBlock HorizontalAlignment="Center" Margin="10,30,10,10">

@@ -230,6 +230,16 @@ namespace disParityUI
       e.Handled = true;
     }
 
+    void ResetCanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+      e.CanExecute = !viewModel.Busy && !viewModel.Empty;
+    }
+
+    void ResetExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+      viewModel.Reset();
+      e.Handled = true;
+    }
 
 
     #endregion

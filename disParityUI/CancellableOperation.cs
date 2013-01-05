@@ -61,7 +61,7 @@ namespace disParityUI
         runningScans = 0;
         scanProgress = new double[viewModel.Drives.Count];
         foreach (DataDriveViewModel vm in viewModel.Drives) 
-          if (vm != skipDrive) {
+          if ((scanDrive != null && vm == scanDrive) || (scanDrive == null && vm != skipDrive)) {
             Interlocked.Increment(ref runningScans);
             vm.PropertyChanged += HandleDataDrivePropertyChanged;
             vm.DataDrive.ScanCompleted += HandleScanCompleted;

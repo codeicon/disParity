@@ -1,4 +1,7 @@
+* Right-click option to change root of drive
 
+* Update operations should report MB/sec statistics
+  
 * Handle long path names
 
 * Really need to detect and handle running out of space on the temp drive
@@ -15,7 +18,6 @@
   
 * Handle out-of-parity space issues robustly (should update detect and report 
   when there is not enough room on the parity drive?)
-  
 
 * Log file handling (UI vs. command line)
 
@@ -29,8 +31,6 @@
 
 * Test new version message from command line
 
-* Update operations should report MB/sec statistics
-  
 * Recover should prompt first before overwriting an existing file?
 
 * Look for ways to speed up scans of Music drive

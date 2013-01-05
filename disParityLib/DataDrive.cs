@@ -39,6 +39,7 @@ namespace disParity
     private FileSystemWatcher watcher;
 
     const UInt32 META_FILE_VERSION = 1;
+    const int MAX_FOLDER = 248;
     const int MAX_PATH = 260;
 
     public event EventHandler<ScanCompletedEventArgs> ScanCompleted;
@@ -216,7 +217,7 @@ namespace disParity
       Scanning = true;
       DriveStatus = DriveStatus.Scanning;
       cancelScan = false;
-      ReportProgress(0);
+      Progress = 0;
       LastScanStart = DateTime.Now;
       bool error = false;
       try {
@@ -240,7 +241,7 @@ namespace disParity
             foreach (FileRecord f in scanFiles)
               totalSize += f.Length;
             Status = "Scan complete. Analyzing results...";
-            ReportProgress(1.0);
+            Progress = 1;
             Compare();
             LogFile.Log("Scan of {0} complete. Found {1} file{2} ({3} total) Adds: {4} Deletes: {5} Moves: {6} Edits: {7}", Root, scanFiles.Count,
               scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize), adds.Count, deletes.Count, moves.Count, editCount);
@@ -264,7 +265,7 @@ namespace disParity
         }
       }
       finally {
-        ReportProgress(0);
+        Progress = 0;
         UpdateStatus();
         scanFiles.Clear();
         seenFileNames.Clear();
@@ -278,13 +279,9 @@ namespace disParity
     {
       if (cancelScan)
         return;
-      if (dir.FullName.Length >= MAX_PATH) {
-        LogFile.Log("Warning: skipping folder \"" + dir.FullName + "\" because the path is too long.");
-        return;
-      }
       Status = "Scanning " + dir.FullName;
       if (scanProgress != null)
-        ReportProgress(scanProgress.Progress);
+        Progress = scanProgress.Progress;
       DirectoryInfo[] subDirs;
       try {
         subDirs = dir.GetDirectories();
@@ -321,10 +318,14 @@ namespace disParity
           folderProgress.EndPhase();
           continue;
         }
-        Scan(d, ignores, folderProgress);
+        string subDir = Path.Combine(dir.FullName, d.Name);
+        if (subDir.Length >= MAX_FOLDER) 
+          LogFile.Log("Warning: skipping folder \"" + subDir + "\" because the path is too long.");
+        else
+          Scan(d, ignores, folderProgress);
         folderProgress.EndPhase();
       }
-      ReportProgress(scanProgress.Progress);
+      Progress = scanProgress.Progress;
       string relativePath = Utils.StripRoot(root, dir.FullName);
       foreach (FileInfo f in fileInfos) {
         if (cancelScan)
@@ -333,7 +334,7 @@ namespace disParity
         // an exception if the path is too long
         string fullName = Path.Combine(dir.FullName, f.Name);
         if (fullName.Length >= MAX_PATH) {
-          LogFile.Log("Warning: skipping \"" + fullName + "\" because the path is too long");
+          LogFile.Log("Warning: skipping file \"" + fullName + "\" because the path is too long");
           continue;
         }
         if (f.Attributes == (FileAttributes)(-1))
@@ -364,7 +365,7 @@ namespace disParity
     public void UpdateFinished()
     {
       // Clear() adds, deletes, etc. here???
-      ReportProgress(0);
+      Progress = 0;
     }
 
     // Caution: Keep this thread safe!
@@ -678,7 +679,7 @@ namespace disParity
       }
 
       enumBlock++;
-      ReportProgress((double)enumBlock / (double)enumBlocks);
+      Progress = (double)enumBlock / (double)enumBlocks;
       return true;
 
     }    
@@ -690,7 +691,7 @@ namespace disParity
         enumFile.Dispose();
         enumFile = null;
       }
-      ReportProgress(0);
+      Progress = 0;
       UpdateStatus();
     }
 

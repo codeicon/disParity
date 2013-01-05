@@ -54,12 +54,11 @@ The concept is similar to RAID, but no specialized hardware is required.  Unlike
 traditional hardware RAID solutions, there is no limit on the number of drives
 that can be protected, and no requirement that all drives be the same size, or
 even on the same PC.  The approach used by disParity is sometimes 
-referred to as "software RAID" or
-"snapshot RAID", because the utility operates on a fixed snapshot of the hard 
+referred to as "software RAID" or "snapshot RAID", because the utility operates on a fixed snapshot of the hard 
 drive data taken at a particular time.  Because of this, it is not suitable for use
-on drives where files are changing frequently, such as database servers.  It
+on drives where files are changing frequently, such as database servers (likewise, it is not suitable for backing up system drives - do not use disParity to back up your C: drive!)  It
 is perfect, however, for applications such as multi-terabyte home media servers,
-where files change infrequently.
+where most files are large and don't change frequently.
 <p>
 Once the initial parity snapshot has been created, disParity can quickly 
 update the snapshot to reflect changes made to the data, such as the addition
@@ -94,7 +93,7 @@ Some user testimonials about disParity:
 <br>
 <br>
 <font size="-2">
-&copy; Copyright 2012 <a href="http://www.disparitysolutions.com">Disparity Solutions, LLC</a>
+&copy; Copyright 2013 <a href="http://www.disparitysolutions.com">Disparity Solutions, LLC</a>
 <br>
 All Rights Reserved
 </font>

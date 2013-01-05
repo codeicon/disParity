@@ -27,6 +27,7 @@
     <CommandBinding Command="ui:Commands.Hashcheck" CanExecute="HashcheckCanExecute" Executed="HashcheckExecuted"/>
     <CommandBinding Command="ui:Commands.HashcheckAll" CanExecute="HashcheckAllCanExecute" Executed="HashcheckAllExecuted"/>
     <CommandBinding Command="ui:Commands.Undelete" CanExecute="UndeleteCanExecute" Executed="UndeleteExecuted"/>
+    <CommandBinding Command="ui:Commands.Reset" CanExecute="ResetCanExecute" Executed="ResetExecuted"/>
   </Window.CommandBindings>
   <Window.TaskbarItemInfo >
     <TaskbarItemInfo ProgressState="{Binding Path=ProgressState}" ProgressValue="{Binding Path=Progress}" />
@@ -36,149 +37,141 @@
       <ColumnDefinition Width="*"/>
       <ColumnDefinition Width="110"/>
     </Grid.ColumnDefinitions>
-    <Grid.RowDefinitions>
-      <RowDefinition Height="*"/>
-      <RowDefinition Height="25"/>
-      <RowDefinition Height="25"/>
-      <RowDefinition Height="25"/>
-    </Grid.RowDefinitions>
-    <ListBox Name="DriveList" Margin="10,10,10,0" ItemsSource="{Binding Path=Drives}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" Background="#BEAB83">
-      <ListBox.Resources>
-        <ContextMenu x:Key="DriveMenu">
-          <MenuItem Header="Scan" Command="ui:Commands.ScanDrive" ToolTip="Scan drive for changes">
-            <MenuItem.Icon>
-              <Image Source="/disParityUI;component/Icons/scan.ico" />
-            </MenuItem.Icon>
-          </MenuItem>
-          <MenuItem Header="Remove" Command="ui:Commands.RemoveDrive" ToolTip="Remove drive from the array">
-            <MenuItem.Icon>
-              <Image Source="/disParityUI;component/Icons/remove.ico" />
-            </MenuItem.Icon>
-          </MenuItem>
-          <MenuItem Header="Hashcheck" Command="ui:Commands.Hashcheck" ToolTip="Look for drive corruption by checking file hash values">
-            <MenuItem.Icon>
-              <Image Source="/disParityUI;component/Icons/hashcheck.ico" />
-            </MenuItem.Icon>
-          </MenuItem>
-          <MenuItem Header="Recover..." Command="ui:Commands.RecoverDrive" ToolTip="Recover files from this drive to another location">
-            <MenuItem.Icon>
-              <Image Source="/disParityUI;component/Icons/recover.ico" />
-            </MenuItem.Icon>
-          </MenuItem>
-          <MenuItem Header="Undelete..." Command="ui:Commands.Undelete" ToolTip="Restore modified or deleted files">
-            <MenuItem.Icon>
-              <Image Source="/disParityUI;component/Icons/undelete.ico" />
-            </MenuItem.Icon>
-          </MenuItem>
-        </ContextMenu>
-      </ListBox.Resources>
-        <ListBox.ItemTemplate>
-          <DataTemplate>
-          <Border Name="DriveBorder" Margin="0,1,1,1" BorderThickness="1" BorderBrush="Black" CornerRadius="5">
-            <Border.Background>
-              <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                <GradientStop Color="#FFFFFF" Offset="0.2"/>
-                <GradientStop Color="#AAAAAA" Offset="0.8"/>
-                <GradientStop Color="#777777" Offset="1"/>
-              </LinearGradientBrush>
-            </Border.Background>
-            <DockPanel Margin="2">
-              <Image DockPanel.Dock="Left" Width="54" Stretch="None" Source="{Binding Path=StatusIcon}"/>
-              <Grid>
-              <Grid.RowDefinitions>
-                <RowDefinition/>
-                <RowDefinition/>
-                <RowDefinition/>
-              </Grid.RowDefinitions>
-              <Grid Margin="5,0,5,1" >
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*" MaxWidth="250"/>
-                  <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock FontWeight="Bold" Text="{Binding Path=Root}" TextTrimming="CharacterEllipsis"/>
-                <TextBlock Grid.Column="1" Text="{Binding Path=AdditionalInfo}"/>
+    <Grid Grid.Column="0">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="25"/>
+        <RowDefinition Height="25"/>
+        <RowDefinition Height="25"/>
+      </Grid.RowDefinitions>
+      <ListBox Name="DriveList" Margin="10,10,10,0" ItemsSource="{Binding Path=Drives}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" Background="#BEAB83">
+        <ListBox.Resources>
+          <ContextMenu x:Key="DriveMenu">
+            <MenuItem Header="Scan" Command="ui:Commands.ScanDrive" ToolTip="Scan drive for changes">
+              <MenuItem.Icon>
+                <Image Source="/disParityUI;component/Icons/scan.ico" />
+              </MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Remove" Command="ui:Commands.RemoveDrive" ToolTip="Remove drive from the array">
+              <MenuItem.Icon>
+                <Image Source="/disParityUI;component/Icons/remove.ico" />
+              </MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Hashcheck" Command="ui:Commands.Hashcheck" ToolTip="Look for drive corruption by checking file hash values">
+              <MenuItem.Icon>
+                <Image Source="/disParityUI;component/Icons/hashcheck.ico" />
+              </MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Recover..." Command="ui:Commands.RecoverDrive" ToolTip="Recover files from this drive to another location">
+              <MenuItem.Icon>
+                <Image Source="/disParityUI;component/Icons/recover.ico" />
+              </MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Undelete..." Command="ui:Commands.Undelete" ToolTip="Restore modified or deleted files">
+              <MenuItem.Icon>
+                <Image Source="/disParityUI;component/Icons/undelete.ico" />
+              </MenuItem.Icon>
+            </MenuItem>
+          </ContextMenu>
+        </ListBox.Resources>
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+            <Border Name="DriveBorder" Margin="0,1,1,1" BorderThickness="1" BorderBrush="Black" CornerRadius="5">
+              <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                  <GradientStop Color="#FFFFFF" Offset="0.2"/>
+                  <GradientStop Color="#AAAAAA" Offset="0.8"/>
+                  <GradientStop Color="#777777" Offset="1"/>
+                </LinearGradientBrush>
+              </Border.Background>
+              <DockPanel Margin="2">
+                <Image DockPanel.Dock="Left" Width="54" Stretch="None" Source="{Binding Path=StatusIcon}"/>
+                <Grid>
+                <Grid.RowDefinitions>
+                  <RowDefinition/>
+                  <RowDefinition/>
+                  <RowDefinition/>
+                </Grid.RowDefinitions>
+                <Grid Margin="5,0,5,1" >
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" MaxWidth="250"/>
+                    <ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+                  <TextBlock FontWeight="Bold" Text="{Binding Path=Root}" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Path=AdditionalInfo}"/>
+                </Grid>
+                <Grid Grid.Row="1" Margin="5,0,5,2" >
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" MaxWidth="250"/>
+                    <ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
+                  <!-- DockPanel is needed here for TextTrimming in the FileCount TextBlock to work properly -->
+                  <DockPanel Grid.Column="0" Margin="0,0,2,0">
+                    <TextBlock DockPanel.Dock="Left" Margin="0,0,5,0">Protected files:</TextBlock>
+                    <TextBlock Text="{Binding Path=FileCount}" TextTrimming="CharacterEllipsis"></TextBlock>
+                  </DockPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <!-- <TextBlock Margin="0,0,5,0">Status:</TextBlock> -->
+                    <TextBlock Text="{Binding Path=Status}" />
+                  </StackPanel>
+                </Grid>
+                <ProgressBar Margin="5,0,5,2" Grid.Row="2" Height="20" Minimum="0" Maximum="1" Value="{Binding Path=Progress}"/>
               </Grid>
-              <Grid Grid.Row="1" Margin="5,0,5,2" >
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*" MaxWidth="250"/>
-                  <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <!-- DockPanel is needed here for TextTrimming in the FileCount TextBlock to work properly -->
-                <DockPanel Grid.Column="0" Margin="0,0,2,0">
-                  <TextBlock DockPanel.Dock="Left" Margin="0,0,5,0">Protected files:</TextBlock>
-                  <TextBlock Text="{Binding Path=FileCount}" TextTrimming="CharacterEllipsis"></TextBlock>
-                </DockPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                  <!-- <TextBlock Margin="0,0,5,0">Status:</TextBlock> -->
-                  <TextBlock Text="{Binding Path=Status}" />
-                </StackPanel>
-              </Grid>
-              <ProgressBar Margin="5,0,5,2" Grid.Row="2" Height="20" Minimum="0" Maximum="1" Value="{Binding Path=Progress}"/>
-            </Grid>
-            </DockPanel>
-          </Border>
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      <ListBox.ItemContainerStyle>
-        <Style TargetType="{x:Type ListBoxItem}"  >
-          <Style.Triggers>
-            <Trigger Property="IsSelected" Value="true">
-              <Setter Property="Foreground" Value="Blue" />
-            </Trigger>
+              </DockPanel>
+            </Border>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        <ListBox.ItemContainerStyle>
+          <Style TargetType="{x:Type ListBoxItem}"  >
+            <Style.Triggers>
+              <Trigger Property="IsSelected" Value="true">
+                <Setter Property="Foreground" Value="Blue" />
+              </Trigger>
 
-          </Style.Triggers>
-          <Setter Property="ContextMenu" Value="{StaticResource DriveMenu}"/>
-        </Style>
-      </ListBox.ItemContainerStyle>
-    </ListBox>
-    <TextBox Margin="10,10,10,0" Visibility="{Binding Path=StartupMessageVisibility}" TextWrapping="Wrap" FontWeight="UltraBlack" FontSize="18"
-     HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Background="Transparent" Text="{Binding Path=StartupMessage}"/>
-    <DockPanel Margin="5,0,10,0" Grid.Row="1">
-      <Label DockPanel.Dock="Left" Width="90" VerticalAlignment="Center">Backup status:</Label>
-      <TextBlock Margin="10,5,10,0" Text="{Binding Path=Status}"/>
-    </DockPanel>
-    <Grid Margin="5,0,10,0" Grid.Row="2">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="100"/>
-        <ColumnDefinition Width="*"/>
-        <ColumnDefinition Width="90"/>
-      </Grid.ColumnDefinitions>
-      <Label Grid.Column="0" Margin="0,0,2,0" VerticalAlignment="Center">Overall progress:</Label>
-      <ProgressBar Grid.Column="1" Height="20" Minimum="0" Maximum="1" Value="{Binding Path=Progress}" VerticalAlignment="Center" />
-      <Button Grid.Column="2" Width="80" Height="23" Command="ui:Commands.CancelOperation" HorizontalAlignment="Right">Cancel</Button>
+            </Style.Triggers>
+            <Setter Property="ContextMenu" Value="{StaticResource DriveMenu}"/>
+          </Style>
+        </ListBox.ItemContainerStyle>
+      </ListBox>
+      <TextBox Margin="10,10,10,0" Visibility="{Binding Path=StartupMessageVisibility}" TextWrapping="Wrap" FontWeight="UltraBlack" FontSize="18"
+       HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Background="Transparent" Text="{Binding Path=StartupMessage}"/>
+      <DockPanel Margin="5,0,10,0" Grid.Row="1">
+        <Label DockPanel.Dock="Left" Width="90" VerticalAlignment="Center">Backup status:</Label>
+        <TextBlock Margin="10,5,10,0" Text="{Binding Path=Status}"/>
+      </DockPanel>
+      <Grid Margin="5,0,10,0" Grid.Row="2">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="100"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="90"/>
+        </Grid.ColumnDefinitions>
+        <Label Grid.Column="0" Margin="0,0,2,0" VerticalAlignment="Center">Overall progress:</Label>
+        <ProgressBar Grid.Column="1" Height="20" Minimum="0" Maximum="1" Value="{Binding Path=Progress}" VerticalAlignment="Center" />
+        <Button Grid.Column="2" Width="80" Height="23" Command="ui:Commands.CancelOperation" HorizontalAlignment="Right">Cancel</Button>
+      </Grid>
+      <DockPanel Margin="5,0,10,0" Grid.Row="3">
+        <Label DockPanel.Dock="Left" Width="90" VerticalAlignment="Center">Parity status:</Label>
+        <TextBlock Margin="10,5,10,0"  Text="{Binding Path=ParityStatus}"/>
+      </DockPanel>
     </Grid>
-    <DockPanel Margin="5,0,10,0" Grid.Row="3">
-      <Label DockPanel.Dock="Left" Width="90" VerticalAlignment="Center">Parity status:</Label>
-      <TextBlock Margin="10,5,10,0"  Text="{Binding Path=ParityStatus}"/>
-    </DockPanel>
     <StackPanel Margin="0,10,10,10" Grid.Column="1" Orientation="Vertical">
       <Button Command="ui:Commands.AddDrive" Content="Add Drive..." ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Add a new drive to the array</Button.ToolTip>
       </Button>
-      <!--
-      <Button Margin="0,10,0,0" Command="ui:Commands.RemoveDrive" Content="Remove Drive"  ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
-        <Button.ToolTip>Remove selected drive from the array</Button.ToolTip>
-      </Button>
-      <Button Margin="0,10,0,0" Command="ui:Commands.ScanDrive" Content="Scan Drive" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
-        <Button.ToolTip>Scan selected drive for changes</Button.ToolTip>
-      </Button> -->
       <Button Margin="0,10,0,0" Command="ui:Commands.ScanAll" Content="Scan All" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Scan all drives for changes</Button.ToolTip>
       </Button>
       <Button Margin="0,10,0,0" Command="ui:Commands.UpdateAll" Content="Update All" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Update backup to reflect latest changes on all drives</Button.ToolTip>
       </Button>
-      <!-- <Button Margin="0,10,0,0" Command="ui:Commands.RecoverDrive" Content="Recover Drive..." ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
-        <Button.ToolTip>Recover selected drive</Button.ToolTip>
-      </Button>
-      <Button Margin="0,10,0,0" Command="ui:Commands.Hashcheck" Content="Hashcheck" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
-        <Button.ToolTip>Look for corruption on selected drive be checking file hash values</Button.ToolTip>
-      </Button> -->
       <Button Margin="0,10,0,0" Command="ui:Commands.HashcheckAll" Content="Hashcheck All" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Check file hashes on all drives</Button.ToolTip>
       </Button>
       <Button Margin="0,10,0,0" Command="ui:Commands.Verify" Content="Verify" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Verify that the backup image is correct.  Try to repair any errors.</Button.ToolTip>
+      </Button>
+      <Button Margin="0,10,0,0" Command="ui:Commands.Reset" Content="Reset" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
+        <Button.ToolTip>Delete all parity data</Button.ToolTip>
       </Button>
       <Button Margin="0,10,0,0" Command="ui:Commands.Options" Content="Options..." ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Configure disParity</Button.ToolTip>

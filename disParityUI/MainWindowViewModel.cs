@@ -24,6 +24,7 @@ namespace disParityUI
     private OptionsDialogViewModel optionsViewModel;
     private Config config;
     private System.Timers.Timer updateTimer;
+    private System.Timers.Timer updateParityStatusTimer;
     private OperationManager operationManager;
 
     public MainWindowViewModel(Window owner)
@@ -56,6 +57,10 @@ namespace disParityUI
       updateTimer = new System.Timers.Timer(1000);
       updateTimer.AutoReset = true;
       updateTimer.Elapsed += HandleUpdateTimer;
+
+      updateParityStatusTimer = new System.Timers.Timer(1000);
+      updateParityStatusTimer.AutoReset = true;
+      updateParityStatusTimer.Elapsed += UpdateParityStatus;
 
       operationManager = new OperationManager(this);
       operationManager.OperationFinished += HandleOperationFinished;
@@ -140,12 +145,12 @@ namespace disParityUI
           "Press the 'Options...' button on the right.";
       else if (drives.Count == 0)
         StartupMessage = "Add one or more drives to be backed up by pressing the 'Add Drive' button.\n\n" +
-          "When you are done adding all of your drives, press the 'Update All' button to build the backup.";
+          "When you are done adding drives, press the 'Update All' button to build the backup.";
       else
         StartupMessage = "";
     }
 
-    private void UpdateParityStatus()
+    private void UpdateParityStatus(object sender = null, System.Timers.ElapsedEventArgs args = null)
     {
       if (String.IsNullOrEmpty(config.ParityDir)) {
         ParityStatus = "Parity drive not set";
@@ -324,6 +329,7 @@ namespace disParityUI
 
     public void Update(bool scanFirst = true)
     {
+      updateParityStatusTimer.Start();
       operationManager.Begin(new UpdateOperation(scanFirst));
     }
 
@@ -342,9 +348,19 @@ namespace disParityUI
       operationManager.Begin(new VerifyOperation());
     }
 
+    public void Reset()
+    {
+      if (MessageWindow.Show(owner, "Confirm parity reset", "Are you sure you want to delete all of your parity data?",
+        MessageWindowIcon.Error, MessageWindowButton.YesNo) != true)
+        return;
+      paritySet.Erase();
+      UpdateParityStatus();
+    }
+
     private void HandleOperationFinished(object sender, EventArgs args)
     {
       UpdateParityStatus();
+      updateParityStatusTimer.Stop();
     }
 
     public void Cancel()
@@ -371,6 +387,8 @@ namespace disParityUI
     public ParitySet ParitySet { get { return paritySet; } }
 
     public Window Owner { get { return owner; } }
+
+    public bool Empty { get { return paritySet.Empty; } }
 
     public ObservableCollection<DataDriveViewModel> Drives
     {

@@ -161,7 +161,7 @@ namespace disParity
         if (cancel)
           return;
 
-        ReportProgress(0);
+        Progress = 0;
         // count total blocks for this update, for progress reporting
         currentUpdateBlocks = 0;
         totalUpdateBlocks = 0;
@@ -298,7 +298,7 @@ namespace disParity
         foreach (DataDrive d in drives)
           totalBlocksAllDrives += d.TotalFileBlocks;
 
-      ReportProgress(0);
+      Progress = 0;
 
       // If a drive encounters a serious problem during its hash check, this will be set
       Exception fatalException = null;
@@ -316,7 +316,7 @@ namespace disParity
             UInt32 totalBlocks = d.TotalFileBlocks;
             byte[] buf = new byte[Parity.BLOCK_SIZE];
             LogFile.Log("Starting hashcheck for " + d.Root);
-            d.ReportProgress(0);
+            d.Progress = 0;
             using (MD5 hash = MD5.Create())
               foreach (FileRecord r in d.Files) {
                 Interlocked.Increment(ref files);
@@ -341,7 +341,7 @@ namespace disParity
                   using (FileStream s = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read)) {
                     while (!cancel && ((read = s.Read(buf, 0, Parity.BLOCK_SIZE)) > 0)) {
                       hash.TransformBlock(buf, 0, read, buf, 0);
-                      d.ReportProgress((double)b++ / totalBlocks);
+                      d.Progress = (double)b++ / totalBlocks;
                       Interlocked.Increment(ref blocks);
                     }
                   }
@@ -379,7 +379,7 @@ namespace disParity
             fatalException = e; // this will halt the hash check of all drives below
           }
           finally {
-            d.ReportProgress(0);
+            d.Progress = 0;
             Interlocked.Decrement(ref inProgres);
           }
         });
@@ -395,7 +395,7 @@ namespace disParity
           throw fatalException;
         }
         Status = String.Format("Hash check in progress.  Files checked: {0} Failures: {1}", files, failures);
-        ReportProgress((double)blocks / totalBlocksAllDrives);
+        Progress = (double)blocks / totalBlocksAllDrives;
         Thread.Sleep(100);        
       }
 
@@ -451,15 +451,15 @@ namespace disParity
         totalUpdateBlocks += r.LengthInBlocks;
 
       currentUpdateBlocks = 0;
-      ReportProgress(0);
-      drive.ReportProgress(0);
+      Progress = 0;
+      drive.Progress = 0;
       foreach (FileRecord r in files) {
         RemoveFromParity(r);
         if (cancel)
           break;
       }
-      ReportProgress(0);
-      drive.ReportProgress(0);
+      Progress = 0;
+      drive.Progress = 0;
     }
 
     public void RemoveEmptyDrive(DataDrive drive)
@@ -517,7 +517,7 @@ namespace disParity
       failures = 0;
       recoverTotalBlocks = 0;
       errorFiles.Clear();
-      ReportProgress(0);
+      Progress = 0;
       foreach (FileRecord f in drive.Files)
         recoverTotalBlocks += f.LengthInBlocks;
       recoverBlocks = 0;
@@ -532,8 +532,8 @@ namespace disParity
           }
       }
       finally {
-        ReportProgress(0);
-        drive.ReportProgress(0);
+        Progress = 0;
+        drive.Progress = 0;
         drive.Status = "";
       }
     }
@@ -556,7 +556,7 @@ namespace disParity
       cancel = false;
       recoverTotalBlocks = 0;
       errorFiles.Clear();
-      ReportProgress(0);
+      Progress = 0;
 
       try {
         foreach (FileRecord r in files)
@@ -583,7 +583,7 @@ namespace disParity
         }
       }
       finally {
-        drive.ReportProgress(0);
+        drive.Progress = 0;
         drive.Status = "";
       }
 
@@ -594,7 +594,7 @@ namespace disParity
       string fullPath = Utils.MakeFullPath(path, r.Name);
       r.Drive.Status = "Recovering " + r.Name + " ...";
       LogFile.Log(r.Drive.Status);
-      r.Drive.ReportProgress(0);
+      r.Drive.Progress = 0;
       try {
         // make sure the destination directory exists
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
@@ -611,8 +611,8 @@ namespace disParity
             hash.TransformBlock(parityBlock.Data, 0, blockSize, parityBlock.Data, 0);
             leftToWrite -= Parity.BLOCK_SIZE;
             block++;
-            r.Drive.ReportProgress((double)(block - r.StartBlock) / r.LengthInBlocks);
-            ReportProgress((double)(recoverBlocks + (block - r.StartBlock)) / recoverTotalBlocks);
+            r.Drive.Progress = (double)(block - r.StartBlock) / r.LengthInBlocks;
+            Progress = (double)(recoverBlocks + (block - r.StartBlock)) / recoverTotalBlocks;
             if (cancel) {
               f.Close();
               File.Delete(fullPath);
@@ -621,7 +621,7 @@ namespace disParity
           }
           hash.TransformFinalBlock(parityBlock.Data, 0, 0);
         }
-        r.Drive.ReportProgress(0);
+        r.Drive.Progress = 0;
         File.SetCreationTime(fullPath, r.CreationTime);
         File.SetLastWriteTime(fullPath, r.LastWriteTime);
         File.SetAttributes(fullPath, r.Attributes);
@@ -639,7 +639,7 @@ namespace disParity
       finally {
         // no matter what happens, keep the progress bar advancing by the right amount
         recoverBlocks += r.LengthInBlocks;
-        ReportProgress((double)recoverBlocks / recoverTotalBlocks);
+        Progress = (double)recoverBlocks / recoverTotalBlocks;
       }
     }
 
@@ -763,8 +763,8 @@ namespace disParity
             }
             change.Write();
             currentUpdateBlocks++;
-            r.Drive.ReportProgress((double)(b - startBlock) / totalProgresBlocks);
-            ReportProgress((double)currentUpdateBlocks / totalUpdateBlocks);
+            r.Drive.Progress = (double)(b - startBlock) / totalProgresBlocks;
+            Progress = (double)currentUpdateBlocks / totalUpdateBlocks;
             if (cancel)
               return false;
           }
@@ -797,9 +797,9 @@ namespace disParity
 
       while (saveInProgress) {
         Thread.Sleep(20);
-        drive.ReportProgress(0.9 + 0.1 * change.SaveProgress);
+        drive.Progress = 0.9 + 0.1 * change.SaveProgress;
       }
-
+      drive.Progress = 0;
     }
 
     /// <summary>
@@ -850,8 +850,8 @@ namespace disParity
             change.AddData(data);
             change.Write();
             currentUpdateBlocks++;
-            r.Drive.ReportProgress((double)(b - r.StartBlock) / totalProgresBlocks);
-            ReportProgress((double)currentUpdateBlocks / totalUpdateBlocks);
+            r.Drive.Progress = (double)(b - r.StartBlock) / totalProgresBlocks;
+            Progress = (double)currentUpdateBlocks / totalUpdateBlocks;
             if (cancel)
               return false;
           }
@@ -875,7 +875,7 @@ namespace disParity
 
         FlushTempParity(r.Drive, change); // commit the parity change to disk
       }
-      r.Drive.ReportProgress(0);
+      r.Drive.Progress = 0;
       return true;
     }
 
@@ -943,7 +943,7 @@ namespace disParity
                 parityBlock.Add(dataBuf);
           if (!done)
             parityBlock.Write(block);
-          ReportProgress((double)block / totalBlocks);
+          Progress = (double)block / totalBlocks;
           block++;
 
           if (cancel) {
@@ -979,7 +979,7 @@ namespace disParity
       DateTime lastStatus = DateTime.Now;
       TimeSpan minTimeDelta = TimeSpan.FromMilliseconds(100); // don't update status more than 10x per second
 
-      ReportProgress(0);
+      Progress = 0;
 
       FileRecord r;
       ParityBlock parityBlock = new ParityBlock(parity);
@@ -1041,7 +1041,7 @@ namespace disParity
             block, maxBlock, VerifyErrors, VerifyRecovers);
           lastStatus = DateTime.Now;
         }
-        ReportProgress((double)block / maxBlock);
+        Progress = (double)block / maxBlock;
         if (cancel)
           break;
       }
