@@ -22,6 +22,7 @@ namespace disParityUI
     private object syncObject = new object();
     private bool scanError;
     private bool auto;
+    private DateTime startTime;
 
     protected MainWindowViewModel viewModel;
     protected bool cancelled;
@@ -53,6 +54,7 @@ namespace disParityUI
       this.viewModel = viewModel;
       viewModel.ParitySet.ErrorMessage += HandleErrorMessage;
       viewModel.StartProgress();
+      startTime = DateTime.Now;
       inProgress = true;
       drive = selectedDrive;
       if (ScanFirst && viewModel.Drives.Count > 0) {
@@ -169,7 +171,7 @@ namespace disParityUI
             viewModel.Status = Name + " cancelled.";
           }
           else
-            LogFile.Log(Name + " complete.");
+            LogFile.Log(Name + " complete (operation took " + Utils.SmartTime(DateTime.Now - startTime) + ")");
         }
         catch (Exception e) {
           App.LogCrash(e);

@@ -18,7 +18,7 @@ namespace disParity
       data = new byte[Parity.BLOCK_SIZE];
     }
 
-    public byte[] Data { get { return data; } }
+    public byte[] Data { get { return data; } set { data = value; } }
 
     public void Clear()
     {

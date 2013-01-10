@@ -36,19 +36,19 @@ A:visited {
 <p align=center>
 <br>
 <font size="+2">
-Welcome to disParity 0.33 Beta
+Welcome to disParity 0.34 Beta
 </font>
 <p>
 The new version of disParity is a near-total rewrite of the old utility.  It now features a full Windows-based UI.  It is no longer necessary to edit your configuration by hand or type any commands on the command line to keep your backup up to date.  You can leave disParity running on your system and update your parity backup with a single button press.
 <p>
-<i>Note: command line support is currently disabled in the beta, but will return soon. </i>
+<i>Note: command line support is currently disabled in the beta.</i>
 <p>
 <font size="+1">
 Bugs
 </font>
 <p>
-I've tried really hard to make the new version as reliable and easy to use as possible.  However, this is still early beta 
-software.  Bugs are expected to occur.  Your feedback and bug reports will help stabilize it and get it ready for a wider audience.  
+Every effort has been made to make this new version as reliable and easy to use as possible.  However, this is still beta 
+software, so bugs can occur.  Your feedback and bug reports will help stabilize it and get it ready for a wider audience.  
 If you encounter any problems with the beta, please report them in <a href="http://www.vilett.com/disParity/forum/">the forum</a>.  If you need a forum account, please <a href="mailto:rolandv@gmail.com">send me an email.</a> 
 <p>
 Feedback of any kind on the beta, positive or negative, is welcome.  If you don't want to post in the forum, you can
@@ -58,14 +58,15 @@ Feedback of any kind on the beta, positive or negative, is welcome.  If you don'
 Requirements
 </font>
 <p>
-The only requirements for running the disParity beta are Windows XP or later and the <a href="http://www.microsoft.com/en-us/download/details.aspx?displaylang=en&id=17851">.NET Framework 4.0</a> (note this has changed from previous versions which required .NET 2.0).  The installer should detect if you do not have .NET 4.0 installed and take you to the download page automatically.
+The only requirements for running the disParity beta are Windows XP or later and the <a href="http://www.microsoft.com/en-us/download/details.aspx?displaylang=en&id=17851">.NET Framework 4.0</a>.
+ The installer should detect if you do not have .NET 4.0 installed and take you to the download page automatically.
 <p>
 <font size="+1">
 Download
 </font>
 <p>
 <p>
-The beta can be downloaded <a href="http://www.vilett.com/disParity/disParity0.33beta.msi">here</a>.
+The beta can be downloaded <a href="http://www.vilett.com/disParity/disParity0.34beta.msi">here</a>.
 <p>
 Changes in the latest version are listed <a href="releasenotes.html">here</a>. 
 <p>
@@ -83,11 +84,14 @@ For existing disParity users, the new UI version of disParity is backwards compa
 <br>4. In the Options dialog, press the "Import..." button.
 <br>5. Select the location of your old config.txt file and press OK.
 <br>6. Your old configuration will be converted to the new format and saved in disParity's application data folder (typically under C:\Users\username\AppData\Local\disParity).  The old config.txt file will not be modified.           
-
+<p>
+<i>Important note</i>: during the course of the new beta, parity corruption bugs were discovered in the old command line version of disParity.
+If your backup was created with version 0.22 or earlier, it is highly recommended that you run a Verify pass (press the "Verify" button in the main window) after upgrading to the new version.
+The Verify pass will check your parity data for errors and in most cases repair them automatically.
 <p align=center>
 <br>
 <font size="-2">
-<i>Last updated Tuesday, January 1, 2013 at 5:12 PM</i>
+<i>Last updated Sunday, January 6, 2013 at 9:26 PM</i>
 <br>
 <br>
 &copy; Copyright 2013 <a href="http://www.disparitysolutions.com">Disparity Solutions, LLC</a>

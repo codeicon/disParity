@@ -1,3 +1,11 @@
+* During an update with multiple adds and deletes, DRIVE STATUS IS *****STILL******
+  FUCKING STUCK ON THE LAST DELETE IT DID.  GOD DAMN IT.
+
+* Check again that the fancy new FileReader() class actually speeds things up.
+
+* If an unexpected error interrupts the initial update, it doesn't erase the
+  parity and leaves everything in an unknown state!
+
 * Right-click option to change root of drive
 
 * Update operations should report MB/sec statistics

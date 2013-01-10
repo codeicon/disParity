@@ -31,13 +31,22 @@ A:visited {
 	COLOR: #5362a3
 }
 .indent {
-  MARGIN-LEFT: 4em; LINE-HEIGHT: 120%
+  MARGIN-LEFT: 2em; LINE-HEIGHT: 120%
 }
 </STYLE>
 <body>
 <p align="center">
 Release notes for disParity beta 
 </font>
+<p>
+<i>Changes in version 0.34 beta released Friday, January 4, 2013</i>
+<ul class="indent">
+<li>Added a new Reset button to the main button panel.  This button deletes all of the backup parity data, which is useful if you want to rebuild your backup from scratch.
+<li>Fixed a minor layout issue in the main window.
+<li>Parity disk space (used and free) is now updated regularly during an Update.
+<li>Fixed bug where a single-drive Scan was scanning all drives.
+<li>Second attempt to fix interrupted scans caused by files or folders with full paths longer than the max. supported by .NET (248 characters for folders and 260 characters for files.)
+</ul>
 <p>
 <i>Changes in version 0.33 beta released Monday, December 31, 2012</i>
 <ul class="indent">
@@ -95,7 +104,7 @@ immediately (rather than waiting to reach Max Temp RAM first.)  This greatly red
 <p align=center>
 <font size="-2">
 <br>
-&copy; Copyright 2012 <a href="http://www.disparitysolutions.com">Disparity Solutions, LLC</a>
+&copy; Copyright 2013 <a href="http://www.disparitysolutions.com">Disparity Solutions, LLC</a>
 <br>
 All Rights Reserved
 </font>

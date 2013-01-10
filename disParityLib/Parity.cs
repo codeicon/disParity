@@ -25,6 +25,7 @@ namespace disParity
 
     public void DeleteAll()
     {
+      Close();
       DirectoryInfo dirInfo = new DirectoryInfo(config.ParityDir);
       FileInfo[] files = dirInfo.GetFiles();
       foreach (FileInfo f in files)

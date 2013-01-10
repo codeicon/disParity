@@ -973,7 +973,6 @@ namespace disParity
       cancel = false;
       VerifyErrors = 0;
       VerifyRecovers = 0;
-      MD5 hash = MD5.Create();
       UInt32 maxBlock = MaxParityBlock();
       List<FileRecord> suspectFiles = new List<FileRecord>();
       DateTime lastStatus = DateTime.Now;

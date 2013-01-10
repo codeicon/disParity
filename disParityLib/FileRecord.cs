@@ -15,7 +15,6 @@ namespace disParity
     private FileRecord()
     {
       StartBlock = 0;
-      Skipped = false;
     }
 
     public string Name { get; set; }
@@ -33,9 +32,6 @@ namespace disParity
     public UInt32 StartBlock { get; set; }
 
     public byte[] HashCode { get; set; }
-
-    // skipped during a create because of an error when opening - NOT USED FOR ANYTHING CURRENTLY
-    public bool Skipped { get; set; }
 
     static string StripRoot(string root, string path)
     {
@@ -62,7 +58,6 @@ namespace disParity
       LastWriteTime = info.LastWriteTime;
       StartBlock = 0;
       this.drive = drive;
-      Skipped = false;
     }
 
     public bool RefreshAttributes()

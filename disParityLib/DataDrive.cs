@@ -235,7 +235,11 @@ namespace disParity
         LogFile.Log("Scanning {0}...", root);
         scanProgress = null;
         try {
-          Scan(new DirectoryInfo(root), ignores);
+          DirectoryInfo rootInfo = new DirectoryInfo(root);
+          // try enumerating the sub directories of root, for the sole purpose of triggering an exception 
+          // (caught below) if there is some reason why we can't access the drive
+          rootInfo.GetDirectories();
+          Scan(rootInfo, ignores); 
           if (!cancelScan) {
             long totalSize = 0;
             foreach (FileRecord f in scanFiles)
@@ -529,7 +533,7 @@ namespace disParity
         DriveStatus = DriveStatus.ScanRequired;
       else if (adds.Count > 0 || deletes.Count > 0)
         DriveStatus = DriveStatus.UpdateRequired;
-      else if (DriveStatus != DriveStatus.ScanRequired)
+      else if (DriveStatus != DriveStatus.ScanRequired && DriveStatus != DriveStatus.AccessError)
         DriveStatus = DriveStatus.UpToDate;
     }
 
@@ -649,7 +653,6 @@ namespace disParity
         }
         catch (Exception e) {
           LogFile.Log("Error opening {0} for reading: {1}", fullName, e.Message);
-          enumerator.Current.Skipped = true;
           enumFile = null; // just to be sure
           return GetNextBlock(buf);
         }
@@ -989,6 +992,8 @@ namespace disParity
   {
     public ScanCompletedEventArgs(bool cancelled, bool error, bool updateNeeded, bool auto)
     {
+      Cancelled = cancelled;
+      Error = error;
       UpdateNeeded = updateNeeded;
       Auto = auto;
     }

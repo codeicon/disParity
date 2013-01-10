@@ -55,6 +55,45 @@ namespace disParity
       }
     }
 
+    public static string SmartTime(TimeSpan timeSpan)
+    {
+      StringBuilder sb = new StringBuilder();
+
+      if (timeSpan.Days == 1)
+        sb.Append("1 day ");
+      else if (timeSpan.Days > 1) {
+        sb.Append(timeSpan.Days.ToString());
+        sb.Append(" days ");
+      }
+
+      if (timeSpan.Hours == 0 && sb.Length == 0)
+        ;
+      else if (timeSpan.Hours == 1)
+        sb.Append("1 hour ");
+      else {
+        sb.Append(timeSpan.Hours.ToString());
+        sb.Append(" hours ");
+      }
+
+      if (timeSpan.Minutes == 0 && sb.Length == 0)
+        ;
+      else if (timeSpan.Minutes == 1)
+        sb.Append("1 minute ");
+      else {
+        sb.Append(timeSpan.Minutes.ToString());
+        sb.Append(" minutes ");
+      }
+
+      if (timeSpan.Seconds == 1)
+        sb.Append("1 second");
+      else {
+        sb.Append(timeSpan.Seconds.ToString());
+        sb.Append(" seconds");
+      }
+
+      return sb.ToString();
+    }
+
     public static string SmartSize(long size)
     {
       const long KB = 1024;
