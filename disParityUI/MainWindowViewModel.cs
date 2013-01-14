@@ -193,10 +193,8 @@ namespace disParityUI
     /// </summary>
     public void AddDrive(string path)
     {
-      string root = Path.GetPathRoot(path);
-
       bool warned = false;
-      if (String.Compare(root, Path.GetPathRoot(Config.ParityDir), true) == 0) {
+      if (Utils.PathsAreOnSameDrive(path, Config.ParityDir)) {
         bool? result = MessageWindow.Show(owner, "Duplicate drives detected!", "The path you selected appears to be on same drive as your parity.\n\n" +
           "This is not recommended.  If the drive fails, disParity will not be able to recover any of your data.\n\n" +
           "Are you sure you want to add this drive?", MessageWindowIcon.Error, MessageWindowButton.YesNo);
@@ -207,7 +205,7 @@ namespace disParityUI
 
       if (!warned) // so we don't warn twice if the data and parity drives are already on the same drive as this one
         foreach (DataDrive d in paritySet.Drives)
-          if (String.Compare(root, Path.GetPathRoot(d.Root), true) == 0) {
+          if (Utils.PathsAreOnSameDrive(path, d.Root)) {
             bool? result = MessageWindow.Show(owner, "Duplicate drives detected!", "The path you selected appears to be on a drive that is already part of the array.\n\n" +
               "This is not recommended.  If the drive fails, disParity will not be able to recover any of your data.\n\n" +
               "Are you sure you want to add this drive?", MessageWindowIcon.Error, MessageWindowButton.YesNo);

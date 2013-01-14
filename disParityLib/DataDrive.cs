@@ -283,6 +283,11 @@ namespace disParity
     {
       if (cancelScan)
         return;
+      // never allow scanning of our own parity folder
+      if (Utils.PathsAreEqual(dir.FullName, config.ParityDir)) {
+        LogFile.Log("Warning: skipping " + dir.FullName + " because it is the parity folder.");
+        return;
+      }
       Status = "Scanning " + dir.FullName;
       if (scanProgress != null)
         Progress = scanProgress.Progress;

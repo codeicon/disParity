@@ -139,6 +139,12 @@ namespace disParityUI
 
     public void SetNewTempDir(string path)
     {
+      if (ParityDir != PARITY_NOT_SET)
+        if (Utils.PathsAreOnSameDrive(path, ParityDir))
+          if (MessageWindow.Show(Owner, "Bad temp folder", "The path you selected appears to be on the same drive as your parity.\n\n" +
+            "It is not recommended to have the temp folder on the same drive as your parity data.\n\n" +
+            "Are you sure you want to set it to this location?", MessageWindowIcon.Caution, MessageWindowButton.YesNo) == false)
+            return;
       TempDir = path;
     }
 

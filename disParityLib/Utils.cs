@@ -55,6 +55,17 @@ namespace disParity
       }
     }
 
+    public static bool PathsAreEqual(string path1, string path2)
+    {
+      return (String.Compare(Path.GetFullPath(path1).TrimEnd('\\'), Path.GetFullPath(path2).TrimEnd('\\'), 
+        StringComparison.InvariantCultureIgnoreCase) == 0);
+    }
+
+    public static bool PathsAreOnSameDrive(string path1, string path2)
+    {
+      return (String.Compare(Path.GetPathRoot(path1), Path.GetPathRoot(path2), true) == 0);
+    }
+
     public static string SmartTime(TimeSpan timeSpan)
     {
       StringBuilder sb = new StringBuilder();
