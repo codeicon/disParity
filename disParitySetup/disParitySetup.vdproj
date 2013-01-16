@@ -46,13 +46,13 @@
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_1303DA4219DA8EEFB8B30C2FBCCA2E08"
+        "OwnerKey" = "8:_9C01643FC97E31887769B97C4DDF0D7A"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
         "MsmKey" = "8:_UNDEFINED"
-        "OwnerKey" = "8:_9C01643FC97E31887769B97C4DDF0D7A"
+        "OwnerKey" = "8:_1303DA4219DA8EEFB8B30C2FBCCA2E08"
         "MsmSig" = "8:_UNDEFINED"
         }
     }
@@ -100,7 +100,7 @@
         "DisplayName" = "8:Release"
         "IsDebugOnly" = "11:FALSE"
         "IsReleaseOnly" = "11:TRUE"
-        "OutputFilename" = "8:Release\\disParity0.35beta.msi"
+        "OutputFilename" = "8:Release\\disParity0.36beta.msi"
         "PackageFilesAs" = "3:2"
         "PackageFileSize" = "3:-2147483648"
         "CabType" = "3:1"
@@ -167,6 +167,11 @@
             "AssemblyAsmDisplayName" = "8:disParityLib, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL"
                 "ScatterAssemblies"
                 {
+                    "_1303DA4219DA8EEFB8B30C2FBCCA2E08"
+                    {
+                    "Name" = "8:disParityLib.dll"
+                    "Attributes" = "3:512"
+                    }
                 }
             "SourcePath" = "8:disParityLib.dll"
             "TargetName" = "8:"
@@ -193,6 +198,11 @@
             "AssemblyAsmDisplayName" = "8:WPFToolkit.Extended, Version=1.8.0.0, Culture=neutral, PublicKeyToken=3e4669d2f30244f4, processorArchitecture=MSIL"
                 "ScatterAssemblies"
                 {
+                    "_9C01643FC97E31887769B97C4DDF0D7A"
+                    {
+                    "Name" = "8:WPFToolkit.Extended.dll"
+                    "Attributes" = "3:512"
+                    }
                 }
             "SourcePath" = "8:WPFToolkit.Extended.dll"
             "TargetName" = "8:"
@@ -288,15 +298,15 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:disParity"
-        "ProductCode" = "8:{CB7DA8AA-852F-42C7-B44F-32DE7E1DC12D}"
-        "PackageCode" = "8:{73C2C11A-6536-4343-8205-E2378DE0A3B2}"
+        "ProductCode" = "8:{3FF47D2F-879B-4B6D-A1B9-C0C5E7448C4B}"
+        "PackageCode" = "8:{8A03866A-0E0B-427D-8461-721D0EAB4B5C}"
         "UpgradeCode" = "8:{CF2FFBAB-7739-4CA3-B957-57B47B451B67}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:FALSE"
-        "ProductVersion" = "8:0.35"
+        "ProductVersion" = "8:0.36"
         "Manufacturer" = "8:Disparity Solutions, LLC"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"

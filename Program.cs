@@ -106,7 +106,7 @@ namespace disParity.CmdLine
 
       disParity.Version.DoUpgradeCheck(HandleNewVersionAvailable);
 
-      string appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "disParity");
+      string appDataPath = Utils.AppDataFolder;
       if (!Directory.Exists(appDataPath))
         Directory.CreateDirectory(appDataPath);
       string logPath = Path.Combine(appDataPath, "logs");

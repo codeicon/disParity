@@ -66,6 +66,14 @@ namespace disParity
       return (String.Compare(Path.GetPathRoot(path1), Path.GetPathRoot(path2), true) == 0);
     }
 
+    public static string AppDataFolder
+    {
+      get
+      {
+        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "disParity");
+      }
+    }
+
     public static string SmartTime(TimeSpan timeSpan)
     {
       StringBuilder sb = new StringBuilder();

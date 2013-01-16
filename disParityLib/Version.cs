@@ -14,6 +14,7 @@ namespace disParity
   {
 
     private static string version;
+    private static bool firstRun;
 
     private static void GetVersion()
     {
@@ -34,19 +35,19 @@ namespace disParity
       {
         try {
           LogFile.Log("Checking for upgrade...");
-          bool firstRun;
-          UInt32 id = GetID(out firstRun);
+          UInt32 id = GetID();
           int dc, mpb;
           GetStats(out dc, out mpb);
           string url = @"http://www.vilett.com/disParity/ping.php?id=" + id.ToString() + (firstRun ? "&firstRun=1" : "") +
             "&dc=" + dc + "&mpb=" + mpb + "&ver=" + Version.VersionString;
-          WebClient webClient = new WebClient();
-          byte[] buf = webClient.DownloadData(new System.Uri(url));
-          double currentVersion = Convert.ToDouble(Version.VersionNum);
-          double latestVersion = Convert.ToDouble(Encoding.ASCII.GetString(buf));
-          LogFile.Log("Current version: {0} Latest version: {1}", currentVersion, latestVersion);
-          if (latestVersion > 0 && latestVersion > currentVersion)
-            callback(Encoding.ASCII.GetString(buf));
+          using (WebClient webClient = new WebClient()) {
+            byte[] buf = webClient.DownloadData(new System.Uri(url));
+            double currentVersion = Convert.ToDouble(Version.VersionNum);
+            double latestVersion = Convert.ToDouble(Encoding.ASCII.GetString(buf));
+            LogFile.Log("Current version: {0} Latest version: {1}", currentVersion, latestVersion);
+            if (latestVersion > 0 && latestVersion > currentVersion)
+              callback(Encoding.ASCII.GetString(buf));
+          }
         }
         catch (Exception e) {
           LogFile.Log("Error checking for upgrade: " + e.Message);
@@ -72,7 +73,7 @@ namespace disParity
       }
     }
 
-    private static UInt32 GetID(out bool firstRun)
+    public static UInt32 GetID()
     {
       firstRun = false;
       try {

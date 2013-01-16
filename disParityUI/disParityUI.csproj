@@ -58,6 +58,7 @@
     <Compile Include="AboutWindowViewModel.cs" />
     <Compile Include="CancellableOperation.cs" />
     <Compile Include="Commands.cs" />
+    <Compile Include="CrashLog.cs" />
     <Compile Include="HashcheckOperation.cs" />
     <Compile Include="Icons.cs" />
     <Compile Include="LicenseWindow.xaml.cs">

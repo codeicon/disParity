@@ -1,9 +1,5 @@
 <?php
 
-/* 
-example URL:  
-http://www.lunarcharc.com/roland/index.php?pid=12345&uid=12kc84kc
-*/
 
 //the log file to use - change this
 $myFile = "pinglog.txt";
@@ -26,6 +22,9 @@ if($_GET){
 	}
 
 }
+
+// change timezone to PST
+date_default_timezone_set("America/Los_Angeles");
 
 //note Datetime
 $stringData .= date('Y-m-d h:i:s')." ";

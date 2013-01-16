@@ -31,7 +31,7 @@ namespace disParityUI
     {
       this.owner = owner;
       // Set up application data and log folders
-      string appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "disParity");
+      string appDataPath = Utils.AppDataFolder;
       if (!Directory.Exists(appDataPath))
         Directory.CreateDirectory(appDataPath);
       string logPath = Path.Combine(appDataPath, "logs");
