@@ -59,6 +59,10 @@
     <Compile Include="CancellableOperation.cs" />
     <Compile Include="Commands.cs" />
     <Compile Include="CrashLog.cs" />
+    <Compile Include="CrashWindow.xaml.cs">
+      <DependentUpon>CrashWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="CrashWindowViewModel.cs" />
     <Compile Include="HashcheckOperation.cs" />
     <Compile Include="Icons.cs" />
     <Compile Include="LicenseWindow.xaml.cs">
@@ -86,6 +90,10 @@
     <Compile Include="VerifyOperation.cs" />
     <Compile Include="WindowUtils.cs" />
     <Page Include="AboutWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="CrashWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

@@ -27,7 +27,7 @@ if($_GET){
 date_default_timezone_set("America/Los_Angeles");
 
 //note Datetime
-$stringData .= date('Y-m-d h:i:s')." ";
+$stringData .= date('Y-m-d H:i:s')." ";
 
 //note requesting IP address
 $stringData .= $_SERVER['REMOTE_ADDR']." ";

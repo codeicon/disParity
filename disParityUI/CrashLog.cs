@@ -25,51 +25,58 @@ namespace disParityUI
 
     public static void Create(Exception e, bool upload=true)
     {
-      string crashLog = FullPath;
-      if (!Directory.Exists(Path.GetDirectoryName(crashLog)))
-        Directory.CreateDirectory(Path.GetDirectoryName(crashLog));
+      try {
+        string crashLog = FullPath;
+        if (!Directory.Exists(Path.GetDirectoryName(crashLog)))
+          Directory.CreateDirectory(Path.GetDirectoryName(crashLog));
 
-      using (StreamWriter s = new StreamWriter(Path.Combine(crashLog, "crash.txt"))) {
-        s.WriteLine("Crash log generated {0}", DateTime.Now);
-        s.WriteLine("Version: {0}" + disParity.Version.VersionString);
-        s.WriteLine();
-        while (e != null) {
-          s.WriteLine("Message: " + e.Message);
-          s.WriteLine("Stack: " + e.StackTrace);
-          e = e.InnerException;
-          if (e != null) {
-            s.WriteLine();
-            s.WriteLine("Inner Exception");
-            s.WriteLine();
+        using (StreamWriter s = new StreamWriter(crashLog)) {
+          s.WriteLine("Crash log generated {0}", DateTime.Now);
+          s.WriteLine("Version: {0}", disParity.Version.VersionString);
+          s.WriteLine();
+          while (e != null) {
+            s.WriteLine("Message: " + e.Message);
+            s.WriteLine("Stack: " + e.StackTrace);
+            e = e.InnerException;
+            if (e != null) {
+              s.WriteLine();
+              s.WriteLine("Inner Exception");
+              s.WriteLine();
+            }
           }
         }
+        if (upload)
+          UploadCrashLog();
       }
-      if (upload)
-        UploadCrashLog();
+      catch {
+        // prevent any problems with creating the crash log from taking down the app
+      }
     }
 
     private static void UploadCrashLog()
     {
       string crashLog = FullPath;
       if (File.Exists(crashLog)) {
-        try {
-          string crashText = File.ReadAllText(crashLog);
-          //uncomment if we want to rename the crash log after uploading it
-          //string oldPath = Path.ChangeExtension(crashLog, ".old");
-          //if (File.Exists(oldPath))
-          //  File.Delete(oldPath);
-          //File.Move(crashLog, oldPath);
-          using (var wb = new WebClient()) {
-            var data = new NameValueCollection();
-            data["id"] = disParity.Version.GetID().ToString();
-            data["crash"] = crashText;
-            Uri uri = new Uri(@"http://www.vilett.com/disParity/crash/uploader.php");
-            byte[] response = wb.UploadValues(uri, "POST", data);
+        Task.Factory.StartNew(() => {
+          try {
+            string crashText = File.ReadAllText(crashLog);
+            //uncomment if we want to rename the crash log after uploading it
+            //string oldPath = Path.ChangeExtension(crashLog, ".old");
+            //if (File.Exists(oldPath))
+            //  File.Delete(oldPath);
+            //File.Move(crashLog, oldPath);
+            using (var wb = new WebClient()) {
+              var data = new NameValueCollection();
+              data["id"] = disParity.Version.GetID().ToString();
+              data["crash"] = crashText;
+              Uri uri = new Uri(@"http://www.vilett.com/disParity/crash.php");
+              byte[] response = wb.UploadValues(uri, "POST", data);
+            }
           }
-        }
-        catch (Exception e) {
-          LogFile.Log("Error uploading crash log: " + e.Message);
-        }
+          catch (Exception e) {
+            LogFile.Log("Error uploading crash log: " + e.Message);
+          }
+        });
       }
     }
 

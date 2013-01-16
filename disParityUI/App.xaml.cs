@@ -5,6 +5,7 @@ using System.Data;
 using System.Linq;
 using System.Windows;
 using System.IO;
+using System.Threading;
 using disParity;
 
 namespace disParityUI
@@ -12,6 +13,8 @@ namespace disParityUI
 
   public partial class App : Application
   {
+
+    private static Application app;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -21,6 +24,7 @@ namespace disParityUI
       AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(HandleUnhandledException);
 #endif
       base.OnStartup(e);
+      app = this;
     }
 
     static void HandleUnhandledException(object sender, UnhandledExceptionEventArgs args)
@@ -32,6 +36,16 @@ namespace disParityUI
       LogFile.Close();
 
       LogCrash(e);
+
+      try {
+        CrashWindow crashWindow = new CrashWindow(app.MainWindow, new CrashWindowViewModel());
+        crashWindow.ShowDialog();
+      }
+      catch {
+        // hide any problems showing the crash window, but wait 3 seconds to give the crash log a chance to upload
+        Thread.Sleep(3000);
+      }
+
       Environment.Exit(0);
     }
 

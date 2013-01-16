@@ -15,12 +15,12 @@ using System.Diagnostics;
 namespace disParityUI
 {
 
-  public partial class AboutWindow : Window
+  public partial class CrashWindow : Window
   {
 
-    private AboutWindowViewModel viewModel;
+    private CrashWindowViewModel viewModel;
 
-    public AboutWindow(Window owner, AboutWindowViewModel viewModel)
+    public CrashWindow(Window owner, CrashWindowViewModel viewModel)
     {
       this.Owner = owner;
       this.viewModel = viewModel;
@@ -46,7 +46,7 @@ namespace disParityUI
     }
 
 
-
   }
 
 }
+

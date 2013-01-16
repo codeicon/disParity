@@ -2,29 +2,24 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Windows.Media;
 using disParity;
 
 namespace disParityUI
 {
 
-  public class AboutWindowViewModel : NotifyPropertyChanged
+  public class CrashWindowViewModel : NotifyPropertyChanged
   {
 
-    public AboutWindowViewModel()
+    public CrashWindowViewModel()
     {
-      versionString = disParity.Version.VersionString;
     }
 
-    private string versionString;
-    public string VersionString
+    public ImageSource Icon
     {
       get
       {
-        return versionString;
-      }
-      set
-      {
-        SetProperty(ref versionString, "VersionString", value);
+        return Icons.Urgent;
       }
     }
 

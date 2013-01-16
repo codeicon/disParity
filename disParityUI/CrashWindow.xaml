@@ -1,4 +1,4 @@
-﻿<Window x:Class="disParityUI.AboutWindow"
+﻿<Window x:Class="disParityUI.CrashWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStartupLocation="CenterOwner"
@@ -6,21 +6,19 @@
         ResizeMode="NoResize"
         WindowStyle="ToolWindow"
         Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"                  
-        Title="About disParity" Height="250" Width="300">
-    <Grid>
+        Title="Unrecoverable Error" Height="250" Width="300">
+  <Grid>
     <StackPanel Orientation="Vertical">
-      <TextBlock HorizontalAlignment="Center" Margin="10,30,10,10">
-        <Run>disParity version </Run>
-        <Run Text="{Binding Path=VersionString}"/>
-        <Run> beta</Run>
+      <DockPanel Margin="10">
+        <Image DockPanel.Dock="Left" Width="54" Stretch="None" Source="{Binding Path=Icon, Mode=OneWay}"/>
+        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" >
+          Sorry, disParity has encountered an unrecoverable error and needs to close.
+        </TextBlock>
+      </DockPanel>
+      <TextBlock HorizontalAlignment="Center" TextWrapping="Wrap" Margin="10,10,10,5">
+        It would be greatly appreciated if you could report this issue in the disParity forum:
       </TextBlock>
       <TextBlock HorizontalAlignment="Center" Margin="10">
-        Copyright © 2013 Disparity Solutions, LLC
-      </TextBlock>
-      <TextBlock HorizontalAlignment="Center" Margin="10,10,10,5">
-        For help and support, please visit the forum at:
-      </TextBlock>
-      <TextBlock HorizontalAlignment="Center" Margin="10,0,10,10">
         <Hyperlink Click="HandleSupportClick"><Run Text="{Binding Path=ForumURL, Mode=OneWay}"/></Hyperlink>
       </TextBlock>
       <Button Width="80" Height="25" Margin="20" Content="OK" IsDefault="True" Click="HandleOKClick"/>
