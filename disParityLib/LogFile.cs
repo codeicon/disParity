@@ -10,59 +10,65 @@ namespace disParity
   {
     static StreamWriter f = null;
     static bool verbose;
+    static string filename;
+    static object syncObj = new object();
 
-    const int MAX_FILE_SIZE = 1000000;
+    const int MAX_FILE_SIZE = 5000000;
 
     public static string LogPath { set; private get; }
 
-    public static void Open(string filename, bool verbose)
+    public static void Open(string filenameIn, bool verbose)
     {
-      if (File.Exists(filename)) {
-        FileInfo info = new FileInfo(filename);
-        if (info.Length > MAX_FILE_SIZE) {
-          string newName = filename + ".old";
-          if (File.Exists(newName))
-            File.Delete(newName);
-          File.Move(filename, newName);
-        }
-      }
+      filename = filenameIn;
+      Verbose = verbose;
+      Open();
+    }
+
+    private static void Open()
+    {
       try {
         f = new StreamWriter(filename, true);
       }
       catch {
+        f = null;
         // suppress any errors opening the log file
       }
-      Verbose = verbose;
     }
 
+    // Used in console mode only
     public static void Write(string msg)
     {
-      if (f != null)
-        lock (f) {
+      lock (syncObj) {
+        if (f != null) {
           Console.Write(msg);
           f.Write(msg);
         }
+      }
     }
 
+    // Used in console mode only
     public static void Write(string msg, params object[] args)
     {
-      if (f != null)
-        lock (f) {
+      lock (syncObj) {
+        if (f != null) {
           Console.Write(msg, args);
           f.Write(msg, args);
         }
+      }
     }
 
     public static void Log(string msg, params object[] args)
     {
       try {
-        Console.WriteLine(msg, args);
-        if (f != null)
-          lock (f) {
+        lock (syncObj) {
+          Console.WriteLine(msg, args);
+          if (f != null) {
             f.Write(DateTime.Now + " ");
             f.WriteLine(msg, args);
             f.Flush();
+            MaybeRotate();
           }
+        }
       }
       catch {
         // suppress any errors writing to log file
@@ -72,13 +78,15 @@ namespace disParity
     public static void Log(string msg)
     {
       try {
-        Console.WriteLine(msg);
-        if (f != null)
-          lock (f) {
+        lock (syncObj) {
+          Console.WriteLine(msg);
+          if (f != null) {
             f.Write(DateTime.Now + " ");
             f.WriteLine(msg);
             f.Flush();
+            MaybeRotate();
           }
+        }
       }
       catch {
         // suppress any errors writing to log file
@@ -87,28 +95,40 @@ namespace disParity
 
     public static void VerboseLog(string msg, params object[] args)
     {
-      if (!Verbose)
-        return;
-      Console.WriteLine(msg, args);
-      if (f != null)
-        lock (f) {
-          f.WriteLine(msg, args);
-        }
+      if (Verbose)
+        Log(msg, args);
     }
 
-    public static void Flush()
+    // assumed to be called from inside a lock() so does not take a lock of its own
+    private static void MaybeRotate()
     {
-      if (f != null)
-        lock (f)
+      FileInfo info = new FileInfo(filename);
+      if (info.Length > MAX_FILE_SIZE) {
+        Close();
+        string newName = Path.ChangeExtension(filename, "old");
+        if (File.Exists(newName))
+          File.Delete(newName);
+        File.Move(filename, newName);
+        Open();
+      }
+    }
+
+    private static void Flush()
+    {
+      lock (syncObj) {
+        if (f != null)
           f.Flush();
+      }
     }
 
     public static void Close()
     {
-      if (f != null) {
-        f.Dispose();
-        f = null;
-      }        
+      lock (syncObj) {
+        if (f != null) {
+          f.Dispose();
+          f = null;
+        }
+      }
     }
 
     public static bool Verbose
