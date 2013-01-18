@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Reflection;
@@ -42,8 +43,8 @@ namespace disParity
             "&dc=" + dc + "&mpb=" + mpb + "&ver=" + Version.VersionString;
           using (WebClient webClient = new WebClient()) {
             byte[] buf = webClient.DownloadData(new System.Uri(url));
-            double currentVersion = Convert.ToDouble(Version.VersionNum);
-            double latestVersion = Convert.ToDouble(Encoding.ASCII.GetString(buf));
+            double currentVersion = VersionNum;
+            double latestVersion = double.Parse(Encoding.ASCII.GetString(buf), CultureInfo.InvariantCulture);
             LogFile.Log("Current version: {0} Latest version: {1}", currentVersion, latestVersion);
             if (latestVersion > 0 && latestVersion > currentVersion)
               callback(Encoding.ASCII.GetString(buf));
@@ -109,7 +110,7 @@ namespace disParity
       get
       {
         GetVersion();
-        return Convert.ToDouble(version);
+        return double.Parse(version, CultureInfo.InvariantCulture);
       }
     }
 
