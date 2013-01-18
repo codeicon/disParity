@@ -68,10 +68,12 @@ namespace disParityUI
     {
       if (DataDrive.DriveType == DriveType.Network)
         AdditionalInfo = "Network drive";
-      else
+      else if (DataDrive.TotalSpace > 0)
         AdditionalInfo = String.Format("{0} used {1} free",
-          Utils.SmartSize(DataDrive.TotalSpace - DataDrive.FreeSpace),
-          Utils.SmartSize(DataDrive.FreeSpace));
+            Utils.SmartSize(DataDrive.TotalSpace - DataDrive.FreeSpace),
+            Utils.SmartSize(DataDrive.FreeSpace));
+      else
+        AdditionalInfo = "";
     }
 
     private void HandleChangesDetected(object sender, EventArgs e)
