@@ -74,6 +74,9 @@ namespace disParity
     {
       try {
         if (!OpenParityFile(block, true))
+          // OpenParityFile returns false if parityX.dat does not exist
+          // FIX ME: WHEN is this a valid case exactly?  It's definitely an error in a lot of cases.  Should 
+          // we throw here instead of acting like the read was succussful?
           Array.Clear(data, 0, BLOCK_SIZE);
         else {
           int bytesRead = f.Read(data, 0, BLOCK_SIZE);

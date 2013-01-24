@@ -24,6 +24,8 @@ namespace disParity
     // For a reportable generated during a long-running operation (Recover, Verify, etc.)
     public event EventHandler<ErrorMessageEventArgs> ErrorMessage;
 
+    const double TEMP_FLUSH_PERCENT = 0.2;
+
     public ParitySet(Config config)
     {
       drives = new List<DataDrive>();
@@ -737,7 +739,7 @@ namespace disParity
           return true;
         }
 
-        UInt32 totalProgresBlocks = r.LengthInBlocks + r.LengthInBlocks / 10;
+        UInt32 totalProgresBlocks = r.LengthInBlocks + (UInt32)(TEMP_FLUSH_PERCENT * r.LengthInBlocks);
 
         // Recalulate parity from scratch for all blocks that contained the deleted file's data.
         using (ParityChange change = new ParityChange(parity, Config, startBlock, r.LengthInBlocks)) 
@@ -797,7 +799,7 @@ namespace disParity
 
       while (saveInProgress) {
         Thread.Sleep(20);
-        drive.Progress = 0.9 + 0.1 * change.SaveProgress;
+        drive.Progress = (1.0 - TEMP_FLUSH_PERCENT) + TEMP_FLUSH_PERCENT * change.SaveProgress;
       }
       drive.Progress = 0;
     }

@@ -76,7 +76,7 @@
         </ListBox.Resources>
           <ListBox.ItemTemplate>
             <DataTemplate>
-            <Border Name="DriveBorder" Margin="0,1,1,1" BorderThickness="1" BorderBrush="Black" CornerRadius="5">
+            <Border Name="DriveBorder" Margin="1,2,2,2" BorderThickness="1" BorderBrush="Black" CornerRadius="5">
               <Border.Background>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                   <GradientStop Color="#FFFFFF" Offset="0.2"/>

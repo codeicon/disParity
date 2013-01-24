@@ -135,10 +135,7 @@ namespace disParityUI
             break;
           }
           Status = String.Format("Update Required ({0} new, {1} deleted)", addCount, deleteCount);
-          if (deleteCount > 0)
-            StatusIcon = Icons.Urgent;
-          else
-            StatusIcon = Icons.Caution;
+          StatusIcon = Icons.Caution;
           break;
         case DriveStatus.UpToDate:
           Status = "Up to date";
@@ -231,20 +228,6 @@ namespace disParityUI
       set
       {
         SetProperty(ref progress, "Progress", value);
-      }
-    }
-
-
-    private Brush statusColor = Brushes.Black;
-    public Brush StatusColor
-    {
-      get
-      {
-        return statusColor;
-      }
-      set
-      {
-        SetProperty(ref statusColor, "StatusColor", value);
       }
     }
 
