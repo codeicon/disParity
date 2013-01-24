@@ -10,21 +10,19 @@ namespace disParityUI
   public class AboutWindowViewModel : NotifyPropertyChanged
   {
 
-    public AboutWindowViewModel()
-    {
-      versionString = disParity.Version.VersionString;
-    }
-
-    private string versionString;
     public string VersionString
     {
       get
       {
-        return versionString;
+        return disParity.Version.VersionString;
       }
-      set
+    }
+
+    public string Beta
+    {
+      get
       {
-        SetProperty(ref versionString, "VersionString", value);
+        return disParity.Version.Beta ? "beta" : "";
       }
     }
 

@@ -11,8 +11,8 @@
     <StackPanel Orientation="Vertical">
       <TextBlock HorizontalAlignment="Center" Margin="10,30,10,10">
         <Run>disParity version </Run>
-        <Run Text="{Binding Path=VersionString}"/>
-        <Run> beta</Run>
+        <Run Text="{Binding Path=VersionString, Mode=OneTime}"/>
+        <Run Text="{Binding Path=Beta, Mode=OneTime}"/>
       </TextBlock>
       <TextBlock HorizontalAlignment="Center" Margin="10">
         Copyright © 2013 Disparity Solutions, LLC
@@ -21,7 +21,7 @@
         For help and support, please visit the forum at:
       </TextBlock>
       <TextBlock HorizontalAlignment="Center" Margin="10,0,10,10">
-        <Hyperlink Click="HandleSupportClick"><Run Text="{Binding Path=ForumURL, Mode=OneWay}"/></Hyperlink>
+        <Hyperlink Click="HandleSupportClick"><Run Text="{Binding Path=ForumURL, Mode=OneTime}"/></Hyperlink>
       </TextBlock>
       <Button Width="80" Height="25" Margin="20" Content="OK" IsDefault="True" Click="HandleOKClick"/>
     </StackPanel>
