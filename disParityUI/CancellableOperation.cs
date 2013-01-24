@@ -84,7 +84,9 @@ namespace disParityUI
         else {
           int i = 0;
           foreach (DataDriveViewModel vm in viewModel.Drives) {
-            if (vm.Progress > 0.0)
+            if (vm.DataDrive.AnalyzingResults)
+              scanProgress[i] = 1.0;
+            else if (vm.Progress > 0.0)
               scanProgress[i] = vm.Progress;
             i++;
           }

@@ -246,6 +246,7 @@ namespace disParity
               totalSize += f.Length;
             Status = "Scan complete. Analyzing results...";
             Progress = 1;
+            AnalyzingResults = true;
             Compare();
             LogFile.Log("Scan of {0} complete. Found {1} file{2} ({3} total) Adds: {4} Deletes: {5} Moves: {6} Edits: {7}", Root, scanFiles.Count,
               scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize), adds.Count, deletes.Count, moves.Count, editCount);
@@ -269,6 +270,7 @@ namespace disParity
         }
       }
       finally {
+        AnalyzingResults = false;
         Progress = 0;
         UpdateStatus();
         scanFiles.Clear();
@@ -430,8 +432,10 @@ namespace disParity
           foreach (FileRecord d in deletes)
             if (a.Length == d.Length && a.LastWriteTime == d.LastWriteTime) {
               // probably the same file, but we need to check the hash to be sure
-              if (hashCode == null)
-                hashCode = ComputeHash(a);
+              if (hashCode == null) {
+                Status = "Checking " + a.FullPath;
+                hashCode = ComputeHash(a, true);
+              }
               if (cancelScan)
                 return;
               if (Utils.HashCodesMatch(hashCode, d.HashCode)) {
@@ -468,13 +472,16 @@ namespace disParity
             editCount++;
             deletes.Add(kvp.Value);
             adds.Add(n);
-          } else if (kvp.Value.LastWriteTime != n.LastWriteTime)
+          }
+          else if (kvp.Value.LastWriteTime != n.LastWriteTime) {
             // length hasn't changed but timestamp says file was modified, check hash code to be sure it has changed
+            Status = "Checking " + kvp.Value.FullPath;
             if (!HashCheck(kvp.Value)) {
               editCount++;
               deletes.Add(kvp.Value);
               adds.Add(n);
             }
+          }
         }
       }
 
@@ -576,15 +583,21 @@ namespace disParity
     /// <summary>
     /// Compute the hash code for the file on disk
     /// </summary>
-    private byte[] ComputeHash(FileRecord r)
+    private byte[] ComputeHash(FileRecord r, bool showProgress = false)
     {
       using (FileStream s = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read))
       using (MD5 hash = MD5.Create()) {
         hash.Initialize();
         byte[] buf = new byte[Parity.BLOCK_SIZE];
-        int read = 0;
-        while (!cancelScan && ((read = s.Read(buf, 0, Parity.BLOCK_SIZE)) > 0))
+        int read;
+        int block = 0;
+        if (showProgress)
+          Progress = 0;
+        while (!cancelScan && ((read = s.Read(buf, 0, Parity.BLOCK_SIZE)) > 0)) {
           hash.TransformBlock(buf, 0, read, buf, 0);
+          if (showProgress)
+            Progress = (double)++block / r.LengthInBlocks;
+        }
         if (cancelScan)
           return null;
         hash.TransformFinalBlock(buf, 0, 0);
@@ -914,6 +927,8 @@ namespace disParity
     }
 
     #region Properties
+
+    public bool AnalyzingResults { get; private set; }
 
     private string status;
     public string Status
