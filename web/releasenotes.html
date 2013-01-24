@@ -39,6 +39,17 @@ A:visited {
 Release notes for disParity beta 
 </font>
 <p>
+<i>Changes in version 0.36 beta released Thursday, January 24, 2013</i>
+<ul class="indent">
+<li>Fixed bug that prevented automatic new version check from working in some non-U.S. locales.
+<li>Stack traces for any crashes are now automatically uploaded.  No personal information is sent.
+<li>If a fatal exception forces the application to quit, it now tries to show a dialog first before closing.
+<li>Log file now rotates as soon as it reaches the maximum size rather than only at startup.  Max. log file size increased from 1MB to 5MB.
+<li>Switched to yellow status icon for drives that have deletes.  The red icon was a little too scary, and is now used only for serious errors.
+<li>Progress is now shown for the hash check of moved/renamed files during a scan (previously it could just sit at "Analyzing Results" for extended periods with no other indication of what was happening.)
+<li>Allocated a larger portion of the progress bar to the temp parity flush stage during updates.
+</ul>
+<p>
 <i>Changes in version 0.35 beta released Monday, January 14, 2013</i>
 <ul class="indent">
 <li>Fixed bug where errors accessing the root of a drive during a scan were not reported in the UI.
