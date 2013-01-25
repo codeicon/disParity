@@ -31,7 +31,12 @@ namespace disParityUI
       else
         ParityDir = config.ParityDir;
       CanSetLocation = true;
-      MaxTempRAM = (int)config.MaxTempRAM;
+      // crash log shows a user crashing here with "Value must be greated than MinValue of 256" exception,
+      // which I cannot reproduce no matter what I set MaxTempRAM to.  But, enforce the minimum anyway.
+      if (config.MaxTempRAM < MaxTempRAMIncrement)
+        MaxTempRAM = MaxTempRAMIncrement;
+      else
+        MaxTempRAM = (int)config.MaxTempRAM;
       IgnoreHidden = config.IgnoreHidden;
       TempDir = config.TempDir;
       MonitorDrives = config.MonitorDrives;
@@ -127,14 +132,14 @@ namespace disParityUI
     {
       try {
         config.ImportOld(path);
+        SetProperties();
+        ConfigImported = true;
       }
       catch (Exception e) {
         App.LogCrash(e);
         MessageWindow.ShowError(Owner, "Import error", "Sorry, an error occurred while importing the configuration: " + e.Message);
         return;
       }
-      SetProperties();
-      ConfigImported = true;
     }
 
     public void SetNewTempDir(string path)
