@@ -655,7 +655,8 @@ namespace disParity
           EndFileEnum();
           adds.Clear();
           enumComplete = true;
-          LoadFileList(); // this loads completed filesX.dat back into the master files list
+          if (enumCount > 0)
+            LoadFileList(); // this loads completed filesX.dat back into the master files list
           DriveStatus = DriveStatus.UpToDate;
           return false;
         }

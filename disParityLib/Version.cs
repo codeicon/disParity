@@ -40,7 +40,7 @@ namespace disParity
           int dc, mpb;
           GetStats(out dc, out mpb);
           string url = @"http://www.vilett.com/disParity/ping.php?id=" + id.ToString() + (firstRun ? "&firstRun=1" : "") +
-            "&dc=" + dc + "&mpb=" + mpb + "&ver=" + Version.VersionString;
+            "&dc=" + dc + "&mpb=" + mpb + "&beta=" + (Beta ? "1" : "0") + "&ver=" + Version.VersionString;
           using (WebClient webClient = new WebClient()) {
             byte[] buf = webClient.DownloadData(new System.Uri(url));
             double currentVersion = VersionNum;

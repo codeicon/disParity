@@ -73,11 +73,14 @@ namespace disParity
     public bool ReadBlock(UInt32 block, byte[] data)
     {
       try {
-        if (!OpenParityFile(block, true))
+        if (!OpenParityFile(block, true)) {
           // OpenParityFile returns false if parityX.dat does not exist
-          // FIX ME: WHEN is this a valid case exactly?  It's definitely an error in a lot of cases.  Should 
-          // we throw here instead of acting like the read was succussful?
+          // FIX ME: WHEN is this a valid case exactly?  It's definitely an error in a lot of cases.
+          // It's valid when adding new files to the end of parity.  The non-existent parity block is first read
+          // in before being XOR'd with new file data to be written back out.
+          // Debug.Assert(false);
           Array.Clear(data, 0, BLOCK_SIZE);
+        } 
         else {
           int bytesRead = f.Read(data, 0, BLOCK_SIZE);
           Debug.Assert(bytesRead == BLOCK_SIZE);

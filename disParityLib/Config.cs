@@ -213,6 +213,7 @@ namespace disParity
         if (MonitorDrives != DEFAULT_MONITOR_DRIVES)
           writer.WriteElementString("MonitorDrives", MonitorDrives ? "true" : "false");
 
+        /*
         if (UpdateDelay != DEFAULT_UPDATE_DELAY)
           writer.WriteElementString("UpdateDelay", UpdateDelay.ToString());
 
@@ -226,6 +227,7 @@ namespace disParity
             mode = 3;
           writer.WriteElementString("UpdateMode", mode.ToString());
         }
+         */
 
         if (Ignores.Count > 0) {
           writer.WriteStartElement("Ignores");

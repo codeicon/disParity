@@ -42,7 +42,8 @@ namespace disParity
             Directory.CreateDirectory(Config.ParityDir);
           }
           catch (Exception e) {
-            throw new Exception("Could not create parity folder " + Config.ParityDir + ": " + e.Message);
+            LogFile.Log("Could not create parity folder " + Config.ParityDir + ": " + e.Message);
+            return;
           }
 
           ReloadDrives();
@@ -822,7 +823,7 @@ namespace disParity
         MD5 hash = MD5.Create();
         hash.Initialize();
         UInt32 endBlock = r.StartBlock + r.LengthInBlocks;
-        UInt32 totalProgresBlocks = r.LengthInBlocks + r.LengthInBlocks / 10;
+        UInt32 totalProgresBlocks = r.LengthInBlocks + (UInt32)(TEMP_FLUSH_PERCENT * r.LengthInBlocks);
 
         FileStream f;
         try {
