@@ -1,24 +1,43 @@
-/*
-Theme Name: Kakumei Blue
-Theme URI: http://bbpress.org/
-Description: The "revolutionized" new face of bbPress... in blue.
-Version: 0.01 theta-beta
-Author: Bryan Veloso
-Author URI: http://avalonstar.com
-*/
-
-
-@import url('../kakumei/style.css');
-
-a { color: #32689b; text-decoration: none; }
-a:hover { color: #001364; }
-#header { background-image: url('images/page_header_bblogo.png'); }
-.sticky { background: #adb9e1; }
-#latest tr:hover, #forumlist tr:hover, #favorites tr:hover { background: #d8dcf2; }
-#profile-menu li a:hover { background: #d8dcf2; }
-
-/* Tags */
-
-#front-page #discussions {margin-left:inherit;width:inherit;}
-
-div#viewdiv,div#hottags,div#topic-tags,p#post-form-tags-container{display:none;}
+BODY {
+	BACKGROUND: #dddddd
+}
+TABLE {
+  BACKGROUND: #ffffff;
+  MARGIN-LEFT: 4em;
+  MARGIN-RIGHT: 4em;
+  MARGIN-TOP: 3em;  
+  MARGIN-BOTTOM: 3em;  
+}
+P {
+	FONT-SIZE: 10pt; 
+  FONT-FAMILY: verdana,arial,geneva,helvetica;
+  MARGIN-LEFT: 3em;
+  MARGIN-RIGHT: 3em;
+  MARGIN-BOTTOM: 1.5em;
+}
+P.head {
+	FONT-SIZE: 14pt; COLOR: #ffffff; FONT-FAMILY: verdana,arial,geneva,helvetica
+}
+P.head1 {
+	FONT-WEIGHT: bold; FONT-SIZE: 10pt; COLOR: #005000; FONT-FAMILY: verdana,arial,geneva,helvetica
+}
+UL {
+	FONT-SIZE: 10pt; FONT-FAMILY: verdana,arial,geneva,helvetica
+}
+ul li {
+margin-top: 10px;
+}
+OL {
+	FONT-SIZE: 10pt; FONT-FAMILY: verdana,arial,geneva,helvetica
+}
+A:link {
+	COLOR: #7b91f2
+}
+A:visited {
+	COLOR: #5362a3
+}
+.indent {
+  MARGIN-LEFT: 2em; 
+  MARGIN-RIGHT: 2em; 
+  LINE-HEIGHT: 120%
+}
