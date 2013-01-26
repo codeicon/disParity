@@ -11,6 +11,10 @@ $redirect_location = 'http://www.vilett.com/disParity/version.txt';
 if ($_GET["id"]=="264003054")
   exit;
 
+// ...and another one that runs every hour
+if ($_GET["id"]=="2104775708")
+  exit;
+
 # $_GET is superglobal array from URL string
 if($_GET){
 

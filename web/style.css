@@ -1,5 +1,5 @@
 BODY {
-	BACKGROUND: #dddddd
+	BACKGROUND: #eeeeee
 }
 TABLE {
   BACKGROUND: #ffffff;
@@ -24,8 +24,8 @@ P.head1 {
 UL {
 	FONT-SIZE: 10pt; FONT-FAMILY: verdana,arial,geneva,helvetica
 }
-ul li {
-margin-top: 10px;
+LI {
+margin-bottom: 8px;
 }
 OL {
 	FONT-SIZE: 10pt; FONT-FAMILY: verdana,arial,geneva,helvetica

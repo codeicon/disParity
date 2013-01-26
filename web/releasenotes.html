@@ -3,14 +3,22 @@
 <title>disParity Beta Release Notes</title>
 <link rel="stylesheet" type="text/css" href="style.css" />
 <body>
-<table><tr><td>
 <br>
 <p align="center">
 <font size="+2">
 &#x02295;
-Release notes for disParity beta 
+Release notes for disParity Beta 
 &#x02295;
 </font>
+<table width="800"><tr><td>
+<p><br>
+<i>Changes in version 0.37 beta released Saturday, January 26, 2013</i>
+<ul class="indent">
+<li>Fixed error message on initial Update if one or more data drives contained no files.
+<li>Possible fix for crash when importing some old (pre-UI) configurations.
+</ul>
+</td></tr></table>
+<table width="800"><tr><td>
 <p><br>
 <i>Changes in version 0.36 beta released Thursday, January 24, 2013</i>
 <ul class="indent">
@@ -22,6 +30,8 @@ Release notes for disParity beta
 <li>Progress is now shown for the hash check of moved/renamed files during a scan (previously it could just sit at "Analyzing Results" for extended periods with no other indication of what was happening.)
 <li>Allocated a larger portion of the progress bar to the temp parity flush stage during updates.
 </ul>
+</td></tr></table>
+<table width="800"><tr><td>
 <p><br>
 <i>Changes in version 0.35 beta released Monday, January 14, 2013</i>
 <ul class="indent">
@@ -31,6 +41,8 @@ Release notes for disParity beta
 <li>The log file now lists the time to completion for long running tasks like update and verify.
 <li>Fixed a sporadic crash bug in Reset. 
 </ul>
+</td></tr></table>
+<table width="800"><tr><td>
 <p><br>
 <i>Changes in version 0.34 beta released Friday, January 4, 2013</i>
 <ul class="indent">
@@ -40,12 +52,16 @@ Release notes for disParity beta
 <li>Fixed bug where a single-drive Scan was scanning all drives.
 <li>Second attempt to fix interrupted scans caused by files or folders with full paths longer than the max. supported by .NET (248 characters for folders and 260 characters for files.)
 </ul>
+</td></tr></table>
+<table width="800"><tr><td>
 <p><br>
 <i>Changes in version 0.33 beta released Monday, December 31, 2012</i>
 <ul class="indent">
 <li>Fixed another bug that could cause Verify to incorrectly report errors.  If you ran a Verify pass in version 0.32 you should run another one.
 <li>Fixed a bug in the reporting of file counts and sizes during an Update.
 </ul>
+</td></tr></table>
+<table width="800"><tr><td>
 <p><br>
 <i>Changes in version 0.32 beta released Friday, December 28, 2012</i>
 <ul class="indent">
@@ -53,6 +69,8 @@ Release notes for disParity beta
 <li>Verify will now attempt to automatically repair any bad blocks it finds.
 <li>Increased default value for Max Temp RAM from 512K to 1,024K 
 </ul>
+</td></tr></table>
+<table width="800"><tr><td>
 <p><br>
 <i>Changes in version 0.31 beta released Wednesday, December 26, 2012</i>
 <ul class="indent">
@@ -60,6 +78,8 @@ Release notes for disParity beta
 <li>Fixed "Object reference not set to an instance of an object" error when recovering a drive.</li>
 <li>"Edits" are no longer tracked separately from adds and deletes.  This was causing too many issues (e.g. edited files would appear twice in the Undelete dialog.)  Any edited file will appear after a scan as 1 deleted file and 1 added file, since they are processed during an update first by removing the old file and then adding the new file.</li>  
 </ul>
+</td></tr></table>
+<table width="800"><tr><td>
 <p><br>
 <i>Changes in version 0.30 beta released Tuesday, December 25, 2012</i>
 <ul class="indent">
@@ -74,6 +94,8 @@ Release notes for disParity beta
 <li>The drive panel right-click menu now has a "undelete" option.  This will restore any files that have been edited or deleted since the last update.  You can choose which files to restore in the dialog that comes up.</li>
 <li>Better handling for files and folders with names longer than 260 characters (a hard limit imposed by .NET).  The files won't be backed up but they shouldn't cause any other problems. 
 </ul>
+</td></tr></table>
+<table width="800"><tr><td>
 <p><br>
 <i>Changes in version 0.29 beta released Wednesday, December 19, 2012</i>
 <ul class="indent">
@@ -93,14 +115,13 @@ immediately (rather than waiting to reach Max Temp RAM first.)  This greatly red
 <li>Disk space used and free for the parity drive are now displayed in main window.</li>
 <li>General log file and error handling improvements.</li>
 </ul>           
+</td></tr></table>
 
 <p align=center>
 <font size="-2">
-<br>
 &copy; Copyright 2013 <a href="http://www.disparitysolutions.com">Disparity Solutions, LLC</a>
 <br>
 All Rights Reserved
 </font>
-</td></tr></table>
 </body>
 </html>
