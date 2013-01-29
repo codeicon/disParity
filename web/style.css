@@ -2,11 +2,12 @@ BODY {
 	BACKGROUND: #eeeeee
 }
 TABLE {
+	FONT-SIZE: 10pt; 
   BACKGROUND: #ffffff;
   MARGIN-LEFT: 4em;
   MARGIN-RIGHT: 4em;
-  MARGIN-TOP: 3em;  
-  MARGIN-BOTTOM: 3em;  
+  MARGIN-TOP: 2em;  
+	border-radius: 6px;
 }
 P {
 	FONT-SIZE: 10pt; 
@@ -15,14 +16,29 @@ P {
   MARGIN-RIGHT: 3em;
   MARGIN-BOTTOM: 1.5em;
 }
+.releasenote {
+	FONT-SIZE: 10pt; 
+  FONT-FAMILY: verdana,arial,geneva,helvetica;
+  BACKGROUND: #ffffff;
+  MARGIN-LEFT: 2em;
+  MARGIN-RIGHT: 2em;
+  MARGIN-TOP: 2em;  
+  padding: 1em;
+	border-radius: 6px;
+}
 P.head {
 	FONT-SIZE: 14pt; COLOR: #ffffff; FONT-FAMILY: verdana,arial,geneva,helvetica
 }
 P.head1 {
 	FONT-WEIGHT: bold; FONT-SIZE: 10pt; COLOR: #005000; FONT-FAMILY: verdana,arial,geneva,helvetica
 }
+TD {
+  padding-top: 12px;  
+  padding-left: 12px;  
+  padding-right: 12px;  
+}
 UL {
-	FONT-SIZE: 10pt; FONT-FAMILY: verdana,arial,geneva,helvetica
+	FONT-SIZE: 10pt;
 }
 LI {
 margin-bottom: 8px;

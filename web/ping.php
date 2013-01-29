@@ -8,13 +8,18 @@ $myFile = "pinglog.txt";
 $redirect_location = 'http://www.vilett.com/disParity/version.txt';
 
 // filter out one dood's script that runs disParity every 20 minutes 
-if ($_GET["id"]=="264003054")
-  exit;
+//if ($_GET["id"]=="264003054")
+//  exit;
 
 // ...and another one that runs every hour
-if ($_GET["id"]=="2104775708")
-  exit;
+//if ($_GET["id"]=="2104775708")
+//  exit;
 
+$version = floatval($_GET["ver"]); 
+// ...log old command line version pings to different file
+if ($version <= 0.22)
+  $myFile = "pinglog_old.txt";
+  
 # $_GET is superglobal array from URL string
 if($_GET){
 
