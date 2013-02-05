@@ -70,8 +70,6 @@ namespace disParityUI
 
     public override string Name { get { return "Remove drive"; } }
 
-    protected override string LowerCaseName { get { return "remove drive"; } }
-
     protected override bool ScanFirst { get { return false; } }
 
   }

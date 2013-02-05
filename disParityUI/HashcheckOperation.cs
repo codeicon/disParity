@@ -24,8 +24,6 @@ namespace disParityUI
 
     public override string Name { get { return "Hash check"; } }
 
-    protected override string LowerCaseName { get { return "hash check"; } }
-
     protected override bool ScanFirst { get { return false; } }
 
   }

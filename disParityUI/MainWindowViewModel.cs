@@ -25,7 +25,9 @@ namespace disParityUI
     private Config config;
     private System.Timers.Timer updateTimer;
     private System.Timers.Timer updateParityStatusTimer;
+    private System.Timers.Timer pingTimer;
     private OperationManager operationManager;
+    private bool upgradeNotified;
 
     public MainWindowViewModel(Window owner)
     {
@@ -62,6 +64,10 @@ namespace disParityUI
       updateParityStatusTimer.AutoReset = true;
       updateParityStatusTimer.Elapsed += UpdateParityStatus;
 
+      pingTimer = new System.Timers.Timer(TimeSpan.FromHours(24).TotalMilliseconds);
+      pingTimer.AutoReset = true;
+      pingTimer.Elapsed += HandlePingTimer;
+
       operationManager = new OperationManager(this);
       operationManager.OperationFinished += HandleOperationFinished;
       
@@ -89,7 +95,10 @@ namespace disParityUI
           disParity.License.Accepted = true;
         }
 
+        // check for new version now and again every 24 hours
         disParity.Version.DoUpgradeCheck(HandleNewVersionAvailable);
+        pingTimer.Start();
+
         ScanAll();
       }
       catch (Exception e) {
@@ -105,8 +114,17 @@ namespace disParityUI
       return result ?? false;
     }
 
+    private void HandlePingTimer(object sender, System.Timers.ElapsedEventArgs args)
+    {
+      disParity.Version.DoUpgradeCheck(HandleNewVersionAvailable);
+    }
+
     private void HandleNewVersionAvailable(string newVersion)
     {
+      // only bring up the new version dialog once per session no matter how long they leave the app running
+      if (upgradeNotified)
+        return;
+      upgradeNotified = true;
       if (MessageWindow.Show(owner, "New version available", "There is a new version of disParity available.\r\n\r\n" +
         "Would you like to download the latest version now?", MessageWindowIcon.Caution, MessageWindowButton.YesNo) == true) {
         Process.Start("http://www.vilett.com/disParity/beta.html");

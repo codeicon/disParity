@@ -52,8 +52,6 @@ namespace disParityUI
 
     public override string Name { get { return "Undelete"; } }
 
-    protected override string LowerCaseName { get { return "undelete"; } }
-
   }
 
 }

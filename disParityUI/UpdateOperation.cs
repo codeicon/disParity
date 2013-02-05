@@ -22,14 +22,18 @@ namespace disParityUI
       if (scanFirst && !anyDriveNeedsUpdate)
         DisplayUpToDateStatus();
       else {
-        viewModel.ParitySet.Update();
-        if (cancelled)
-          Status = "Update cancelled";
-        else if (errorMessages.Count > 0) {
-          Status = ((errorMessages.Count == 1) ? "An error" : "Errors") + " occurred during update";
-          if (MessageWindow.Show(viewModel.Owner, "Errors detected", "Errors occurred during the update.  Would you like to see a list of errors?", MessageWindowIcon.Error, MessageWindowButton.YesNo) == true)
-            ReportWindow.Show(viewModel.Owner, errorMessages);
-        } else
+        try {
+          viewModel.ParitySet.Update();
+        }
+        catch (Exception e) {
+          App.LogCrash(e);
+          MessageWindow.Show(viewModel.Owner, "Update failed!", "Sorry, a fatal error interrupted the update:\n\n" +
+            e.Message + "\n\n" +
+            "The update could not be completed.", MessageWindowIcon.Error, MessageWindowButton.OK);
+          suppressErrorCheck = true;
+          throw e;
+        }
+        if (!cancelled && errorMessages.Count == 0)
           DisplayUpToDateStatus();
       }
 
@@ -41,8 +45,6 @@ namespace disParityUI
     }
 
     public override string Name { get { return "Update"; } }
-
-    protected override string LowerCaseName { get { return "update"; } }
 
     protected override bool ScanFirst { get { return scanFirst; } }
   }

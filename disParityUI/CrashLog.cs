@@ -20,10 +20,9 @@ namespace disParityUI
       {
         return Path.Combine(disParity.Utils.AppDataFolder, "crash.txt");
       }
-
     }
 
-    public static void Create(Exception e, bool upload=true)
+    public static void Create(Exception e, bool upload, bool unhandled)
     {
       try {
         string crashLog = FullPath;
@@ -33,8 +32,10 @@ namespace disParityUI
         using (StreamWriter s = new StreamWriter(crashLog)) {
           s.WriteLine("Crash log generated {0}", DateTime.Now);
           s.WriteLine("Version: {0}", disParity.Version.VersionString);
+          s.WriteLine("Unhandled: {0}", unhandled ? "Yes" : "No");
           s.WriteLine();
           while (e != null) {
+            s.WriteLine("Exception: " + e.GetType().ToString());
             s.WriteLine("Message: " + e.Message);
             s.WriteLine("Stack: " + e.StackTrace);
             e = e.InnerException;

@@ -35,23 +35,23 @@ namespace disParityUI
       LogFile.Log(e.StackTrace);
       LogFile.Close();
 
-      LogCrash(e);
+      LogCrash(e, true);
 
       try {
         CrashWindow crashWindow = new CrashWindow(app.MainWindow, new CrashWindowViewModel());
         crashWindow.ShowDialog();
       }
       catch {
-        // hide any problems showing the crash window, but wait 3 seconds to give the crash log a chance to upload
-        Thread.Sleep(3000);
+        // hide any problems showing the crash window, but wait 5 seconds to give the crash log a chance to upload
+        Thread.Sleep(5000);
       }
 
       Environment.Exit(0);
     }
 
-    public static void LogCrash(Exception e)
+    public static void LogCrash(Exception e, bool unhandled = false)
     {
-      CrashLog.Create(e);
+      CrashLog.Create(e, true, unhandled);
     }
 
   }

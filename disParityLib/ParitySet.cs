@@ -21,7 +21,7 @@ namespace disParity
     private bool cancel;
     private HashSet<string> errorFiles = new HashSet<string>(); // files that generated errors during an operation; tracked here to avoid complaining about the same file over and over
 
-    // For a reportable generated during a long-running operation (Recover, Verify, etc.)
+    // For a reportable error generated during a long-running operation (Recover, Verify, etc.)
     public event EventHandler<ErrorMessageEventArgs> ErrorMessage;
 
     const double TEMP_FLUSH_PERCENT = 0.2;
@@ -58,7 +58,9 @@ namespace disParity
       foreach (Drive d in Config.Drives) {
         if (File.Exists(Path.Combine(Config.ParityDir, d.Metafile)))
           Empty = false;
-        drives.Add(new DataDrive(d.Path, d.Metafile, Config));
+        DataDrive dataDrive = new DataDrive(d.Path, d.Metafile, Config);
+        dataDrive.ErrorMessage += HandleDataDriveErrorMessage;
+        drives.Add(dataDrive);
       }
       // try to record how many drives in the registry
       try {
@@ -130,10 +132,11 @@ namespace disParity
     }
 
     /// <summary>
-    /// Erase a previously created parity set.  Not currently used.
+    /// Erase a previously created parity set. 
     /// </summary>
     public void Erase()
     {
+      parity.Close();
       parity.DeleteAll();
       foreach (DataDrive d in drives)
         d.Clear();
@@ -429,6 +432,7 @@ namespace disParity
         File.Move(fullPath, Path.ChangeExtension(fullPath, ".old"));
 
       DataDrive newDrive = new DataDrive(path, metaFile, Config);
+      newDrive.ErrorMessage += HandleDataDriveErrorMessage;
       drives.Add(newDrive);
 
       // update Config and save
@@ -436,6 +440,13 @@ namespace disParity
       Config.Save();
 
       return newDrive;
+    }
+
+    private void HandleDataDriveErrorMessage(object sender, ErrorMessageEventArgs args)
+    {
+      // propagate the error back up to the top so it can be reported to the user
+      // but don't log it because DataDrive already logged it
+      FireErrorMessage(args.Message, false);
     }
 
     /// <summary>
@@ -690,8 +701,11 @@ namespace disParity
         if (endBlock > MaxParityBlock()) {
           // File is going on the end, so make sure there is enough space 
           // left on the parity drive to actually add this file.
-          // FIXME: This check should also be sure there is enough space left for the new file table
           long required = (endBlock - MaxParityBlock()) * Parity.BLOCK_SIZE;
+          // must also make sure there is enough room for new filesX.dat
+          required += r.Drive.MetaFileSize;
+          // add one extra block's worth to give us some wiggle room
+          required += Parity.BLOCK_SIZE;
           long available = parity.FreeSpace;
           if ((available != -1) && (available < required)) {
             FireErrorMessage(String.Format("Insufficient space available on {0} to process " +
@@ -952,14 +966,18 @@ namespace disParity
           if (cancel) {
             // we can't salvage an initial update that was cancelled so we'll have to start again from scratch next time.
             LogFile.Log("Initial update cancelled.  Resetting parity to empty.");
-            parity.Close();
-            parity.DeleteAll();
-            foreach (DataDrive d in drives)
-              d.Clear();
+            Erase();
             return;
           }
 
         }
+      }
+      catch (Exception e) {
+        LogFile.Log("Fatal error on initial update: " + e.Message);
+        LogFile.Log(e.StackTrace);
+        // can't recover from errors either, must also start over from scratch
+        Erase();
+        throw new UpdateFailedException(e.Message);
       }
       finally {
         foreach (DataDrive d in drives)
@@ -1068,9 +1086,10 @@ namespace disParity
         throw new Exception(String.Format("{0} is not a valid parity path (must be absolute)", Config.ParityDir));
     }
 
-    private void FireErrorMessage(string message)
+    private void FireErrorMessage(string message, bool log = true)
     {
-      LogFile.Log(message);
+      if (log)
+        LogFile.Log(message);
       if (ErrorMessage != null)
         ErrorMessage(this, new ErrorMessageEventArgs(message));
     }
@@ -1120,6 +1139,11 @@ namespace disParity
     }
 
     public string Message { get; private set; }
+  }
+
+  public class UpdateFailedException : Exception
+  {
+    public UpdateFailedException(string msg) : base(msg) { }
   }
 
 }

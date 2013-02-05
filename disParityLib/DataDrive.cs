@@ -30,6 +30,8 @@ namespace disParity
     private Dictionary<string, FileRecord> files; // Master list of protected files; should reflect what is currently in files.dat at all times
     private List<FileRecord> scanFiles = new List<FileRecord>(); // List of current files on the drive as seen this scan, non-empty only during a scan
     private Dictionary<string, FileRecord> seenFileNames = new Dictionary<string, FileRecord>(); // for fast lookups, also only non-empty during a scan
+    private int ignoreCount; // number of files that matched an ignore filter this scan
+    private HashSet<string> errorFiles = new HashSet<string>(); // list of files that had errors during the scan.  We won't add them on an update, but we won't remove them either.
     private MD5 hash;
     private Config config;
     private ProgressEstimator scanProgress;
@@ -44,6 +46,7 @@ namespace disParity
 
     public event EventHandler<ScanCompletedEventArgs> ScanCompleted;
     public event EventHandler<EventArgs> ChangesDetected;
+    public event EventHandler<ErrorMessageEventArgs> ErrorMessage;
 
     public DataDrive(string root, string metaFile, Config config)
     {
@@ -219,6 +222,7 @@ namespace disParity
       cancelScan = false;
       Progress = 0;
       LastScanStart = DateTime.Now;
+      ignoreCount = 0;
       bool error = false;
       try {
 
@@ -248,8 +252,8 @@ namespace disParity
             Progress = 1;
             AnalyzingResults = true;
             Compare();
-            LogFile.Log("Scan of {0} complete. Found {1} file{2} ({3} total) Adds: {4} Deletes: {5} Moves: {6} Edits: {7}", Root, scanFiles.Count,
-              scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize), adds.Count, deletes.Count, moves.Count, editCount);
+            LogFile.Log("Scan of {0} complete. Found {1} file{2} ({3} total) Adds: {4} Deletes: {5} Moves: {6} Edits: {7} Ignored: {8}", Root, scanFiles.Count,
+              scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize), adds.Count, deletes.Count, moves.Count, editCount, ignoreCount);
             if (cancelScan) {
               Status = "Scan required";
               DriveStatus = DriveStatus.ScanRequired;
@@ -262,7 +266,8 @@ namespace disParity
             LogFile.Log("{0}: Scan cancelled", Root);
         }
         catch (Exception e) {
-          LogFile.Log("Could not scan {0}: {1}", root, e.Message);
+          FireErrorMessage(String.Format("Could not scan {0}: {1}", root, e.Message));
+          LogFile.Log(e.StackTrace);
           LastError = e.Message;
           DriveStatus = DriveStatus.AccessError;
           error = true;
@@ -275,11 +280,11 @@ namespace disParity
         UpdateStatus();
         scanFiles.Clear();
         seenFileNames.Clear();
+        errorFiles.Clear();
         FireScanCompleted(cancelScan, error, adds.Count > 0 || deletes.Count > 0, auto);
         Scanning = false;
       }
     }
-    
 
     private void Scan(DirectoryInfo dir, List<Regex> ignores, ProgressEstimator progress = null)
     {
@@ -344,29 +349,37 @@ namespace disParity
         // have to use Path.Combine here because accessing the f.FullName property throws
         // an exception if the path is too long
         string fullName = Path.Combine(dir.FullName, f.Name);
-        if (fullName.Length >= MAX_PATH) {
-          LogFile.Log("Warning: skipping file \"" + fullName + "\" because the path is too long");
-          continue;
-        }
-        if (f.Attributes == (FileAttributes)(-1))
-          continue;
-        if (config.IgnoreHidden && (f.Attributes & FileAttributes.Hidden) != 0)
-          continue;
-        if ((f.Attributes & FileAttributes.System) != 0)
-          continue;
-        bool ignore = false;
-        foreach (Regex regex in ignores)
-          if (regex.IsMatch(f.Name.ToLower())) {
-            ignore = true;
-            break;
+        try {
+          if (fullName.Length >= MAX_PATH) {
+            LogFile.Log("Warning: skipping file \"" + fullName + "\" because the path is too long");
+            continue;
           }
-        if (ignore) {
-          LogFile.Log("Skipping \"{0}\" because it matches an ignore", f.FullName);
-          continue;
+          if (f.Attributes == (FileAttributes)(-1))
+            continue;
+          if (config.IgnoreHidden && (f.Attributes & FileAttributes.Hidden) != 0)
+            continue;
+          if ((f.Attributes & FileAttributes.System) != 0)
+            continue;
+          bool ignore = false;
+          foreach (Regex regex in ignores)
+            if (regex.IsMatch(f.Name.ToLower())) {
+              ignore = true;
+              break;
+            }
+          if (ignore) {
+            if (LogFile.Verbose)
+              LogFile.Log("Skipping \"{0}\" because it matches an ignore", f.FullName); 
+            ignoreCount++;
+            continue;
+          }          
+          FileRecord r = new FileRecord(f, relativePath, this);
+          scanFiles.Add(r);
+          seenFileNames[r.Name.ToLower()] = r;
         }
-        FileRecord r = new FileRecord(f, relativePath, this);
-        scanFiles.Add(r);
-        seenFileNames[r.Name.ToLower()] = r;
+        catch (Exception e) {
+          errorFiles.Add(fullName.ToLower());
+          FireErrorMessage(String.Format("Error scanning \"{0}\": {1}", fullName, e.Message));
+        }
       }
     }
 
@@ -389,6 +402,13 @@ namespace disParity
     {
       if (ScanCompleted != null)
         ScanCompleted(this, new ScanCompletedEventArgs(cancelled, error, updateNeeded, auto));
+    }
+
+    private void FireErrorMessage(string message)
+    {
+      LogFile.Log(message);
+      if (ErrorMessage != null)
+        ErrorMessage(this, new ErrorMessageEventArgs(message));
     }
 
     // the "deletes" list contains FileRecords from the master files list
@@ -422,7 +442,7 @@ namespace disParity
 
       // build list of old files we don't see now (deletes)
       foreach (var kvp in files)
-        if (!seenFileNames.ContainsKey(kvp.Key))
+        if (!seenFileNames.ContainsKey(kvp.Key) && !errorFiles.Contains(kvp.Value.FullPath.ToLower()))
           deletes.Add(kvp.Value);
       
       // some of the files in add/delete list might actually be moves, check for that
@@ -550,26 +570,6 @@ namespace disParity
     }
 
     /// <summary>
-    /// Run a hash check on every file on this drive.  Return the number of failures.
-    /// </summary>
-    public int HashCheck()
-    {
-      int failures = 0;
-      foreach (FileRecord r in files.Values)
-        try {
-          LogFile.Log("Checking hash for {0}...", r.FullPath);
-          if (!HashCheck(r)) {
-            LogFile.Log("Hash check FAILED");
-            failures++;
-          }
-        }
-        catch (Exception e) {
-          LogFile.Log("Error opening {0} for hash check: {1}", r.FullPath, e.Message);
-        }
-      return failures;
-    }
-
-    /// <summary>
     /// Verify that the hash on record for this file matches the actual file currently on disk
     /// </summary>
     public bool HashCheck(FileRecord r)
@@ -671,7 +671,7 @@ namespace disParity
           enumFile = new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read);
         }
         catch (Exception e) {
-          LogFile.Log("Error opening {0} for reading: {1}", fullName, e.Message);
+          FireErrorMessage(String.Format("Error opening {0} for reading ({1}.)  File will be skipped this update.", fullName, e.Message));
           enumFile = null; // just to be sure
           return GetNextBlock(buf);
         }
@@ -786,6 +786,7 @@ namespace disParity
     {
       get
       {
+        CalculateMaxBlock();
         BitArray blockMask = new BitArray((int)MaxBlock);
         foreach (FileRecord r in files.Values) {
           UInt32 endBlock = r.StartBlock + r.LengthInBlocks;
@@ -827,27 +828,67 @@ namespace disParity
       FileCount = files.Count;
     }
 
-    private void SaveFileList()
+    public long MetaFileSize
+    {
+      get
+      {
+        string metaFile = MetaFilePath;
+        if (File.Exists(metaFile)) {
+          FileInfo fi = new FileInfo(metaFile);
+          return fi.Length;
+        }
+        else
+          return 0;
+      }
+    }
+
+    private bool SaveFileList()
     {
       DateTime start = DateTime.Now;
       LogFile.VerboseLog("Saving file data for {0}...", root);
       string backup = "";
       if (File.Exists(MetaFilePath)) {
         backup = Path.ChangeExtension(MetaFilePath, ".BAK");
-        File.Move(MetaFilePath, backup);
+        try {
+          if (File.Exists(backup))
+            File.Delete(backup);
+          File.Move(MetaFilePath, backup);
+        }
+        catch {
+          // ignore any errors making the backup
+          backup = "";
+        }
       }
-      using (FileStream f = new FileStream(MetaFilePath, FileMode.Create, FileAccess.Write)) {
-        FileRecord.WriteUInt32(f, META_FILE_VERSION);
-        FileRecord.WriteUInt32(f, (UInt32)files.Count);
-        foreach (FileRecord r in files.Values)
-          r.WriteToFile(f);
-        f.Close();
+      try {
+        using (FileStream f = new FileStream(MetaFilePath, FileMode.Create, FileAccess.Write)) {
+          FileRecord.WriteUInt32(f, META_FILE_VERSION);
+          FileRecord.WriteUInt32(f, (UInt32)files.Count);
+          foreach (FileRecord r in files.Values)
+            r.WriteToFile(f);
+          f.Close();
+        }
+      }
+      catch (Exception e) {
+        LogFile.Log("ERROR saving " + MetaFilePath + ": " + e.Message);
+        if (backup != "") {
+          LogFile.Log("Attempting to restore backup...");
+          try {
+            if (File.Exists(MetaFilePath))
+              File.Delete(MetaFilePath);
+            File.Move(backup, MetaFilePath);
+          }
+          catch (Exception e2) {
+            LogFile.Log("Error restoring backup: " + e2.Message);
+          }
+        }
+        return false;
       }
       if (backup != "")
         File.Delete(backup);
       TimeSpan elapsed = DateTime.Now - start;
       CalculateMaxBlock();
       LogFile.VerboseLog("{0} records saved in {1:F2} sec", files.Count, elapsed.TotalSeconds);
+      return true;
     }
 
     private void AppendFileRecord(FileRecord r)

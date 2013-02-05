@@ -57,6 +57,7 @@ namespace disParityUI
       startTime = DateTime.Now;
       inProgress = true;
       drive = selectedDrive;
+      errorMessages.Clear();
       if (ScanFirst && viewModel.Drives.Count > 0) {
         scanning = true;
         viewModel.Status = "Scanning drives...";
@@ -162,7 +163,6 @@ namespace disParityUI
 
       viewModel.StartProgress();
       viewModel.Status = Name + " in progress...";
-      errorMessages.Clear();
 
       Task.Factory.StartNew(() =>
       {
@@ -250,7 +250,7 @@ namespace disParityUI
     /// </summary>
     abstract public string Name { get; }
 
-    abstract protected string LowerCaseName { get; }
+    protected virtual string LowerCaseName { get { return Name.ToLower(); } }
 
     /// <summary>
     /// Whether or not this operation should be preceded by a scan
