@@ -77,7 +77,8 @@ namespace disParityUI
 
     void AddDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = !String.IsNullOrEmpty(viewModel.Config.ParityDir) && !viewModel.Busy;
+      e.CanExecute = (viewModel.Config != null) && 
+        !String.IsNullOrEmpty(viewModel.Config.ParityDir) && !viewModel.Busy;
     }
 
     void AddDriveExecuted(object sender, ExecutedRoutedEventArgs e)

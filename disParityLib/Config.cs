@@ -34,6 +34,11 @@ namespace disParity
     public Config(string filename)
     {
       this.filename = filename;
+      Reset();
+    }
+
+    public void Reset()
+    {
       MaxTempRAM = DEFAULT_MAX_TEMP_RAM;
       IgnoreHidden = DEFAULT_IGNORE_HIDDEN;
       MainWindowX = DEFAULT_MAIN_WINDOW_X;
@@ -69,6 +74,31 @@ namespace disParity
       {
         return File.Exists(filename);
       }
+    }
+
+    public void Validate()
+    {
+      // Make sure all data paths are set and valid
+      for (int i = 0; i < Drives.Count; i++) {
+        if (Drives[i] == null)
+          throw new Exception(String.Format("Path {0} is not set (check {1})", i + 1, Filename));
+        if (!Path.IsPathRooted(Drives[i].Path))
+          throw new Exception(String.Format("Path {0} is not valid (must be absolute)", Drives[i]));
+      }
+
+      if (!String.IsNullOrEmpty(ParityDir) && !Path.IsPathRooted(ParityDir))
+        throw new Exception(String.Format("{0} is not a valid parity path (must be absolute)", ParityDir));
+    }
+
+    public void MakeBackup()
+    {
+      string backup = Path.ChangeExtension(filename, ".bak");
+      try {
+        if (File.Exists(backup))
+          File.Delete(backup);
+        File.Copy(filename, backup);
+      }
+      catch { }
     }
 
     public void Load()

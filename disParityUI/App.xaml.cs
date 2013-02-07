@@ -38,7 +38,7 @@ namespace disParityUI
       LogCrash(e, true);
 
       try {
-        CrashWindow crashWindow = new CrashWindow(app.MainWindow, new CrashWindowViewModel());
+        CrashWindow crashWindow = new CrashWindow(app.MainWindow, new CrashWindowViewModel(e));
         crashWindow.ShowDialog();
       }
       catch {
@@ -46,7 +46,7 @@ namespace disParityUI
         Thread.Sleep(5000);
       }
 
-      Environment.Exit(0);
+      System.Environment.Exit(0);
     }
 
     public static void LogCrash(Exception e, bool unhandled = false)

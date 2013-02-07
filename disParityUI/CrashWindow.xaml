@@ -6,7 +6,7 @@
         ResizeMode="NoResize"
         WindowStyle="ToolWindow"
         Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"                  
-        Title="Unrecoverable Error" Height="250" Width="300">
+        Title="Unrecoverable Error" Height="300" Width="300">
   <Grid>
     <StackPanel Orientation="Vertical">
       <DockPanel Margin="10">
@@ -15,8 +15,13 @@
           Sorry, disParity has encountered an unrecoverable error and needs to close.
         </TextBlock>
       </DockPanel>
+      <TextBlock HorizontalAlignment="Center" TextWrapping="Wrap" Margin="10,0,10,5">
+        The error message is:
+      </TextBlock>
+      <TextBlock HorizontalAlignment="Center" TextWrapping="Wrap" Margin="10,10,10,5" 
+                 Text="{Binding Path=ErrorMessage, Mode=OneWay}" />
       <TextBlock HorizontalAlignment="Center" TextWrapping="Wrap" Margin="10,10,10,5">
-        It would be greatly appreciated if you could report this issue in the disParity forum:
+        Please help us improve this software by reporting this issue in the disParity forum:
       </TextBlock>
       <TextBlock HorizontalAlignment="Center" Margin="10">
         <Hyperlink Click="HandleSupportClick"><Run Text="{Binding Path=ForumURL, Mode=OneWay}"/></Hyperlink>

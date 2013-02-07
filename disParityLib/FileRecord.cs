@@ -76,6 +76,8 @@ namespace disParity
     {
       FileRecord rec = new FileRecord();
       rec.Name = ReadString(f);
+      if (rec.Name.Length == 0)
+        return null;
       rec.Length = ReadLong(f);
       rec.Attributes = (FileAttributes)ReadUInt32(f);
       rec.CreationTime = ReadDateTime(f);
@@ -84,7 +86,7 @@ namespace disParity
       rec.HashCode = new byte[16];
       rec.drive = drive;
       if (f.Read(rec.HashCode, 0, 16) != 16)
-        throw new Exception(String.Format("Could not read from {0}", f.Name));
+        return null;
       if (rec.Name[0] == '\\')
         rec.Name = rec.Name.TrimStart('\\');
 
@@ -134,7 +136,7 @@ namespace disParity
     {
       get
       {
-        return 2 + Name.Length + 8 + 4 + 8 + 8 + 4 + 16;
+        return 2 + Encoding.UTF8.GetBytes(Name).Length + 8 + 4 + 8 + 8 + 4 + 16;
       }
     }
 

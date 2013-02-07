@@ -63,6 +63,7 @@
       <DependentUpon>CrashWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="CrashWindowViewModel.cs" />
+    <Compile Include="Environment.cs" />
     <Compile Include="HashcheckOperation.cs" />
     <Compile Include="Icons.cs" />
     <Compile Include="LicenseWindow.xaml.cs">

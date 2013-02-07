@@ -28,6 +28,7 @@ namespace disParityUI
     private System.Timers.Timer pingTimer;
     private OperationManager operationManager;
     private bool upgradeNotified;
+    private Exception configLoadException;
 
     public MainWindowViewModel(Window owner)
     {
@@ -41,20 +42,6 @@ namespace disParityUI
         Directory.CreateDirectory(logPath);
       LogFile.Open(Path.Combine(logPath, "disParity.log"), false);
       LogFile.Log("Application launched (version {0})", disParity.Version.VersionString);
-
-      LoadConfig(appDataPath);
-
-      paritySet = new ParitySet(config);
-      AddDrives();
-      paritySet.PropertyChanged += HandleParitySetPropertyChanged;
-
-      Left = config.MainWindowX;
-      Top = config.MainWindowY;
-      Height = config.MainWindowHeight;
-      Width = config.MainWindowWidth;
-
-      UpdateStartupMessage();
-      UpdateParityStatus();
 
       updateTimer = new System.Timers.Timer(1000);
       updateTimer.AutoReset = true;
@@ -71,14 +58,25 @@ namespace disParityUI
       operationManager = new OperationManager(this);
       operationManager.OperationFinished += HandleOperationFinished;
       
-    }
+      // Try to load the config.xml now, we need it to set the main window position.
+      // If it fails, use default values for everything and display a dialog in Loaded()
+      try {
+        config = new Config(Path.Combine(Utils.AppDataFolder, "Config.xml"));
+        if (config.Exists) {
+          config.Load();
+          config.Validate();
+        }
+      }
+      catch (Exception e) {
+        configLoadException = e;
+        config.MakeBackup();
+        config.Reset();
+      }
 
-    private void LoadConfig(string appDataPath)
-    {
-      string ConfigPath = Path.Combine(appDataPath, "Config.xml");
-      // let generic crash logging handle any exceptions loading the Config
-      config = new Config(ConfigPath);
-      config.Load();
+      Left = config.MainWindowX;
+      Top = config.MainWindowY;
+      Height = config.MainWindowHeight;
+      Width = config.MainWindowWidth;
     }
 
     /// <summary>
@@ -86,6 +84,49 @@ namespace disParityUI
     /// </summary>
     public void Loaded()
     {
+      // Check for exception loading config file
+      if (configLoadException != null) {
+        App.LogCrash(configLoadException);
+        MessageWindow.Show(owner, "Invalid config file", "An error occurred loading the config file: \n\n" +
+          configLoadException.Message + "\n\nDefault values will be used for most settings.",
+          MessageWindowIcon.Error, MessageWindowButton.OK);
+      }
+
+      // Make sure parity folder exists
+      if (!String.IsNullOrEmpty(config.ParityDir)) {
+        try {
+          Directory.CreateDirectory(config.ParityDir);
+        }
+        catch (Exception e) {
+          LogFile.Log("Could not create parity folder " + config.ParityDir + ": " + e.Message);
+          App.LogCrash(e);
+          MessageWindow.Show(owner, "Could not access parity folder", "Unable to access the parity location " + config.ParityDir + "\n\n" +
+            "You will need to set a valid parity location (under Options) before proceeding.",
+            MessageWindowIcon.Error, MessageWindowButton.OK);
+        }
+      }
+
+      // the ParitySet constructor really, really should not fail.  If it does, there's nothing we can do,
+      // so just let the global unhandled exception handler catch it, report it, and close the app.
+      paritySet = new ParitySet(config, new disParityUI.Environment());
+
+      try {
+        paritySet.ReloadDrives();
+      }
+      catch (Exception e) {
+        App.LogCrash(e);
+        MessageWindow.Show(owner, "Can't load backup information", "An error occurred while trying to load the backup: \n\n" +
+          e.Message,
+          MessageWindowIcon.Error, MessageWindowButton.OK);
+      }
+
+
+      AddDrives();
+      paritySet.PropertyChanged += HandleParitySetPropertyChanged;
+
+      UpdateStartupMessage();
+      UpdateParityStatus();
+
       try {
         if (!disParity.License.Accepted) {
           if (!ShowLicenseAgreement()) {
@@ -404,7 +445,7 @@ namespace disParityUI
 
     public Window Owner { get { return owner; } }
 
-    public bool Empty { get { return paritySet.Empty; } }
+    public bool Empty { get { return (paritySet != null) && paritySet.Empty; } }
 
     public ObservableCollection<DataDriveViewModel> Drives
     {

@@ -129,7 +129,8 @@ namespace disParity.CmdLine
       }
 
       try {
-        ParitySet set = new ParitySet(config);
+        ParitySet set = new ParitySet(config, null);  // <--- FIX ME, need to pass actual environment here
+        set.ReloadDrives();
         switch (cmd) {
           case Command.Update:
             set.Update(true);

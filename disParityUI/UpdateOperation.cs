@@ -22,6 +22,11 @@ namespace disParityUI
       if (scanFirst && !anyDriveNeedsUpdate)
         DisplayUpToDateStatus();
       else {
+        if (!viewModel.ParitySet.CheckAvailableSpaceForUpdate())
+          if (MessageWindow.Show(viewModel.Owner, "Insufficient disk space",
+            "There does not appear to be enough disk space on your parity drive to complete this operation.  Are you sure you want to attempt an update?",
+            MessageWindowIcon.Error, MessageWindowButton.YesNo) != true)
+            return;
         try {
           viewModel.ParitySet.Update();
         }
@@ -33,8 +38,11 @@ namespace disParityUI
           suppressErrorCheck = true;
           throw e;
         }
-        if (!cancelled && errorMessages.Count == 0)
-          DisplayUpToDateStatus();
+        if (!cancelled)
+          if (errorMessages.Count == 0)
+            DisplayUpToDateStatus();
+          else
+            Status = "Update failed";
       }
 
     }

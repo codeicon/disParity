@@ -10,9 +10,11 @@ namespace disParityUI
 
   public class CrashWindowViewModel : NotifyPropertyChanged
   {
+    private Exception error;
 
-    public CrashWindowViewModel()
+    public CrashWindowViewModel(Exception e)
     {
+      error = e;
     }
 
     public ImageSource Icon
@@ -28,6 +30,14 @@ namespace disParityUI
       get
       {
         return @"http://www.vilett.com/disParity/forum/";
+      }
+    }
+
+    public string ErrorMessage
+    {
+      get
+      {
+        return "\"" + error.Message + "\"";
       }
     }
 

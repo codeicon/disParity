@@ -25,9 +25,9 @@ namespace disParity
       Array.Clear(data, 0, data.Length);
     }
 
-    public void Load(UInt32 block)
+    public bool Load(UInt32 block)
     {
-      parity.ReadBlock(block, data);
+      return parity.ReadBlock(block, data);
     }
 
     public void Add(byte[] data)
@@ -35,9 +35,9 @@ namespace disParity
       Utils.FastXOR(this.data, data);
     }
 
-    public void Write(UInt32 block)
+    public bool Write(UInt32 block)
     {
-      parity.WriteBlock(block, data);
+      return parity.WriteBlock(block, data);
     }
 
     public bool Equals(ParityBlock block)

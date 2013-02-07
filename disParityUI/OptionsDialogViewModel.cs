@@ -264,7 +264,7 @@ namespace disParityUI
         int max = (int)(0.8 * systemRAMInMB);
         max = (max / MaxTempRAMIncrement) * MaxTempRAMIncrement;
 
-        if (Environment.Is64BitProcess)
+        if (System.Environment.Is64BitProcess)
           return max;
         else
           // 32 bit process

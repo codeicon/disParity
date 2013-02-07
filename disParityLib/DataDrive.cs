@@ -39,6 +39,7 @@ namespace disParity
     private Timer fileCloseTimer;
     private object fileCloseLock = new object();
     private FileSystemWatcher watcher;
+    private IEnvironment env;
 
     const UInt32 META_FILE_VERSION = 1;
     const int MAX_FOLDER = 248;
@@ -48,11 +49,12 @@ namespace disParity
     public event EventHandler<EventArgs> ChangesDetected;
     public event EventHandler<ErrorMessageEventArgs> ErrorMessage;
 
-    public DataDrive(string root, string metaFile, Config config)
+    public DataDrive(string root, string metaFile, Config config, IEnvironment environment)
     {
       this.root = root;
       this.metaFile = metaFile;
       this.config = config;
+      this.env = environment;
 
       if (!root.StartsWith(@"\\")) {
         string drive = Path.GetPathRoot(root);
@@ -122,6 +124,8 @@ namespace disParity
       get { return Path.Combine(config.ParityDir, metaFile); }
     }
 
+    public string MetaFile { get { return metaFile; } }
+
     public string Root { get { return root; } }
 
     public UInt32 MaxBlock { get; private set; }
@@ -167,7 +171,7 @@ namespace disParity
     }
 
     /// <summary>
-    /// Returns the total size of all proteced files on this drive, in blocks.
+    /// Returns the total size of all protected files on this drive, in blocks.
     /// </summary>
     public UInt32 TotalFileBlocks
     {
@@ -187,6 +191,8 @@ namespace disParity
     {
       if (File.Exists(MetaFilePath))
         File.Delete(MetaFilePath);
+      if (File.Exists(Path.ChangeExtension(MetaFilePath, ".bak")))
+        File.Delete(Path.ChangeExtension(MetaFilePath, ".bak"));
       files.Clear();
       FileCount = 0;
       TotalFileSize = 0;
@@ -530,32 +536,31 @@ namespace disParity
         files[kvp.Value.Name.ToLower()] = kvp.Value;
       }
       // save updated master file table
+      BackupMetaFile();
       SaveFileList();
       // clear moves list, don't need it anymore
       moves.Clear();
     }
 
     /// <summary>
-    /// Removes the file from the master files list and saves the new list to disk
+    /// Removes the file from the master files list
     /// </summary>
     public void RemoveFile(FileRecord r)
     {
       string filename = r.Name.ToLower();
       Debug.Assert(files.ContainsKey(filename));
       files.Remove(filename);
-      SaveFileList();
       FileCount--;
     }
 
     /// <summary>
-    /// Adds the file to newFiles and saves the new list to disk
+    /// Adds the file to the master files list
     /// </summary>
     public void AddFile(FileRecord r)
     {
       string filename = r.Name.ToLower();
       Debug.Assert(!files.ContainsKey(filename));
       files[filename] = r;
-      SaveFileList();
       FileCount++;
     }
 
@@ -811,23 +816,36 @@ namespace disParity
     /// </summary>
     private void LoadFileList()
     {
-      using (FileStream metaData = new FileStream(MetaFilePath, FileMode.Open, FileAccess.Read)) {
-        UInt32 version = FileRecord.ReadUInt32(metaData);
-        if (version == 1)
-          // skip past unused count field
-          FileRecord.ReadUInt32(metaData);
-        else if (version != META_FILE_VERSION)
-          throw new Exception("file version mismatch: " + MetaFilePath);
-        files.Clear();
-        while (metaData.Position < metaData.Length) {
-          FileRecord r = FileRecord.LoadFromFile(metaData, this);
-          files[r.Name.ToLower()] = r;
+      try {
+        using (FileStream metaData = new FileStream(MetaFilePath, FileMode.Open, FileAccess.Read)) {
+          UInt32 version = FileRecord.ReadUInt32(metaData);
+          if (version == 1)
+            // skip past unused count field
+            FileRecord.ReadUInt32(metaData);
+          else if (version != META_FILE_VERSION)
+            throw new Exception("file version mismatch: " + MetaFilePath);
+          files.Clear();
+          while (metaData.Position < metaData.Length) {
+            FileRecord r = FileRecord.LoadFromFile(metaData, this);
+            if (r == null)
+              break;
+            files[r.Name.ToLower()] = r;
+          }
         }
+      }
+      catch (Exception e) {
+        env.LogCrash(e);
+        LogFile.Log(String.Format("Error reading {0}: {1}", MetaFilePath, e.Message));
+        files.Clear();
+        throw new MetaFileLoadException(MetaFilePath, e);
       }
       CalculateMaxBlock();
       FileCount = files.Count;
     }
 
+    /// <summary>
+    /// Returns the actual size of the current filesX.dat file on disk
+    /// </summary>
     public long MetaFileSize
     {
       get
@@ -842,53 +860,105 @@ namespace disParity
       }
     }
 
-    private bool SaveFileList()
+    /// <summary>
+    /// Returns the predicted meta file size if the current list of Adds is 
+    /// written to the filesX.dat file.  Called only before a Create() to check free space.
+    /// </summary>
+    public long PredictedMetaFileSize
     {
-      DateTime start = DateTime.Now;
-      LogFile.VerboseLog("Saving file data for {0}...", root);
-      string backup = "";
-      if (File.Exists(MetaFilePath)) {
-        backup = Path.ChangeExtension(MetaFilePath, ".BAK");
-        try {
-          if (File.Exists(backup))
-            File.Delete(backup);
-          File.Move(MetaFilePath, backup);
-        }
-        catch {
-          // ignore any errors making the backup
-          backup = "";
-        }
+      get
+      {
+        long size = 0;
+        foreach (FileRecord r in adds)
+          size += r.RecordSize;
+        return size;
       }
+    }
+
+    private void WriteFileList(string fileName)
+    {
       try {
-        using (FileStream f = new FileStream(MetaFilePath, FileMode.Create, FileAccess.Write)) {
+        using (FileStream f = new FileStream(fileName, FileMode.OpenOrCreate, FileAccess.Write)) {
           FileRecord.WriteUInt32(f, META_FILE_VERSION);
           FileRecord.WriteUInt32(f, (UInt32)files.Count);
           foreach (FileRecord r in files.Values)
             r.WriteToFile(f);
+          f.SetLength(f.Position);
           f.Close();
         }
       }
       catch (Exception e) {
-        LogFile.Log("ERROR saving " + MetaFilePath + ": " + e.Message);
-        if (backup != "") {
-          LogFile.Log("Attempting to restore backup...");
-          try {
-            if (File.Exists(MetaFilePath))
-              File.Delete(MetaFilePath);
-            File.Move(backup, MetaFilePath);
-          }
-          catch (Exception e2) {
-            LogFile.Log("Error restoring backup: " + e2.Message);
-          }
+        LogFile.Log(String.Format("Could not save {0}: {1}", fileName, e.Message));
+        // try to delete it in case it got partly saved
+        try {
+          File.Delete(fileName);
         }
+        catch {
+        }
+        throw new MetaFileSaveException(fileName, e);
+      }
+    }
+
+    public bool BackupMetaFile()
+    {
+      string fileName = MetaFilePath;
+      string backup = Path.ChangeExtension(MetaFilePath, ".bak");
+      try {
+        File.Copy(fileName, backup, true);
+      }
+      catch (Exception e) {
+        LogFile.Log(String.Format("Could not backup {0}: {1}", fileName, e.Message));
         return false;
       }
-      if (backup != "")
-        File.Delete(backup);
-      TimeSpan elapsed = DateTime.Now - start;
-      CalculateMaxBlock();
-      LogFile.VerboseLog("{0} records saved in {1:F2} sec", files.Count, elapsed.TotalSeconds);
       return true;
+    }
+
+    public bool RestoreMetaFile()
+    {
+      string fileName = MetaFilePath;
+      string backup = Path.ChangeExtension(MetaFilePath, ".bak");
+      try {
+        File.Copy(backup, fileName, true);
+      }
+      catch (Exception e) {
+        LogFile.Log(String.Format("Could not restore {0} from backup: {1}", fileName, e.Message));
+        return false;
+      }
+      return true;
+    }
+
+    /// <summary>
+    /// Backs up and then extendes the existing filesX.dat by the amount necessary to store the given new file record
+    /// </summary>
+    public bool ExtendMetaFile(FileRecord add)
+    {
+      if (!BackupMetaFile())
+        return false;
+      string fileName = MetaFilePath;
+      FileInfo fi = new FileInfo(fileName);
+      try {
+        using (FileStream f = new FileStream(fileName, FileMode.Open, FileAccess.Write))
+          f.SetLength(fi.Length + add.RecordSize);
+      }
+      catch (Exception e) {
+        LogFile.Log(String.Format("Could not extend {0}: {1}", fileName, e.Message));
+        RestoreMetaFile();
+        return false;
+      }
+      return true;
+    }
+
+    public void SaveFileList()
+    {
+      try {
+        WriteFileList(MetaFilePath);
+      }
+      catch (Exception e) {
+        // try to restore from the backup
+        RestoreMetaFile();
+        throw e;
+      }
+      CalculateMaxBlock();
     }
 
     private void AppendFileRecord(FileRecord r)
@@ -1098,4 +1168,15 @@ namespace disParity
 
   }
 
+  public class MetaFileSaveException : Exception
+  {
+    public MetaFileSaveException(string file, Exception inner) : base("Error saving " + file + ": " + inner.Message, inner) { }
+  }
+
+  public class MetaFileLoadException : Exception
+  {
+    public MetaFileLoadException(string file, Exception inner) : base("Error reading " + file + ": " + inner.Message, inner) { }
+  }
+
 }
+

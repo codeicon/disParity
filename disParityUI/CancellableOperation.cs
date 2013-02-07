@@ -209,13 +209,13 @@ namespace disParityUI
     {
       cancelled = true;
       if (scanning) {
-        viewModel.Status = "Cancelling scan...";
+        Status = "Cancelling scan...";
         foreach (DataDriveViewModel vm in viewModel.Drives)
           vm.DataDrive.CancelScan();
       }
       else {
         LogFile.Log("Cancelling " + Name);
-        viewModel.Status = "Cancelling " + Name + "...";        
+        Status = "Cancelling " + Name + "...";        
         CancelOperation();
       }
     }
