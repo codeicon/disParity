@@ -110,11 +110,25 @@ namespace disParity
     /// Trims parity back down to the given block.  Useful for reclaiming parity 
     /// disk space after files have been deleted off the end.
     /// </summary>
-    public void TrimParity(UInt32 block)
+    public void Trim(UInt32 block)
     {
       if (block >= maxBlock)
         return;
-      // FIXME: finish this!  And call it from Update.
+      // truncate the parity file corresponding to block
+      if (!OpenParityFile(block, true))
+        return;
+      f.SetLength(FilePosition(block));
+      Close();
+      // now delete all parity files after this one
+      UInt32 partityFileNum = (block / (UInt32)BLOCKS_PER_FILE) + 1;
+      for (; ; ) {
+        string fileName = Path.Combine(config.ParityDir, "parity" + partityFileNum.ToString() + ".dat");
+        if (!File.Exists(fileName))
+          break;
+        File.Delete(fileName);
+        partityFileNum++;
+      }
+      maxBlock = block;
     }
 
     public void Close()

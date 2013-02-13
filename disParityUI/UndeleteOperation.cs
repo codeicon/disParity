@@ -13,10 +13,18 @@ namespace disParityUI
 
     private List<string> filesToRestore;
 
+    const int MAX_UNDELETE_FILES = 1000;
+
     protected override bool PrepareOperation()
     {
       if (drive.DataDrive.Deletes.Count == 0)
         return false;
+
+      if (drive.DataDrive.Deletes.Count > MAX_UNDELETE_FILES) {
+        MessageWindow.Show(viewModel.Owner, "Can't undelete", "There are too many files missing from this drive to perform an Undelete.\n\n" +
+          "Try using Recover instead to recover the entire drive.", MessageWindowIcon.Error, MessageWindowButton.OK);
+        return false;
+      }
 
       List<string> files = new List<string>();
       foreach (FileRecord r in drive.DataDrive.Deletes)

@@ -156,13 +156,14 @@ namespace disParityUI
 
       LogFile.Log("Beginning " + Name);
       if (!PrepareOperation()) {
+        LogFile.Log(Name + " cancelled.");
         Status = Name + " cancelled";
         End();
         return;
       }
 
       viewModel.StartProgress();
-      viewModel.Status = Name + " in progress...";
+      Status = Name + " in progress...";
 
       Task.Factory.StartNew(() =>
       {
@@ -170,14 +171,14 @@ namespace disParityUI
           DoOperation();
           if (cancelled) {
             LogFile.Log(Name + " cancelled.");
-            viewModel.Status = Name + " cancelled.";
+            Status = Name + " cancelled.";
           }
           else
             LogFile.Log(Name + " complete (operation took " + Utils.SmartTime(DateTime.Now - startTime) + ")");
         }
         catch (Exception e) {
           App.LogCrash(e);
-          viewModel.Status = Name + " failed: " + e.Message;
+          Status = Name + " failed: " + e.Message;
         }
         finally {
           End();

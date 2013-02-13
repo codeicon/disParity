@@ -875,12 +875,17 @@ namespace disParity
       }
     }
 
+    private void WriteFileHeader(FileStream f, UInt32 count)
+    {
+      FileRecord.WriteUInt32(f, META_FILE_VERSION);
+      FileRecord.WriteUInt32(f, count);
+    }
+
     private void WriteFileList(string fileName)
     {
       try {
         using (FileStream f = new FileStream(fileName, FileMode.OpenOrCreate, FileAccess.Write)) {
-          FileRecord.WriteUInt32(f, META_FILE_VERSION);
-          FileRecord.WriteUInt32(f, (UInt32)files.Count);
+          WriteFileHeader(f, (UInt32)files.Count);
           foreach (FileRecord r in files.Values)
             r.WriteToFile(f);
           f.SetLength(f.Position);
@@ -902,6 +907,8 @@ namespace disParity
     public bool BackupMetaFile()
     {
       string fileName = MetaFilePath;
+      if (!File.Exists(fileName))
+        return true; // this is a valid case, if a new drive has just been added to the array
       string backup = Path.ChangeExtension(MetaFilePath, ".bak");
       try {
         File.Copy(fileName, backup, true);
@@ -935,6 +942,10 @@ namespace disParity
       if (!BackupMetaFile())
         return false;
       string fileName = MetaFilePath;
+      if (!File.Exists(fileName)) 
+        // this is a valid case if a new drive has just been added to the array
+        using (FileStream f = new FileStream(fileName, FileMode.Create, FileAccess.Write))
+          WriteFileHeader(f, 0);
       FileInfo fi = new FileInfo(fileName);
       try {
         using (FileStream f = new FileStream(fileName, FileMode.Open, FileAccess.Write))
@@ -965,8 +976,7 @@ namespace disParity
     {
       if (!File.Exists(MetaFilePath))
         using (FileStream fNew = new FileStream(MetaFilePath, FileMode.Create, FileAccess.Write)) {
-          FileRecord.WriteUInt32(fNew, META_FILE_VERSION);
-          FileRecord.WriteUInt32(fNew, 0); // unknown count
+          WriteFileHeader(fNew, 0); // unknown count
         }
       using (FileStream f = new FileStream(MetaFilePath, FileMode.Append, FileAccess.Write))
         r.WriteToFile(f); 

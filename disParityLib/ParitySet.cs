@@ -216,6 +216,14 @@ namespace disParity
             addCount == 1 ? "" : "s", Utils.SmartSize(addSize), elapsed.TotalSeconds);
         }
 
+        // possibly reclaim unused parity space if any files were deleted off the end
+        UInt32 maxParityBlock = MaxParityBlock();
+        if (maxParityBlock < parity.MaxBlock) {
+          UInt32 blocks = parity.MaxBlock - maxParityBlock;
+          LogFile.Log(String.Format("Reclaiming {0} blocks of unused parity space...", blocks));
+          parity.Trim(MaxParityBlock());
+          LogFile.Log(Utils.SmartSize((long)blocks * Parity.BLOCK_SIZE) + " freed on parity drive.");
+        }
       }
       finally {
         foreach (DataDrive d in drives) {
