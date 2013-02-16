@@ -37,7 +37,8 @@ namespace disParity
         mmf = MemoryMappedFile.CreateNew("disparity.tmp", (long)mmfBlocks * Parity.BLOCK_SIZE);
         mmfStream = mmf.CreateViewStream();
       }
-      catch {
+      catch (Exception e) {
+        LogFile.Log("Could not create memory mapped file: " + e.Message);
         // We'll use a temp file only
         mmf = null;
         mmfStream = null;
@@ -79,8 +80,10 @@ namespace disParity
       } 
       else {
         if (tempFileStream == null) {
-          LogFile.Log("Switching from RAM to temp file at {0}", Utils.SmartSize(mmfStream.Position));
-          mmfStream.Seek(0, SeekOrigin.Begin); // return MMF stream to its start
+          if (mmfStream != null) {
+            LogFile.Log("Switching from RAM to temp file at {0}", Utils.SmartSize(mmfStream.Position));
+            mmfStream.Seek(0, SeekOrigin.Begin); // return MMF stream to its start
+          }
           writingToMMF = false;
           // make sure temp directory exists
           if (!Directory.Exists(tempDir))

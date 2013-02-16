@@ -802,8 +802,10 @@ namespace disParity
     private bool RemoveFromParity(FileRecord r)
     {
       // make a backup copy of the meta file first.  If this fails, we know we won't be able to complete the remove. 
-      if (!r.Drive.BackupMetaFile())
+      if (!r.Drive.BackupMetaFile()) {
+        FireErrorMessage("Error removing " + r.FullPath + ": could not back up " + r.Drive.MetaFile);
         return false;
+      }
 
       bool success = false;
       try {
@@ -862,6 +864,7 @@ namespace disParity
 
             }
             catch (Exception e) {
+              env.LogCrash(e);
               FireErrorMessage(String.Format("Error removing {0}: {1}", r.FullPath, e.Message));
               return false;
             }
@@ -954,6 +957,7 @@ namespace disParity
           }
         }
         catch (Exception e) {
+          env.LogCrash(e);
           FireErrorMessage(String.Format("Unexpected error while processing {0}: {1}", r.FullPath, e.Message));
           return false;
         }
