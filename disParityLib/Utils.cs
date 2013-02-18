@@ -103,12 +103,16 @@ namespace disParity
         sb.Append(" minutes ");
       }
 
-      if (timeSpan.Seconds == 1)
-        sb.Append("1 second");
-      else {
-        sb.Append(timeSpan.Seconds.ToString());
-        sb.Append(" seconds");
+      if (timeSpan.Minutes > 0) {
+        if (timeSpan.Seconds == 1)
+          sb.Append("1 second");
+        else {
+          sb.Append(timeSpan.Seconds.ToString());
+          sb.Append(" seconds");
+        }
       }
+      else
+        sb.Append(String.Format("{0}.{1:D3} seconds", timeSpan.Seconds, timeSpan.Milliseconds));
 
       return sb.ToString();
     }
