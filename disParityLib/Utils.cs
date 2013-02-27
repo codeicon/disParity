@@ -29,6 +29,28 @@ namespace disParity
       return path;
     }
 
+    public static bool PathIsFolder(string path)
+    {
+      try {
+        FileAttributes att = File.GetAttributes(path);
+        return (att & FileAttributes.Directory) == FileAttributes.Directory;
+      }
+      catch {
+        return false;
+      }
+    }
+
+    public static DateTime GetLastWriteTime(string file)
+    {
+      try {
+        FileInfo fi = new FileInfo(file);
+        return fi.LastWriteTime;
+      }
+      catch {
+        return DateTime.MinValue;
+      }
+    }
+
     public static bool HashCodesMatch(byte[] h1, byte[] h2)
     {
       if (h1 == null || h2 == null)

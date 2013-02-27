@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace disParity
 {
@@ -49,6 +50,7 @@ namespace disParity
       UpdateDelay = DEFAULT_UPDATE_DELAY;
       UpdateMode = DEFAULT_UPDATE_MODE;
       Ignores = new List<string>();
+      IgnoresRegex = new List<Regex>();
       Drives = new List<Drive>();
     }
 
@@ -64,6 +66,7 @@ namespace disParity
           Drives.Add(new Drive(oldConfig.BackupDirs[i], String.Format("files{0}.dat", i)));
         foreach (string i in oldConfig.Ignores)
           Ignores.Add(i);
+        UpdateIgnoresRegex();
         Save();
       }
     }
@@ -219,6 +222,7 @@ namespace disParity
           }
         }
       }
+      UpdateIgnoresRegex();
     }
 
     public void Save()
@@ -322,6 +326,18 @@ namespace disParity
       }
     }
 
+    public void UpdateIgnoresRegex()
+    {
+      // Convert list of ignores to a list of Regex
+      IgnoresRegex.Clear();
+      foreach (string i in Ignores) {
+        string pattern = Regex.Escape(i.ToLower());       // Escape the original string
+        pattern = pattern.Replace(@"\?", ".");  // Replace all \? with .
+        pattern = pattern.Replace(@"\*", ".*"); // Replace all \* with .*
+        IgnoresRegex.Add(new Regex(pattern));
+      }
+    }
+
     public UInt32 MaxTempRAM { get; set; } // in megabytes
 
     public bool IgnoreHidden { get; set; }
@@ -329,6 +345,8 @@ namespace disParity
     public List<Drive> Drives { get; set; }
 
     public List<string> Ignores { get; set; }
+
+    public List<Regex> IgnoresRegex { get; private set; }
 
     public int MainWindowWidth { get; set; }
 

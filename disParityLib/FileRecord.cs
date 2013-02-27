@@ -17,6 +17,9 @@ namespace disParity
       StartBlock = 0;
     }
 
+    /// <summary>
+    /// Returns the full path to the file, minus the drive root
+    /// </summary>
     public string Name { get; set; }
 
     public long Length { get; private set; }
@@ -45,13 +48,18 @@ namespace disParity
 
     public FileRecord(FileInfo info, string path, DataDrive drive)
     {
-      // what was this for?
-      //if (path == "")
-      //  path = info.FullName;
-      if (Path.IsPathRooted(info.Name))
-        Name = StripRoot(path, info.Name);
-      else
-        Name = Utils.MakeFullPath(path, info.Name);
+      Initialize(info, Utils.MakeFullPath(path, info.Name), drive);
+    }
+
+    public FileRecord(string filePath, DataDrive drive)
+    {
+      FileInfo fi = new FileInfo(filePath);
+      Initialize(fi, Utils.StripRoot(drive.Root, filePath), drive);
+    }
+
+    private void Initialize(FileInfo info, string name, DataDrive drive)
+    {
+      Name = name;
       Length = info.Length;
       Attributes = info.Attributes;
       CreationTime = info.CreationTime;
@@ -64,11 +72,16 @@ namespace disParity
     {
       if (!File.Exists(FullPath))
         return false;
-      FileInfo info = new FileInfo(FullPath);
-      Length = info.Length;
-      Attributes = info.Attributes;
-      CreationTime = info.CreationTime;
-      LastWriteTime = info.LastWriteTime;
+      try {
+        FileInfo info = new FileInfo(FullPath);
+        Length = info.Length;
+        Attributes = info.Attributes;
+        CreationTime = info.CreationTime;
+        LastWriteTime = info.LastWriteTime;
+      }
+      catch {
+        return false;
+      }
       return true;
     }
 
