@@ -12,8 +12,10 @@ namespace disParity
   public enum UpdateMode
   {
     NoAction,
-    ScanOnly,
-    ScanAndUpdate
+    // ScanOnly, not currently supported
+    UpdateSoon,
+    UpdateHourly,
+    UpdateDaily
   }
 
   public class Config
@@ -25,8 +27,10 @@ namespace disParity
     const UInt32 DEFAULT_MAX_TEMP_RAM = 1024;
     const bool DEFAULT_IGNORE_HIDDEN = true;
     const bool DEFAULT_MONITOR_DRIVES = true;
-    const UpdateMode DEFAULT_UPDATE_MODE = UpdateMode.ScanAndUpdate;
-    const int DEFAULT_UPDATE_DELAY = 1;
+    const UpdateMode DEFAULT_UPDATE_MODE = UpdateMode.NoAction;
+    const int DEFAULT_UPDATE_DELAY = 5;
+    const UInt32 DEFAULT_UPDATE_HOURS = 2;
+    DateTime DEFAULT_UPDATE_DAILY = new DateTime(2008, 1, 1, 2, 0, 0); // 2 AM
     const int DEFAULT_MAIN_WINDOW_X = 200;
     const int DEFAULT_MAIN_WINDOW_Y = 200;
     const int DEFAULT_MAIN_WINDOW_WIDTH = 640;
@@ -49,6 +53,8 @@ namespace disParity
       MonitorDrives = DEFAULT_MONITOR_DRIVES;
       UpdateDelay = DEFAULT_UPDATE_DELAY;
       UpdateMode = DEFAULT_UPDATE_MODE;
+      UpdateHours = DEFAULT_UPDATE_HOURS;
+      UpdateDaily = DEFAULT_UPDATE_DAILY;
       Ignores = new List<string>();
       IgnoresRegex = new List<Regex>();
       Drives = new List<Drive>();
@@ -155,9 +161,23 @@ namespace disParity
                 if (mode == 1)
                   UpdateMode = UpdateMode.NoAction;
                 else if (mode == 2)
-                  UpdateMode = UpdateMode.ScanOnly;
+                  UpdateMode = UpdateMode.UpdateSoon;
                 else if (mode == 3)
-                  UpdateMode = UpdateMode.ScanAndUpdate;
+                  UpdateMode = UpdateMode.UpdateHourly;
+                else if (mode == 4)
+                  UpdateMode = UpdateMode.UpdateDaily;
+              }
+              else if (reader.Name == "UpdateHours") {
+                reader.Read();
+                UpdateHours = Convert.ToUInt32(reader.Value);
+                reader.Read();
+              }
+              else if (reader.Name == "UpdateDaily") {
+                reader.Read();
+                DateTime val;
+                if (DateTime.TryParseExact(reader.Value, "HHmm", null, System.Globalization.DateTimeStyles.None, out val))
+                  UpdateDaily = val;
+                reader.Read();
               }
               else if (reader.Name == "Ignores") {
                 for (; ; ) {
@@ -247,21 +267,27 @@ namespace disParity
         if (MonitorDrives != DEFAULT_MONITOR_DRIVES)
           writer.WriteElementString("MonitorDrives", MonitorDrives ? "true" : "false");
 
-        /*
         if (UpdateDelay != DEFAULT_UPDATE_DELAY)
           writer.WriteElementString("UpdateDelay", UpdateDelay.ToString());
+
+        if (UpdateHours != DEFAULT_UPDATE_HOURS)
+          writer.WriteElementString("UpdateHours", UpdateHours.ToString());
+
+        if (UpdateDaily != DEFAULT_UPDATE_DAILY)
+          writer.WriteElementString("UpdateDaily", String.Format("{0:HHmm}", UpdateDaily));
 
         if (UpdateMode != DEFAULT_UPDATE_MODE) {
           int mode = 0;
           if (UpdateMode == UpdateMode.NoAction)
             mode = 1;
-          else if (UpdateMode == UpdateMode.ScanOnly)
+          else if (UpdateMode == UpdateMode.UpdateSoon)
             mode = 2;
-          else if (UpdateMode == UpdateMode.ScanAndUpdate)
+          else if (UpdateMode == UpdateMode.UpdateHourly)
             mode = 3;
+          else if (UpdateMode == UpdateMode.UpdateDaily)
+            mode = 4;
           writer.WriteElementString("UpdateMode", mode.ToString());
         }
-         */
 
         if (Ignores.Count > 0) {
           writer.WriteStartElement("Ignores");
@@ -361,6 +387,10 @@ namespace disParity
     public UInt32 UpdateDelay { get; set; }
 
     public UpdateMode UpdateMode { get; set; }
+
+    public UInt32 UpdateHours { get; set; }
+
+    public DateTime UpdateDaily { get; set; }
 
   }
 

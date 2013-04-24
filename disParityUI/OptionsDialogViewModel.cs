@@ -41,21 +41,32 @@ namespace disParityUI
       TempDir = config.TempDir;
       MonitorDrives = config.MonitorDrives;
       UpdateDelay = config.UpdateDelay;
+      updateHours = config.UpdateHours;
+      DailyScanTime = config.UpdateDaily;
       switch (config.UpdateMode) {
         case UpdateMode.NoAction:
           NoAction = true;
-          ScanOnly = false;
-          ScanAndUpdate = false;
+          UpdateSoon = false;
+          UpdateHourly = false;
+          UpdateDaily = false;
           break;
-        case UpdateMode.ScanOnly:
+        case UpdateMode.UpdateSoon:
           NoAction = false;
-          ScanOnly = true;
-          ScanAndUpdate = false;
+          UpdateSoon = true;
+          UpdateHourly = false;
+          UpdateDaily = false;
           break;
-        case UpdateMode.ScanAndUpdate:
+        case UpdateMode.UpdateHourly:
           NoAction = false;
-          ScanOnly = false;
-          ScanAndUpdate = true;
+          UpdateSoon = false;
+          UpdateHourly = true;
+          UpdateDaily = false;
+          break;
+        case UpdateMode.UpdateDaily:
+          NoAction = false;
+          UpdateSoon = false;
+          UpdateHourly = false;
+          UpdateDaily = true;
           break;
       }
       foreach (string i in config.Ignores)
@@ -168,12 +179,16 @@ namespace disParityUI
       config.IgnoreHidden = IgnoreHidden;
       config.MonitorDrives = MonitorDrives;
       config.UpdateDelay = UpdateDelay;
+      config.UpdateHours = UpdateHours;
+      config.UpdateDaily = DailyScanTime;
       if (NoAction)
         config.UpdateMode = UpdateMode.NoAction;
-      else if (ScanOnly)
-        config.UpdateMode = UpdateMode.ScanOnly;
-      else if (ScanAndUpdate)
-        config.UpdateMode = UpdateMode.ScanAndUpdate;
+      else if (UpdateSoon)
+        config.UpdateMode = UpdateMode.UpdateSoon;
+      else if (UpdateHourly)
+        config.UpdateMode = UpdateMode.UpdateHourly;
+      else if (UpdateDaily)
+        config.UpdateMode = UpdateMode.UpdateDaily;
 
       config.TempDir = TempDir;
       config.Ignores.Clear();
@@ -327,29 +342,42 @@ namespace disParityUI
       }
     }
 
-    private bool scanOnly;
-    public bool ScanOnly
+    private bool updateSoon;
+    public bool UpdateSoon
     {
       get
       {
-        return scanOnly;
+        return updateSoon;
       }
       set
       {
-        SetProperty(ref scanOnly, "ScanOnly", value);
+        SetProperty(ref updateSoon, "UpdateSoon", value);
       }
     }
 
-    private bool scanAndUpdate;
-    public bool ScanAndUpdate
+    private bool updateHourly;
+    public bool UpdateHourly
     {
       get
       {
-        return scanAndUpdate;
+        return updateHourly;
       }
       set
       {
-        SetProperty(ref scanAndUpdate, "ScanAndUpdate", value);
+        SetProperty(ref updateHourly, "UpdateHourly", value);
+      }
+    }
+
+    private bool updateDaily;
+    public bool UpdateDaily
+    {
+      get
+      {
+        return updateDaily;
+      }
+      set
+      {
+        SetProperty(ref updateDaily, "UpdateDaily", value);
       }
     }
 
@@ -365,6 +393,33 @@ namespace disParityUI
         SetProperty(ref updateDelay, "UpdateDelay", value);
       }
     }
+
+    private UInt32 updateHours;
+    public UInt32 UpdateHours
+    {
+      get
+      {
+        return updateHours;
+      }
+      set
+      {
+        SetProperty(ref updateHours, "UpdateHours", value);
+      }
+    }
+
+    private DateTime dailyScanTime;
+    public DateTime DailyScanTime
+    {
+      get
+      {
+        return dailyScanTime;
+      }
+      set
+      {
+        SetProperty(ref dailyScanTime, "DailyScanTime", value);
+      }
+    }
+
     #endregion
 
   }
