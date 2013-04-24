@@ -485,6 +485,7 @@ namespace disParity
       }
 
       // now check for edits
+      bool saveFileList = false;
       foreach (var kvp in files) {
         if (cancelScan)
           return;
@@ -506,10 +507,18 @@ namespace disParity
               editCount++;
               deletes.Add(kvp.Value);
               adds.Add(n);
+            } else {
+              // file hasn't actually changed, but we still need to update the LastWriteTime so we don't
+              // keep re-checking it on every scan
+              kvp.Value.LastWriteTime = n.LastWriteTime;
+              saveFileList = true;
             }
           }
         }
       }
+
+      if (saveFileList)
+        SaveFileList();
 
     }
 

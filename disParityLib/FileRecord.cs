@@ -26,7 +26,7 @@ namespace disParity
 
     public DateTime CreationTime { get; private set; }
 
-    public DateTime LastWriteTime { get; private set; }
+    public DateTime LastWriteTime { get; set; }
 
     public FileAttributes Attributes { get; private set; }
 

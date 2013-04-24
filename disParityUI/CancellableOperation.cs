@@ -189,12 +189,17 @@ namespace disParityUI
 
     protected void End()
     {
-      CheckForErrors();
-      viewModel.ParitySet.ErrorMessage -= HandleErrorMessage;
-      viewModel.StopProgress();
-      inProgress = false;
-      if (Finished != null)
-        Finished();
+      try {
+        CheckForErrors();
+        viewModel.ParitySet.ErrorMessage -= HandleErrorMessage;
+        viewModel.StopProgress();
+        inProgress = false;
+        if (Finished != null)
+          Finished();
+      }
+      catch (Exception e) {
+        App.LogCrash(e);
+      }
     }
 
     protected virtual bool PrepareOperation()
