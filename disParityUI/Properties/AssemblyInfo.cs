@@ -7,8 +7,8 @@ using System.Windows;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("disParit yUI")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("disParity UI")]
+[assembly: AssemblyDescription("disParity UI")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Disparity Solutions, LLC")]
 [assembly: AssemblyProduct("disParity")]

@@ -12,6 +12,13 @@ Release notes for disParity Beta
 </font>
 <p>
 <div class="releasenote">
+<i>Changes in version 0.39 beta released Saturday, May 18, 2013</i>
+<ul>
+<li>Fixed a bug where if a file's "Last Modified" timestamp changed but was otherwise unmodified, it would always be re-checked for changes every scan.
+<li>Fixed an obscure crash bug in Update that could occur if the "Temp RAM" memory mapped file could not be created.  
+</ul>
+</div>
+<div class="releasenote">
 <i>Changes in version 0.38 beta released Wednesday, February 13, 2013</i>
 <ul>
 <li>Extensive changes to the underyling parity engine to prevent corruption issues caused by running out of space on the parity drive.
