@@ -12,11 +12,9 @@
 <br>
 <font size="+2">
 &#x02295;
-Welcome to disParity 0.38 Beta
+Welcome to disParity 0.39 Beta
 &#x02295;
 </font>
-<p>
-The new version of disParity is a near-total rewrite of the old utility.  It now features a full Windows-based UI.  It is no longer necessary to edit your configuration by hand or type any commands on the command line to keep your backup up to date.  You can leave disParity running on your system and update your parity backup with a single button press.
 <p>
 <font size="+1">
 Requirements
@@ -30,7 +28,7 @@ Download
 </font>
 <p>
 <p>
-The beta can be downloaded <a href="http://www.vilett.com/disParity/disParity0.38beta.msi">here</a>.
+The beta can be downloaded <a href="http://www.vilett.com/disParity/disParity0.39beta.msi">here</a>.
 <p>
 Changes in the latest version are listed <a href="releasenotes.html">here</a>. 
 <p>
@@ -49,7 +47,12 @@ Feedback of any kind on the beta, positive or negative, is welcome.  If you don'
 Upgrading from the old command line version
 </font>
 <p>
-For users of the old command line version, the new UI version of disParity is backwards compatible with the old version, except for the configuration file, so you should be able to upgrade to the beta without having to rebuild your backup.  The new configuration file is no longer meant to be edited by hand.  Migrating your configuration over requires the following steps to be performed one time only:
+<b>Important:</b> the old command line version of disParity has known bugs that in some cases can lead to a corrupted backup.
+All users of the old command line version are <i>strongly</i> encouraged to upgrade to the new UI version.  After upgrading,
+it is highly recommended that you run a Verify pass (press the "Verify" button in the main window.)
+The Verify pass will check your parity data for errors and in most cases repair them automatically.
+<p>
+For users of the old command line version (versions 0.21 and earlier), the new UI version of disParity is backwards compatible with the old version, except for the configuration file, so you should be able to upgrade to the beta without having to rebuild your backup.  The new configuration file is no longer meant to be edited by hand.  Migrating your configuration over requires the following steps to be performed one time only:
 <p>
 1. Install disParity and launch it from the desktop shortcut.
 <br>2. Accept the license agreement.
@@ -57,15 +60,11 @@ For users of the old command line version, the new UI version of disParity is ba
 <br>4. In the Options dialog, press the "Import..." button.
 <br>5. Select the location of your old config.txt file and press OK.
 <br>6. Your old configuration will be converted to the new format and saved in disParity's application data folder (typically under C:\Users\username\AppData\Local\disParity).  The old config.txt file will not be modified.           
-<p>
-<i>Important note</i>: during the course of the new beta, parity corruption bugs were discovered in the old command line version of disParity.
-If your backup was created with version 0.22 or earlier, it is highly recommended that you run a Verify pass (press the "Verify" button in the main window) after upgrading to the new version.
-The Verify pass will check your parity data for errors and in most cases repair them automatically.
 </td></tr></table>
 <p align=center>
 <br>
 <font size="-2">
-<i>Last updated Wednesday, February 13, 2013 at 11:24 AM</i>
+<i>Last updated Monday, May 20, 2013 at 11:53 AM</i>
 <br>
 <br>
 &copy; Copyright 2013 <a href="http://www.disparitysolutions.com">Disparity Solutions, LLC</a>
