@@ -171,12 +171,15 @@ namespace disParityUI
         if ((String.Compare(parityDir, config.ParityDir, true) != 0) && !paritySet.Empty) {
           if (!MoveParityData(parityDir))
             return false;
+          config.ParityDir = parityDir;
+          parityDirMoved = true;
         }
-        config.ParityDir = parityDir;
-        parityDirMoved = true;
       }
       config.MaxTempRAM = (uint)MaxTempRAM;
-      config.IgnoreHidden = IgnoreHidden;
+      if (config.IgnoreHidden != IgnoreHidden) {
+        IgnoresChanged = true;
+        config.IgnoreHidden = IgnoreHidden;
+      }
       config.MonitorDrives = MonitorDrives;
       config.UpdateDelay = UpdateDelay;
       config.UpdateHours = UpdateHours;
@@ -207,6 +210,8 @@ namespace disParityUI
     #region Properties
 
     public bool ConfigImported { get; set; }
+
+    public bool IgnoresChanged { get; set; }
 
     public Window Owner { get; set; }
 
@@ -312,6 +317,7 @@ namespace disParityUI
       }
       set
       {
+        IgnoresChanged = true;
         SetProperty(ref ignores, "Ignores", value);
       }
     }

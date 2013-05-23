@@ -173,7 +173,9 @@ namespace disParityUI
 
     void OptionsExecuted(object sender, ExecutedRoutedEventArgs e)
     {
-      OptionsDialog dialog = new OptionsDialog(viewModel.GetOptionsDialogViewModel());
+      OptionsDialogViewModel vm = viewModel.GetOptionsDialogViewModel();
+      vm.IgnoresChanged = false;
+      OptionsDialog dialog = new OptionsDialog(vm);
       dialog.Owner = this;
       if (dialog.ShowDialog() == true)
         viewModel.OptionsChanged();

@@ -250,7 +250,8 @@ namespace disParityUI
 
       UpdateStartupMessage();
       UpdateParityStatus();
-      if (StartupMessage == "")
+
+      if (StartupMessage == "" && optionsViewModel.IgnoresChanged)
         ScanAll();
 
       if (Config.MonitorDrives) {
