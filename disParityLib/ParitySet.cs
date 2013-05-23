@@ -1166,14 +1166,14 @@ namespace disParity
 
     public int VerifyRecovers { get; private set; }
 
-    public DateTime LastChanges
+    public DateTime LastChange
     {
       get
       {
         DateTime lastChanges = DateTime.MinValue;
         foreach (DataDrive d in drives)
-          if (d.LastChanges > lastChanges)
-            lastChanges = d.LastChanges;
+          if (d.LastChange > lastChanges)
+            lastChanges = d.LastChange;
         return lastChanges;
       }
     }

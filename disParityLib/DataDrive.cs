@@ -40,13 +40,13 @@ namespace disParity
     private object fileCloseLock = new object();
     private FileSystemWatcher watcher;
     private IEnvironment env;
+    private DateTime lastScanStart;
 
     const UInt32 META_FILE_VERSION = 1;
     const int MAX_FOLDER = 248;
     const int MAX_PATH = 260;
 
     public event EventHandler<ScanCompletedEventArgs> ScanCompleted;
-    public event EventHandler<EventArgs> ChangesDetected;
     public event EventHandler<ErrorMessageEventArgs> ErrorMessage;
 
     public DataDrive(string root, string metaFile, Config config, IEnvironment environment)
@@ -83,23 +83,23 @@ namespace disParity
       if (config.MonitorDrives)
         EnableWatcher();
 
-      LastScanStart = DateTime.MinValue;
-      LastChanges = DateTime.Now - TimeSpan.FromSeconds(55); // REMOVEME
+      lastScanStart = DateTime.MinValue;
+      LastChange = DateTime.Now;
     }
 
     public void EnableWatcher()
     {
-      //if (watcher == null) {
-      //  watcher = new FileSystemWatcher();
-      //  watcher.Path = Root;
-      //  watcher.Filter = "*.*";
-      //  watcher.IncludeSubdirectories = true;
-      //  watcher.Created += HandleWatcherEvent;
-      //  watcher.Changed += HandleWatcherEvent;
-      //  watcher.Deleted += HandleWatcherEvent;
-      //  watcher.Renamed += HandleWatcherEvent;
-      //  watcher.EnableRaisingEvents = true;
-      //}
+      if (watcher == null) {
+        watcher = new FileSystemWatcher();
+        watcher.Path = Root;
+        watcher.Filter = "*.*";
+        watcher.IncludeSubdirectories = true;
+        watcher.Created += HandleWatcherEvent;
+        watcher.Changed += HandleWatcherEvent;
+        watcher.Deleted += HandleWatcherEvent;
+        watcher.Renamed += HandleWatcherEvent;
+        watcher.EnableRaisingEvents = true;
+      }
     }
 
     public void DisableWatcher()
@@ -113,10 +113,10 @@ namespace disParity
     private void HandleWatcherEvent(object sender, FileSystemEventArgs args)
     {
       LogFile.Log("Changes detected on " + Root);
-      LastChanges = DateTime.Now;
-      if (ChangesDetected != null)
-        ChangesDetected(this, new EventArgs());
-      DriveStatus = DriveStatus.ScanRequired;
+      LastChange = DateTime.Now;
+      ChangesDetected = true;
+      if (DriveStatus == DriveStatus.UpToDate)
+        DriveStatus = DriveStatus.ScanRequired;
     }
 
     private string MetaFilePath
@@ -227,7 +227,7 @@ namespace disParity
       DriveStatus = DriveStatus.Scanning;
       cancelScan = false;
       Progress = 0;
-      LastScanStart = DateTime.Now;
+      lastScanStart = DateTime.Now;
       ignoreCount = 0;
       bool error = false;
       try {
@@ -258,15 +258,18 @@ namespace disParity
             Progress = 1;
             AnalyzingResults = true;
             Compare();
-            LogFile.Log("Scan of {0} complete. Found {1} file{2} ({3} total) Adds: {4} Deletes: {5} Moves: {6} Edits: {7} Ignored: {8}", Root, scanFiles.Count,
-              scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize), adds.Count, deletes.Count, moves.Count, editCount, ignoreCount);
             if (cancelScan) {
               Status = "Scan required";
               DriveStatus = DriveStatus.ScanRequired;
               return;
             }
+            LogFile.Log("Scan of {0} complete. Found {1} file{2} ({3} total) Adds: {4} Deletes: {5} Moves: {6} Edits: {7} Ignored: {8}", Root, scanFiles.Count,
+              scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize), adds.Count, deletes.Count, moves.Count, editCount, ignoreCount);
             // process moves now as part of the scan, since they don't require changes to parity
             ProcessMoves();
+            // if no file system events occurred since the start of the scan, we are now up to date
+            if (lastChange < lastScanStart)
+              ChangesDetected = false;
           }
           else
             LogFile.Log("{0}: Scan cancelled", Root);
@@ -575,7 +578,7 @@ namespace disParity
 
     public void UpdateStatus()
     {
-      if (LastChanges > LastScanStart)
+      if (ChangesDetected)
         DriveStatus = DriveStatus.ScanRequired;
       else if (adds.Count > 0 || deletes.Count > 0)
         DriveStatus = DriveStatus.UpdateRequired;
@@ -671,7 +674,7 @@ namespace disParity
           enumComplete = true;
           if (enumCount > 0)
             LoadFileList(); // this loads completed filesX.dat back into the master files list
-          DriveStatus = DriveStatus.UpToDate;
+          UpdateStatus(); // set status to UpToDate, or possibly ScanRequired if more changes have occurred
           return false;
         }
         // Check for zero-length files
@@ -1061,6 +1064,23 @@ namespace disParity
 
     public bool AnalyzingResults { get; private set; }
 
+    /// <summary>
+    /// If true, indicates that changes have been detected on the drive that may not be reflected 
+    /// in the most recent scan.
+    /// </summary>
+    private bool changesDetected;
+    public bool ChangesDetected
+    {
+      get
+      {
+        return changesDetected;
+      }
+      set
+      {
+        SetProperty(ref changesDetected, "ChangesDetected", value);
+      }
+    }
+
     private string status;
     public string Status
     {
@@ -1113,16 +1133,16 @@ namespace disParity
       }
     }
 
-    private DateTime lastChanges;
-    public DateTime LastChanges 
+    private DateTime lastChange;
+    public DateTime LastChange 
     {
       get
       {
-        return lastChanges;
+        return lastChange;
       }
       private set
       {
-        SetProperty(ref lastChanges, "LastChanges", value);
+        SetProperty(ref lastChange, "LastChange", value);
       }
     }
 
@@ -1132,7 +1152,6 @@ namespace disParity
     /// </summary>
     public long TotalFileSize { get; private set; }
 
-    public DateTime LastScanStart { get; private set; }
 
 
     #endregion

@@ -37,5 +37,8 @@ namespace disParityUI
 
     public override string Name { get { return "Scan"; } }
 
+    // Force a scan even if no changes have been detected, since user is manually requesting it
+    protected override bool ForceScan { get { return true; } }
+
   }
 }

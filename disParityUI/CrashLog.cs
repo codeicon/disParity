@@ -22,7 +22,7 @@ namespace disParityUI
       }
     }
 
-    public static void Create(Exception e, bool upload, bool unhandled)
+    public static void Create(Exception e, string context, bool upload, bool unhandled)
     {
       try {
         string crashLog = FullPath;
@@ -33,6 +33,7 @@ namespace disParityUI
           s.WriteLine("Crash log generated {0}", DateTime.Now);
           s.WriteLine("Version: {0}", disParity.Version.VersionString);
           s.WriteLine("Unhandled: {0}", unhandled ? "Yes" : "No");
+          s.WriteLine("Context: {0}", context);
           s.WriteLine();
           while (e != null) {
             s.WriteLine("Exception: " + e.GetType().ToString());

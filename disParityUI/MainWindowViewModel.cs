@@ -10,6 +10,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Shell; // for TaskbarItem stuff
+using System.Security.Cryptography;
 using disParity;
 
 namespace disParityUI
@@ -29,6 +30,8 @@ namespace disParityUI
     private OperationManager operationManager;
     private bool upgradeNotified;
     private Exception configLoadException;
+    private DateTime nextHourlyUpdate = DateTime.MinValue;
+    private DateTime nextDailyUpdate = DateTime.MinValue;
 
     public MainWindowViewModel(Window owner)
     {
@@ -66,6 +69,8 @@ namespace disParityUI
           config.Load();
           config.Validate();
         }
+        config.LastHourlyUpdate = DateTime.Now;
+        config.Save();
       }
       catch (Exception e) {
         configLoadException = e;
@@ -86,10 +91,22 @@ namespace disParityUI
     {
       // Check for exception loading config file
       if (configLoadException != null) {
-        App.LogCrash(configLoadException);
+        App.LogCrash(configLoadException, "configLoadException");
         MessageWindow.Show(owner, "Invalid config file", "An error occurred loading the config file: \n\n" +
           configLoadException.Message + "\n\nDefault values will be used for most settings.",
           MessageWindowIcon.Error, MessageWindowButton.OK);
+      }
+
+      // test for FIPS Certified Cryptography
+      try {
+        MD5 md5 = new MD5CryptoServiceProvider();
+      }
+      catch (Exception e) {
+        App.LogCrash(e, "MD5 test");
+        MessageWindow.Show(owner, "FIPS requirement detected", "It appears that this system is configured to require FIPS certified cryptography. " +
+          "Unfortunately disParity cannot run on a system with this requirement set.",
+          MessageWindowIcon.Error, MessageWindowButton.OK);
+        owner.Close();
       }
 
       // Make sure parity folder exists
@@ -99,7 +116,7 @@ namespace disParityUI
         }
         catch (Exception e) {
           LogFile.Log("Could not create parity folder " + config.ParityDir + ": " + e.Message);
-          App.LogCrash(e);
+          App.LogCrash(e, "Create parity folder");
           MessageWindow.Show(owner, "Could not access parity folder", "Unable to access the parity location " + config.ParityDir + "\n\n" +
             "You will need to set a valid parity location (under Options) before proceeding.",
             MessageWindowIcon.Error, MessageWindowButton.OK);
@@ -114,10 +131,9 @@ namespace disParityUI
         paritySet.ReloadDrives();
       }
       catch (Exception e) {
-        App.LogCrash(e);
+        App.LogCrash(e, "paritySet.ReloadDrives");
         MessageWindow.Show(owner, "Can't load backup information", "An error occurred while trying to load the backup: \n\n" +
-          e.Message,
-          MessageWindowIcon.Error, MessageWindowButton.OK);
+          e.Message, MessageWindowIcon.Error, MessageWindowButton.OK);
       }
 
 
@@ -143,9 +159,50 @@ namespace disParityUI
         ScanAll();
       }
       catch (Exception e) {
-        App.LogCrash(e);
+        App.LogCrash(e, "Loaded() final");
         LogFile.Log("Exception in MainWindow.Loaded: " + e.Message);
       }
+
+
+      // Start the update timer.  This regularly updates the main status text, and also
+      // launches automatic updates if needed.
+      updateTimer.Start();
+
+      // set up for next automatic update
+      if (config.MonitorDrives) {
+        SetNextHourlyUpdateTime();
+        SetNextDailyUpdateTime();
+      }
+
+    }
+
+    private void SetNextHourlyUpdateTime()
+    {
+      if (Config.UpdateMode != UpdateMode.UpdateHourly)
+        return;
+      DateTime now = DateTime.Now;
+      DateTime lastUpdate = config.LastHourlyUpdate;
+      if (lastUpdate == DateTime.MinValue)
+        // hourly update has never happened, pretend the last one was at midnight
+        lastUpdate = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0);
+      else
+        // strip minutes and seconds from last hourly update
+        lastUpdate = new DateTime(lastUpdate.Year, lastUpdate.Month, lastUpdate.Day, lastUpdate.Hour, 0, 0);
+      nextHourlyUpdate = lastUpdate + TimeSpan.FromHours(Config.UpdateHours);
+      // if that's still in the past, keep bumping it forward by UpdateHours until it's in the future
+      while (nextHourlyUpdate < now)
+        nextHourlyUpdate += TimeSpan.FromHours(Config.UpdateHours);
+    }
+
+    private void SetNextDailyUpdateTime()
+    {
+      if (Config.UpdateMode != UpdateMode.UpdateDaily)
+        return;
+      DateTime now = DateTime.Now;
+      // next daily update is today, or tomorrow if daily time has already passed
+      nextDailyUpdate = new DateTime(now.Year, now.Month, now.Day, Config.UpdateDaily.Hour, Config.UpdateDaily.Minute, 0);
+      if (nextDailyUpdate < now)
+        nextDailyUpdate += TimeSpan.FromHours(24);
     }
 
     private bool ShowLicenseAgreement()
@@ -195,6 +252,11 @@ namespace disParityUI
       UpdateParityStatus();
       if (StartupMessage == "")
         ScanAll();
+
+      if (Config.MonitorDrives) {
+        SetNextHourlyUpdateTime();
+        SetNextDailyUpdateTime();
+      }
     }
 
     private void UpdateStartupMessage()
@@ -291,8 +353,7 @@ namespace disParityUI
     {
       DataDriveViewModel vm = new DataDriveViewModel(drive, config);
       drives.Add(vm);
-      drive.PropertyChanged += HandleDateDrivePropertyChanged;
-      drive.ScanCompleted += HandleScanCompleted;
+      // drive.PropertyChanged += HandleDateDrivePropertyChanged;
       return vm;
     }
 
@@ -301,25 +362,12 @@ namespace disParityUI
     /// </summary>
     public void DriveRemoved(DataDriveViewModel drive)
     {
-      drive.DataDrive.PropertyChanged -= HandleDateDrivePropertyChanged;
-      drive.DataDrive.ScanCompleted -= HandleScanCompleted;
+      // drive.DataDrive.PropertyChanged -= HandleDateDrivePropertyChanged;
       // Can only modify the drives collection on the main thread
       Application.Current.Dispatcher.Invoke(new Action(() =>
       {
         drives.Remove(drive);
       }));
-    }
-
-    private void DisplayUpToDateStatus()
-    {
-      long totalSize = 0;
-      int totalFiles = 0;
-      foreach (DataDriveViewModel vm in drives) {
-        totalSize += vm.DataDrive.TotalFileSize;
-        totalFiles += vm.DataDrive.FileCount;
-      }
-      Status = String.Format("{1:N0} files ({0}) protected.  All drives up to date.",
-        Utils.SmartSize(totalSize), totalFiles);
     }
 
     private void HandleParitySetPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -335,34 +383,115 @@ namespace disParityUI
     private void HandleDateDrivePropertyChanged(object sender, PropertyChangedEventArgs e)
     {
       //DataDrive drive = (DataDrive)sender;
-      //if (e.PropertyName == "DriveStatus") {
-      //  if (drive.DriveStatus == DriveStatus.UpdateRequired)
-      //    if (config.MonitorDrives && config.UpdateMode == UpdateMode.ScanAndUpdate)
+      //if (e.PropertyName == "ChangesDetected") {
+      //  if (!config.MonitorDrives)
+      //    return;
+      //  if (drive.ChangesDetected) {
+      //    if (!updateTimer.Enabled)
       //      updateTimer.Start();
-      //}         
+      //  }
+      //  else if (updateTimer.Enabled) {
+      //    if (AllDrivesUpToDate())
+      //      updateTimer.Stop();
+      //  }
+      //}
     }
 
-    private void HandleScanCompleted(object sender, ScanCompletedEventArgs args)
+    private bool AllDrivesUpToDate()
     {
-      //if (!args.Auto || args.Cancelled || args.Error || !args.UpdateNeeded)
-      //  return;
-      //if (config.MonitorDrives && config.UpdateMode == UpdateMode.ScanAndUpdate)
-      //  updateTimer.Start();
+      foreach (DataDriveViewModel d in drives)
+        if (d.DataDrive.DriveStatus != DriveStatus.UpToDate)
+          return false;
+      return true;
     }
 
     private void HandleUpdateTimer(object sender, System.Timers.ElapsedEventArgs args)
     {
+      UpdateStatus();
       if (operationManager.Busy)
         return;
-      DateTime nextAutoUpdate = paritySet.LastChanges + TimeSpan.FromMinutes(config.UpdateDelay); 
-      if (DateTime.Now > nextAutoUpdate) {
-        updateTimer.Stop();
-        Update(false); // don't scan first because we know there haven't been any changes
+      if (!config.MonitorDrives || AllDrivesUpToDate())
+        return;
+
+      DateTime now = DateTime.Now;
+      if (now > NextAutoUpdate()) {
+        Update();
+        if (config.UpdateMode == UpdateMode.UpdateHourly) {
+          Config.LastHourlyUpdate = now;
+          Config.Save();
+          nextHourlyUpdate += TimeSpan.FromHours(Config.UpdateHours);
+        }
+        else if (config.UpdateMode == UpdateMode.UpdateDaily) {
+          nextDailyUpdate += TimeSpan.FromHours(24);
+        }
       }
-      else {
-        Status = String.Format("Update required.  Automatic update in {0}...",
-          (nextAutoUpdate - DateTime.Now).ToString(@"m\:ss"));
+    }
+
+    private DateTime NextAutoUpdate()
+    {
+      switch (Config.UpdateMode) {
+        case UpdateMode.UpdateSoon:
+          return paritySet.LastChange + TimeSpan.FromMinutes(config.UpdateDelay);
+        case UpdateMode.UpdateHourly:
+          return nextHourlyUpdate;
+        case UpdateMode.UpdateDaily:
+          return nextDailyUpdate;
+        default:
+          return DateTime.MaxValue;
       }
+    }
+
+    /// <summary>
+    /// Updates the main UI status message based on the current state of the app
+    /// </summary>
+    public void UpdateStatus()
+    {
+      // if an operation is currently running, the status is the status of the operation
+      if (operationManager.Busy) {
+        Status = operationManager.Status;
+        return;
+      }
+      // determine whether any drive needs a scan or an update
+      bool scanRequired = false;
+      bool updateRequired = false;
+      foreach (DataDriveViewModel d in drives)
+        if (d.DataDrive.DriveStatus == DriveStatus.ScanRequired)
+          scanRequired = true;
+        else if (d.DataDrive.DriveStatus == DriveStatus.UpdateRequired)
+          updateRequired = true;
+
+      if (!scanRequired && !updateRequired) {
+        long totalSize = 0;
+        int totalFiles = 0;
+        foreach (DataDriveViewModel d in drives) {
+          totalSize += d.DataDrive.TotalFileSize;
+          totalFiles += d.DataDrive.FileCount;
+        }
+        Status = String.Format("{1:N0} files ({0}) protected.  All drives up to date.",
+          Utils.SmartSize(totalSize), totalFiles);
+        return;
+      }
+
+      // If drive monitoring is on, we may be counting down to an update
+      if (config.MonitorDrives) {
+        if (config.UpdateMode == UpdateMode.NoAction) {
+          Status = "Changes detected on one or more drives.  An update may be required.";
+          return;
+        }
+        DateTime nextAutoUpdate = NextAutoUpdate();
+        string status = updateRequired ? "Update required" : "Changes detected";
+        if (nextAutoUpdate > DateTime.Now) {
+          if ((nextAutoUpdate - DateTime.Now).Duration() < TimeSpan.FromHours(1))
+            Status = String.Format("{0}.  Backup will update automatically in {1}...", status, (nextAutoUpdate - DateTime.Now).ToString(@"m\:ss"));
+          else
+            Status = String.Format("{0}.  Next automatic update will occur {1} at {2}.", status, 
+              (nextAutoUpdate.Day == DateTime.Now.Day) ? "today" : "tomorrow",  nextAutoUpdate.ToShortTimeString());
+        }
+      }
+      else
+        Status = "Update required.";
+
+
     }
 
     public void ScanAll()
@@ -385,10 +514,10 @@ namespace disParityUI
       operationManager.Begin(new RemoveDriveOperation(), drive);
     }
 
-    public void Update(bool scanFirst = true)
+    public void Update()
     {
       updateParityStatusTimer.Start();
-      operationManager.Begin(new UpdateOperation(scanFirst));
+      operationManager.Begin(new UpdateOperation());
     }
 
     public void Hashcheck(DataDriveViewModel drive = null)
@@ -417,6 +546,7 @@ namespace disParityUI
 
     private void HandleOperationFinished(object sender, EventArgs args)
     {
+      UpdateStatus();
       UpdateParityStatus();
       updateParityStatusTimer.Stop();
     }
@@ -514,7 +644,7 @@ namespace disParityUI
       {
         return status;
       }
-      set
+      private set
       {
         SetProperty(ref status, "Status", value);
       }
@@ -600,6 +730,36 @@ namespace disParityUI
         SetProperty(ref progressState, "ProgressState", value);
       }
     }
+
+    //private DateTime NextAutoUpdate
+    //{
+    //  get
+    //  {
+    //    DateTime now = DateTime.Now;
+    //    DateTime nextUpdate;
+    //    switch (Config.UpdateMode) {
+
+    //      case UpdateMode.UpdateSoon:
+    //        return paritySet.LastChange + TimeSpan.FromMinutes(config.UpdateDelay);
+
+    //      case UpdateMode.UpdateHourly:
+    //        if (lastHourlyUpdate == DateTime.MinValue)
+    //          nextUpdate = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0);
+    //        else
+    //          nextUpdate = lastUpdate;
+    //        while (nextUpdate < now)
+    //          nextUpdate += TimeSpan.FromHours(config.UpdateHours);
+    //        return nextUpdate;
+
+    //      case UpdateMode.UpdateDaily:
+    //        nextUpdate = new DateTime(now.Year, now.Month, now.Day, config.UpdateDaily.Hour, config.UpdateDaily.Minute, 0);
+    //        return nextUpdate;
+
+    //      default:
+    //        return DateTime.MinValue;
+    //    }
+    //  }
+    //}
 
     #endregion
 

@@ -10,16 +10,9 @@ namespace disParityUI
   internal class UpdateOperation : CancellableOperation
   {
 
-    private bool scanFirst = true;
-
-    public UpdateOperation(bool scanFirst) : base() 
-    {
-      this.scanFirst = scanFirst;
-    }
-
     protected override void DoOperation()
     {
-      if (scanFirst && !anyDriveNeedsUpdate)
+      if (!anyDriveNeedsUpdate)
         DisplayUpToDateStatus();
       else {
         if (!viewModel.ParitySet.CheckAvailableSpaceForUpdate())
@@ -54,7 +47,6 @@ namespace disParityUI
 
     public override string Name { get { return "Update"; } }
 
-    protected override bool ScanFirst { get { return scanFirst; } }
   }
 
 }

@@ -19,32 +19,22 @@ namespace disParityUI
   class DataDriveViewModel : NotifyPropertyChanged
   {
 
-    private DateTime nextAutoScan;
-    private System.Timers.Timer autoScanTimer;
     private Config config;
-
-    private const int AUTO_SCAN_DELAY = 5; // time in seconds between changes detected and automatic scan
 
     public DataDriveViewModel(DataDrive dataDrive, Config config)
     {
       this.config = config;
       DataDrive = dataDrive;
       DataDrive.PropertyChanged += HandlePropertyChanged;
-      DataDrive.ChangesDetected += HandleChangesDetected;
       UpdateStatus();
       UpdateFileCount();
       UpdateAdditionalInfo();
-
-      autoScanTimer = new System.Timers.Timer(1000);
-      autoScanTimer.AutoReset = true;
-      autoScanTimer.Elapsed += HandleAutoScanTimer;
     }
 
     public void Scan(bool auto)
     {
       if (DataDrive.Scanning)
         return;
-      autoScanTimer.Stop();
       Task.Factory.StartNew(() =>
       {
         try {
@@ -76,26 +66,6 @@ namespace disParityUI
         AdditionalInfo = "";
     }
 
-    private void HandleChangesDetected(object sender, EventArgs e)
-    {
-      autoScanTimer.Stop();
-      if (config.UpdateMode != UpdateMode.NoAction) {
-        autoScanTimer.Start();
-        nextAutoScan = DateTime.Now + TimeSpan.FromSeconds(AUTO_SCAN_DELAY);
-      }
-    }
-
-    private void HandleAutoScanTimer(object sender, ElapsedEventArgs args)
-    {
-      if (nextAutoScan > DateTime.Now)
-        DataDrive.Status = String.Format("Changes detected.  Scanning drive in {0}...",
-          (nextAutoScan - DateTime.Now).ToString(@"m\:ss"));
-      else {
-        autoScanTimer.Stop();
-        OperationManager.Instance.Begin(new ScanOperation(true));
-      }
-    }
-
     private void HandlePropertyChanged(object sender, PropertyChangedEventArgs e)
     {
       DataDrive drive = (DataDrive)sender;
@@ -125,6 +95,8 @@ namespace disParityUI
       switch (DataDrive.DriveStatus) {
         case DriveStatus.ScanRequired:
           StatusIcon = Icons.Unknown;
+          if (DataDrive.ChangesDetected)
+            Status = "Changes detected";
           break;
         case DriveStatus.UpdateRequired:
           int addCount = DataDrive.Adds.Count;

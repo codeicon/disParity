@@ -12,7 +12,6 @@ namespace disParity
   public enum UpdateMode
   {
     NoAction,
-    // ScanOnly, not currently supported
     UpdateSoon,
     UpdateHourly,
     UpdateDaily
@@ -55,6 +54,7 @@ namespace disParity
       UpdateMode = DEFAULT_UPDATE_MODE;
       UpdateHours = DEFAULT_UPDATE_HOURS;
       UpdateDaily = DEFAULT_UPDATE_DAILY;
+      LastHourlyUpdate = DateTime.MinValue;
       Ignores = new List<string>();
       IgnoresRegex = new List<Regex>();
       Drives = new List<Drive>();
@@ -114,7 +114,8 @@ namespace disParity
     {
       if (!File.Exists(filename))
         return;
-      using (XmlReader reader = XmlReader.Create(new StreamReader(filename))) {
+      using (StreamReader f = new StreamReader(filename))
+      using (XmlReader reader = XmlReader.Create(f)) {
         for (; ; ) {
           reader.Read();
           if (reader.EOF)
@@ -177,6 +178,13 @@ namespace disParity
                 DateTime val;
                 if (DateTime.TryParseExact(reader.Value, "HHmm", null, System.Globalization.DateTimeStyles.None, out val))
                   UpdateDaily = val;
+                reader.Read();
+              }
+              else if (reader.Name == "LastHourly") {
+                reader.Read();
+                long val;
+                if (long.TryParse(reader.Value, out val))
+                  LastHourlyUpdate = DateTime.FromBinary(val);
                 reader.Read();
               }
               else if (reader.Name == "Ignores") {
@@ -275,6 +283,9 @@ namespace disParity
 
         if (UpdateDaily != DEFAULT_UPDATE_DAILY)
           writer.WriteElementString("UpdateDaily", String.Format("{0:HHmm}", UpdateDaily));
+
+        if (LastHourlyUpdate != DateTime.MinValue)
+          writer.WriteElementString("LastHourly", String.Format("{0}", LastHourlyUpdate.ToBinary()));
 
         if (UpdateMode != DEFAULT_UPDATE_MODE) {
           int mode = 0;
@@ -391,6 +402,8 @@ namespace disParity
     public UInt32 UpdateHours { get; set; }
 
     public DateTime UpdateDaily { get; set; }
+
+    public DateTime LastHourlyUpdate { get; set; }
 
   }
 
