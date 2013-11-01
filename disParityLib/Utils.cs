@@ -108,7 +108,7 @@ namespace disParity
       }
 
       if (timeSpan.Hours == 0 && sb.Length == 0)
-        ;
+        sb.Append("");
       else if (timeSpan.Hours == 1)
         sb.Append("1 hour ");
       else {
@@ -117,7 +117,7 @@ namespace disParity
       }
 
       if (timeSpan.Minutes == 0 && sb.Length == 0)
-        ;
+        sb.Append("");
       else if (timeSpan.Minutes == 1)
         sb.Append("1 minute ");
       else {

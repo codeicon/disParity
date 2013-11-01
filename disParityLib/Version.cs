@@ -96,7 +96,7 @@ namespace disParity
       }
     }
 
-    public static bool Beta { get { return true; } }
+    public static bool Beta { get { return false; } }
 
     public static string VersionString
     {
