@@ -89,16 +89,25 @@ namespace disParity
 
     public void EnableWatcher()
     {
-      if (watcher == null) {
-        watcher = new FileSystemWatcher();
-        watcher.Path = Root;
-        watcher.Filter = "*.*";
-        watcher.IncludeSubdirectories = true;
-        watcher.Created += HandleWatcherEvent;
-        watcher.Changed += HandleWatcherEvent;
-        watcher.Deleted += HandleWatcherEvent;
-        watcher.Renamed += HandleWatcherEvent;
-        watcher.EnableRaisingEvents = true;
+      if (watcher == null)
+      {
+        try
+        {
+          watcher = new FileSystemWatcher();
+          watcher.Path = Root;
+          watcher.Filter = "*.*";
+          watcher.IncludeSubdirectories = true;
+          watcher.Created += HandleWatcherEvent;
+          watcher.Changed += HandleWatcherEvent;
+          watcher.Deleted += HandleWatcherEvent;
+          watcher.Renamed += HandleWatcherEvent;
+          watcher.EnableRaisingEvents = true;
+        }
+        catch (Exception e)
+        {
+          env.LogCrash(e);
+          LogFile.Log("Could not enable file watcher for {0}: {1}", Root, e.Message);
+        }
       }
     }
 
