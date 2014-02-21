@@ -73,6 +73,12 @@ namespace disParityUI
       viewModel.Shutdown();
     }
 
+    protected override void OnClosed(EventArgs e)
+    {
+      base.OnClosed(e);
+      App.Current.Shutdown(); // closes LogWindow as well, if open
+    }
+
     #region Command CanExecute/Executed methods
 
     void AddDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
@@ -244,6 +250,16 @@ namespace disParityUI
       e.Handled = true;
     }
 
+    void LogCanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+      e.CanExecute = !viewModel.LogWindowVisible();
+    }
+
+    void LogExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+      viewModel.ShowLogWindow();
+      e.Handled = true;
+    }
 
     #endregion
 

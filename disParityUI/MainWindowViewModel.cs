@@ -32,6 +32,8 @@ namespace disParityUI
     private Exception configLoadException;
     private DateTime nextHourlyUpdate = DateTime.MinValue;
     private DateTime nextDailyUpdate = DateTime.MinValue;
+    private DateTime lastUpdateFinished = DateTime.MinValue;
+    private LogWindow logWindow;
 
     public MainWindowViewModel(Window owner)
     {
@@ -43,6 +45,7 @@ namespace disParityUI
       string logPath = Path.Combine(appDataPath, "logs");
       if (!Directory.Exists(logPath))
         Directory.CreateDirectory(logPath);
+      LogWindowViewModel.Initialize(this);
       LogFile.Open(Path.Combine(logPath, "disParity.log"), false);
       LogFile.Log("Application launched (version {0})", disParity.Version.VersionString);
 
@@ -416,7 +419,7 @@ namespace disParityUI
 
       DateTime now = DateTime.Now;
       if (now > NextAutoUpdate()) {
-        Update();
+        Update(true);
         if (config.UpdateMode == UpdateMode.UpdateHourly) {
           Config.LastHourlyUpdate = now;
           Config.Save();
@@ -432,7 +435,10 @@ namespace disParityUI
     {
       switch (Config.UpdateMode) {
         case UpdateMode.UpdateSoon:
-          return paritySet.LastChange + TimeSpan.FromMinutes(config.UpdateDelay);
+          {
+            DateTime start = (lastUpdateFinished > paritySet.LastChange) ? lastUpdateFinished : paritySet.LastChange;
+            return start + TimeSpan.FromMinutes(config.UpdateDelay);
+          }
         case UpdateMode.UpdateHourly:
           return nextHourlyUpdate;
         case UpdateMode.UpdateDaily:
@@ -515,10 +521,10 @@ namespace disParityUI
       operationManager.Begin(new RemoveDriveOperation(), drive);
     }
 
-    public void Update()
+    public void Update(bool automatic = false)
     {
       updateParityStatusTimer.Start();
-      operationManager.Begin(new UpdateOperation());
+      operationManager.Begin(new UpdateOperation(automatic));
     }
 
     public void Hashcheck(DataDriveViewModel drive = null)
@@ -547,6 +553,8 @@ namespace disParityUI
 
     private void HandleOperationFinished(object sender, EventArgs args)
     {
+      if (sender is UpdateOperation)
+        lastUpdateFinished = DateTime.Now;
       UpdateStatus();
       UpdateParityStatus();
       updateParityStatusTimer.Stop();
@@ -567,6 +575,20 @@ namespace disParityUI
     {
       Progress = 0;
       ProgressState = TaskbarItemProgressState.None;
+    }
+
+    public void ShowLogWindow()
+    {
+      logWindow = new LogWindow();
+      logWindow.Show();
+    }
+
+    public bool LogWindowVisible()
+    {
+      if (logWindow == null)
+        return false;
+      else
+        return logWindow.IsVisible;
     }
 
     #region Properties

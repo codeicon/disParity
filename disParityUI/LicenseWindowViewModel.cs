@@ -25,7 +25,7 @@ namespace disParityUI
       try {
         LicenseText = File.ReadAllText(licenseFile);
       } catch (Exception e) {
-        LogFile.Log("Error reading {0}: {1}", licenseFile, e.Message);
+        LogFile.Error("Error reading {0}: {1}", licenseFile, e.Message);
         LicenseText = "Error reading license file: " + e.Message;
       }
 

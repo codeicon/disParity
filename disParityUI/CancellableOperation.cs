@@ -69,7 +69,8 @@ namespace disParityUI
           if (viewModel.Config.MonitorDrives && !ForceScan && !vm.DataDrive.ChangesDetected) {
             if (vm.DataDrive.DriveStatus == DriveStatus.UpdateRequired)
               anyDriveNeedsUpdate = true;
-            continue;
+            if (vm.DataDrive.DriveStatus != DriveStatus.ScanRequired)
+              continue;
           }
           if ((scanDrive != null && vm == scanDrive) || (scanDrive == null && vm != skipDrive)) {
             Interlocked.Increment(ref runningScans);

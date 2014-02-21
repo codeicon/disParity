@@ -34,6 +34,10 @@ namespace disParity
     const int DEFAULT_MAIN_WINDOW_Y = 200;
     const int DEFAULT_MAIN_WINDOW_WIDTH = 640;
     const int DEFAULT_MAIN_WINDOW_HEIGHT = 480;
+    const int DEFAULT_LOG_WINDOW_X = 900;
+    const int DEFAULT_LOG_WINDOW_Y = 200;
+    const int DEFAULT_LOG_WINDOW_WIDTH = 500;
+    const int DEFAULT_LOG_WINDOW_HEIGHT = 400;
 
     public Config(string filename)
     {
@@ -55,6 +59,10 @@ namespace disParity
       UpdateHours = DEFAULT_UPDATE_HOURS;
       UpdateDaily = DEFAULT_UPDATE_DAILY;
       LastHourlyUpdate = DateTime.MinValue;
+      LogWindowHeight = DEFAULT_LOG_WINDOW_HEIGHT;
+      LogWindowWidth = DEFAULT_LOG_WINDOW_WIDTH;
+      LogWindowX = DEFAULT_LOG_WINDOW_X;
+      LogWindowY = DEFAULT_LOG_WINDOW_Y;
       Ignores = new List<string>();
       IgnoresRegex = new List<Regex>();
       Drives = new List<Drive>();
@@ -214,24 +222,52 @@ namespace disParity
                 continue;
               else if (reader.NodeType == XmlNodeType.EndElement)
                 break;
-              else if (reader.Name == "MainWindowX") {
+              else if (reader.Name == "MainWindowX")
+              {
                 reader.Read();
                 MainWindowX = Convert.ToInt32(reader.Value);
                 reader.Read();
               }
-              else if (reader.Name == "MainWindowY") {
+              else if (reader.Name == "MainWindowY")
+              {
                 reader.Read();
                 MainWindowY = Convert.ToInt32(reader.Value);
                 reader.Read();
               }
-              else if (reader.Name == "MainWindowWidth") {
+              else if (reader.Name == "MainWindowWidth")
+              {
                 reader.Read();
                 MainWindowWidth = Convert.ToInt32(reader.Value);
                 reader.Read();
               }
-              else if (reader.Name == "MainWindowHeight") {
+              else if (reader.Name == "MainWindowHeight")
+              {
                 reader.Read();
                 MainWindowHeight = Convert.ToInt32(reader.Value);
+                reader.Read();
+              }
+              else if (reader.Name == "LogWindowX")
+              {
+                reader.Read();
+                LogWindowX = Convert.ToInt32(reader.Value);
+                reader.Read();
+              }
+              else if (reader.Name == "LogWindowY")
+              {
+                reader.Read();
+                LogWindowY = Convert.ToInt32(reader.Value);
+                reader.Read();
+              }
+              else if (reader.Name == "LogWindowWidth")
+              {
+                reader.Read();
+                LogWindowWidth = Convert.ToInt32(reader.Value);
+                reader.Read();
+              }
+              else if (reader.Name == "LogWindowHeight")
+              {
+                reader.Read();
+                LogWindowHeight = Convert.ToInt32(reader.Value);
                 reader.Read();
               }
             }
@@ -315,6 +351,12 @@ namespace disParity
         writer.WriteElementString("MainWindowY", MainWindowY.ToString());
         writer.WriteElementString("MainWindowWidth", MainWindowWidth.ToString());
         writer.WriteElementString("MainWindowHeight", MainWindowHeight.ToString());
+
+        writer.WriteElementString("LogWindowX", LogWindowX.ToString());
+        writer.WriteElementString("LogWindowY", LogWindowY.ToString());
+        writer.WriteElementString("LogWindowWidth", LogWindowWidth.ToString());
+        writer.WriteElementString("LogWindowHeight", LogWindowHeight.ToString());
+        
 
         writer.WriteEndElement(); // Layout
 
@@ -404,6 +446,14 @@ namespace disParity
     public DateTime UpdateDaily { get; set; }
 
     public DateTime LastHourlyUpdate { get; set; }
+
+    public int LogWindowWidth { get; set; }
+
+    public int LogWindowHeight { get; set; }
+
+    public int LogWindowX { get; set; }
+
+    public int LogWindowY { get; set; }
 
   }
 

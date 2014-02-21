@@ -42,7 +42,7 @@ namespace disParityUI
           UpdateAdditionalInfo();
         }
         catch (Exception e) {
-          LogFile.Log("Error occurred during scan of {0}: {1}", DataDrive.Root, e.Message);
+          LogFile.Error("Error occurred during scan of {0}: {1}", DataDrive.Root, e.Message);
         }
         finally {
           UpdateStatus();

@@ -49,6 +49,14 @@ namespace disParityUI
       System.Environment.Exit(0);
     }
 
+    public static Application Current
+    {
+      get
+      {
+        return app;
+      }
+    }
+
     public static void LogCrash(Exception e, string context = "", bool unhandled = false)
     {
       CrashLog.Create(e, context, true, unhandled);

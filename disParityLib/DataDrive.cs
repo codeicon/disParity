@@ -106,7 +106,7 @@ namespace disParity
         catch (Exception e)
         {
           env.LogCrash(e);
-          LogFile.Log("Could not enable file watcher for {0}: {1}", Root, e.Message);
+          LogFile.Error("Could not enable file watcher for {0}: {1}", Root, e.Message);
         }
       }
     }
@@ -323,7 +323,7 @@ namespace disParity
       catch (Exception e) {
         if (progress == null)
           throw;
-        LogFile.Log("Warning: Could not enumerate subdirectories of {0}: {1}", dir.FullName, e.Message);
+        LogFile.Error("Warning: Could not enumerate subdirectories of {0}: {1}", dir.FullName, e.Message);
         return;
       }
       FileInfo[] fileInfos;
@@ -331,7 +331,7 @@ namespace disParity
         fileInfos = dir.GetFiles();
       }
       catch (Exception e) {
-        LogFile.Log("Warning: Could not enumerate files in {0}: {1}", dir.FullName, e.Message);
+        LogFile.Error("Warning: Could not enumerate files in {0}: {1}", dir.FullName, e.Message);
         return;
       }
 
@@ -354,7 +354,7 @@ namespace disParity
         }
         string subDir = Path.Combine(dir.FullName, d.Name);
         if (subDir.Length >= MAX_FOLDER) 
-          LogFile.Log("Warning: skipping folder \"" + subDir + "\" because the path is too long.");
+          LogFile.Error("Warning: skipping folder \"" + subDir + "\" because the path is too long.");
         else
           Scan(d, ignores, folderProgress);
         folderProgress.EndPhase();
@@ -369,7 +369,7 @@ namespace disParity
         string fullName = Path.Combine(dir.FullName, f.Name);
         try {
           if (fullName.Length >= MAX_PATH) {
-            LogFile.Log("Warning: skipping file \"" + fullName + "\" because the path is too long");
+            LogFile.Error("Warning: skipping file \"" + fullName + "\" because the path is too long");
             continue;
           }
           if (f.Attributes == (FileAttributes)(-1))
@@ -424,7 +424,7 @@ namespace disParity
 
     private void FireErrorMessage(string message)
     {
-      LogFile.Log(message);
+      LogFile.Error(message);
       if (ErrorMessage != null)
         ErrorMessage(this, new ErrorMessageEventArgs(message));
     }
@@ -856,7 +856,7 @@ namespace disParity
       }
       catch (Exception e) {
         env.LogCrash(e);
-        LogFile.Log(String.Format("Error reading {0}: {1}", MetaFilePath, e.Message));
+        LogFile.Error(String.Format("Error reading {0}: {1}", MetaFilePath, e.Message));
         files.Clear();
         throw new MetaFileLoadException(MetaFilePath, e);
       }
@@ -914,7 +914,7 @@ namespace disParity
         }
       }
       catch (Exception e) {
-        LogFile.Log(String.Format("Could not save {0}: {1}", fileName, e.Message));
+        LogFile.Error(String.Format("Could not save {0}: {1}", fileName, e.Message));
         // try to delete it in case it got partly saved
         try {
           File.Delete(fileName);
@@ -935,7 +935,7 @@ namespace disParity
         File.Copy(fileName, backup, true);
       }
       catch (Exception e) {
-        LogFile.Log(String.Format("Could not backup {0}: {1}", fileName, e.Message));
+        LogFile.Error(String.Format("Could not backup {0}: {1}", fileName, e.Message));
         return false;
       }
       return true;
@@ -949,7 +949,7 @@ namespace disParity
         File.Copy(backup, fileName, true);
       }
       catch (Exception e) {
-        LogFile.Log(String.Format("Could not restore {0} from backup: {1}", fileName, e.Message));
+        LogFile.Error(String.Format("Could not restore {0} from backup: {1}", fileName, e.Message));
         return false;
       }
       return true;
@@ -973,7 +973,7 @@ namespace disParity
           f.SetLength(fi.Length + add.RecordSize);
       }
       catch (Exception e) {
-        LogFile.Log(String.Format("Could not extend {0}: {1}", fileName, e.Message));
+        LogFile.Error(String.Format("Could not extend {0}: {1}", fileName, e.Message));
         RestoreMetaFile();
         return false;
       }

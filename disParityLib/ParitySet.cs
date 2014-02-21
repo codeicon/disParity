@@ -373,12 +373,12 @@ namespace disParity
             else {
               if (driveToCheck == null)
                 d.Status = "Hash check complete.  Errors: " + failures;
-              LogFile.Log("Hash check of " + d.Root + " complete.  Errors: " + failures);
+              LogFile.Error("Hash check of " + d.Root + " complete.  Errors: " + failures);
             }
           }
           catch (Exception e) {
             d.Status = "Hash check failed: " + e.Message;
-            LogFile.Log("Hash check of " + d.Root + " failed: " + e.Message);
+            LogFile.Error("Hash check of " + d.Root + " failed: " + e.Message);
             fatalException = e; // this will halt the hash check of all drives below
           }
           finally {
@@ -443,7 +443,7 @@ namespace disParity
     {
       long available = parity.FreeSpace;
       if (available == -1)
-        LogFile.Log("Could not determine free space available on parity drive");
+        LogFile.Error("Could not determine free space available on parity drive");
       else
         LogFile.Log("Free space on parity drive: " + Utils.SmartSize(available) + " (" + available + " bytes)");
       if (!Empty)
@@ -708,7 +708,7 @@ namespace disParity
       string fullPath = r.FullPath;
       // file may have been deleted, or attributes may have changed since we scanned, so refresh
       if (!r.RefreshAttributes()) {
-        LogFile.Log("{0} no longer exists.", r.FullPath);
+        LogFile.Error("{0} no longer exists.", r.FullPath);
         return false;
       }
 
@@ -765,7 +765,7 @@ namespace disParity
           if (!XORFileWithParity(r, false)) {
             if (!cancel)
               // assume FireErrorMessage was already called
-              LogFile.Log("Could not add {0} to parity.  File will be skipped.", r.FullPath);
+              LogFile.Error("Could not add {0} to parity.  File will be skipped.", r.FullPath);
             return false;
           }
         }
@@ -967,7 +967,7 @@ namespace disParity
 
         if (checkHash) {
           if (!Utils.HashCodesMatch(hash.Hash, r.HashCode)) {
-            LogFile.Log("Tried to remove existing file but hash codes don't match.");
+            LogFile.Error("Tried to remove existing file but hash codes don't match.");
             return false;
           }
         }
@@ -1049,7 +1049,7 @@ namespace disParity
 
           if (cancel) {
             // we can't salvage an initial update that was cancelled so we'll have to start again from scratch next time.
-            LogFile.Log("Initial update cancelled.  Resetting parity to empty.");
+            LogFile.Error("Initial update cancelled.  Resetting parity to empty.");
             Erase();
             return;
           }
@@ -1057,7 +1057,7 @@ namespace disParity
         }
       }
       catch (Exception e) {
-        LogFile.Log("Fatal error on initial update: " + e.Message);
+        LogFile.Error("Fatal error on initial update: " + e.Message);
         LogFile.Log(e.StackTrace);
         // can't recover from errors either, must also start over from scratch
         Erase();
@@ -1155,7 +1155,7 @@ namespace disParity
     private void FireErrorMessage(string message, bool log = true)
     {
       if (log)
-        LogFile.Log(message);
+        LogFile.Error(message);
       if (ErrorMessage != null)
         ErrorMessage(this, new ErrorMessageEventArgs(message));
     }

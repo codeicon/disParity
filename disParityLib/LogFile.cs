@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Text;
 using System.IO;
 
@@ -16,6 +17,10 @@ namespace disParity
     const int MAX_FILE_SIZE = 5000000;
 
     public static string LogPath { set; private get; }
+
+    public delegate void OnLogEntryDelegate(DateTime time, string entry, bool error);
+
+    public static event OnLogEntryDelegate OnEntry;
 
     public static void Open(string filenameIn, bool verbose)
     {
@@ -59,40 +64,72 @@ namespace disParity
 
     public static void Log(string msg, params object[] args)
     {
-      try {
-        lock (syncObj) {
-          Console.WriteLine(msg, args);
-          if (f != null) {
-            f.Write(DateTime.Now + " ");
-            f.WriteLine(msg, args);
-            f.Flush();
-            MaybeRotate();
-          }
-        }
+      try
+      {
+        WriteEntry(String.Format(msg, args));
       }
-      catch {
+      catch
+      {
         // suppress any errors writing to log file
       }
     }
 
     public static void Log(string msg)
     {
-      try {
-        lock (syncObj) {
-          Console.WriteLine(msg);
-          if (f != null) {
-            f.Write(DateTime.Now + " ");
-            f.WriteLine(msg);
-            f.Flush();
-            MaybeRotate();
-          }
-        }
+      try
+      {
+        WriteEntry(msg);
       }
-      catch {
+      catch
+      {
         // suppress any errors writing to log file
       }
     }
 
+    public static void Error(string msg, params object[] args)
+    {
+      try
+      {
+        WriteEntry(String.Format(msg, args), true);
+      }
+      catch
+      {
+        // suppress any errors writing to log file
+      }
+    }
+
+    public static void Error(string msg)
+    {
+      try
+      {
+        WriteEntry(msg, true);
+      }
+      catch
+      {
+        // suppress any errors writing to log file
+      }
+    }
+
+    private static void WriteEntry(string msg, bool error = false)
+    {
+      DateTime now = DateTime.Now;
+      lock (syncObj)
+      {
+        if (OnEntry != null)
+          OnEntry(now, msg, error);
+        //Console.WriteLine(msg);
+        if (f != null)
+        {
+          f.Write(now + " ");
+          f.WriteLine(msg);
+          f.Flush();
+          MaybeRotate();
+        }
+      }
+    }
+
+
+    // unused
     public static void VerboseLog(string msg, params object[] args)
     {
       if (Verbose)

@@ -10,6 +10,12 @@ namespace disParityUI
   internal class UpdateOperation : CancellableOperation
   {
 
+    public UpdateOperation(bool automatic)
+    {
+      if (automatic)
+        suppressErrorCheck = true;
+    }
+
     protected override void DoOperation()
     {
       if (!anyDriveNeedsUpdate)

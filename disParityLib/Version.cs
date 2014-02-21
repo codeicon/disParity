@@ -51,7 +51,7 @@ namespace disParity
           }
         }
         catch (Exception e) {
-          LogFile.Log("Error checking for upgrade: " + e.Message);
+          LogFile.Error("Error checking for upgrade: " + e.Message);
         }
       });
 #endif
@@ -70,7 +70,7 @@ namespace disParity
           mpb = (int)entry;
       }
       catch (Exception e) {
-        LogFile.Log("Error accessing registry: " + e.Message);
+        LogFile.Error("Error accessing registry: " + e.Message);
       }
     }
 
@@ -91,7 +91,7 @@ namespace disParity
         return id;
       }
       catch (Exception e) {
-        LogFile.Log("Error accessing registry: " + e.Message);
+        LogFile.Error("Error accessing registry: " + e.Message);
         return 0;
       }
     }

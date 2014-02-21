@@ -141,7 +141,7 @@ namespace disParity
         }
       }
       catch (Exception e) {
-        LogFile.Log("Fatal error in ParityChange.Save(): " + e.Message);
+        LogFile.Error("Fatal error in ParityChange.Save(): " + e.Message);
         throw new Exception("A fatal error occurred (" + e.Message + ") when writing to parity.  Parity data may be damaged.", e);
       }
     }
