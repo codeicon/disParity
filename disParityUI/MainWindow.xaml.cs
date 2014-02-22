@@ -34,6 +34,7 @@ namespace disParityUI
       Loaded += HandleLoaded;
       Closed += HandleClosed;
       Closing += HandleClosing;
+      StateChanged += HandleStateChanged;
 
       InitializeComponent();
       timer = new DispatcherTimer();
@@ -70,13 +71,16 @@ namespace disParityUI
 
     private void HandleClosed(object sender, EventArgs args)
     {
+      App.Current.Shutdown(); // closes LogWindow as well, if open
       viewModel.Shutdown();
     }
 
-    protected override void OnClosed(EventArgs e)
+    private void HandleStateChanged(object sender, EventArgs args)
     {
-      base.OnClosed(e);
-      App.Current.Shutdown(); // closes LogWindow as well, if open
+      if (WindowState == WindowState.Minimized)
+        viewModel.SetLogWindowState(WindowState.Minimized);
+      else if (WindowState == WindowState.Normal)
+        viewModel.SetLogWindowState(WindowState.Normal);
     }
 
     #region Command CanExecute/Executed methods

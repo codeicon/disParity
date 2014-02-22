@@ -121,7 +121,7 @@ namespace disParity
 
     private void HandleWatcherEvent(object sender, FileSystemEventArgs args)
     {
-      LogFile.Log("Changes detected on " + Root);
+      LogFile.Log(String.Format("Changes detected on {0} ({1})", root, args.ChangeType));
       LastChange = DateTime.Now;
       ChangesDetected = true;
       if (DriveStatus == DriveStatus.UpToDate)

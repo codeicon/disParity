@@ -9,19 +9,16 @@
     <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="*"/>
-      <RowDefinition Height="50"/>
+      <RowDefinition Height="40"/>
     </Grid.RowDefinitions>
-    <ListBox Name="listbox" ItemsSource="{Binding LogEntries}" SelectionMode="Extended"  FontFamily="Courier New">
+    <ListBox Name="listbox" ItemsSource="{Binding LogEntries}" SelectionMode="Extended" Margin="5,5,5,0" FontFamily="Courier New">
       <ListBox.ItemTemplate>
         <DataTemplate>
-          <StackPanel Orientation="Horizontal">
-            <TextBlock Text="{Binding Path=Time}" Foreground="{Binding Path=Color}" Width="160" />
-            <TextBlock Text="{Binding Path=Text}" Foreground="{Binding Path=Color}"/>
-          </StackPanel>
+          <TextBlock Text="{Binding Path=Text}" Foreground="{Binding Path=Color}"/>
         </DataTemplate>
       </ListBox.ItemTemplate>
     </ListBox>
-    <Button Grid.Row="1" Width="115" Height="25" Content="Copy To Clipboard" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,5,120,5" Click="HandleCopyToClipboardClick" Name="CopyToClipboardButton"/>
-    <Button Grid.Row="1" Width="72" Height="25" Content="Save..." HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5,5,20,5" Click="HandleSaveClick"/>
+    <Button Grid.Row="1" Width="70" Height="25" Content="Copy" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,115,1" Click="HandleCopyToClipboardClick" Name="CopyToClipboardButton"/>
+    <Button Grid.Row="1" Width="70" Height="25" Content="Save..." HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,20,1" Click="HandleSaveClick"/>
   </Grid>
 </Window>

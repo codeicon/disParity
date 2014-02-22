@@ -31,7 +31,7 @@ namespace disParityUI
       Application.Current.Dispatcher.BeginInvoke(new Action(() => 
       {
         entries.Add(new LogEntry(now, entry, error));
-        if (entries.Count > MAX_ENTRIES)
+        while (entries.Count > MAX_ENTRIES)
           entries.RemoveAt(0);
       }));
     }
@@ -45,7 +45,7 @@ namespace disParityUI
       if (dlg.ShowDialog() == true)
         using (StreamWriter fs = new StreamWriter(dlg.FileName, false))
           foreach (LogEntry e in entries)
-            fs.WriteLine("{0} {1}", e.Time, e.Text);
+            fs.WriteLine(e.Text);
     }
 
     public ObservableCollection<LogEntry> LogEntries
@@ -115,8 +115,7 @@ namespace disParityUI
 
     public LogEntry(DateTime now, string text, bool error)
     {
-      Text = text;
-      Time = now;
+      Text = now + " " + text;
       if (error)
         Color = Brushes.Red;
       else
@@ -125,7 +124,6 @@ namespace disParityUI
 
     public Brush Color { get; private set; }
 
-    public DateTime Time { get; private set; }
 
     public string Text { get; private set; }
 

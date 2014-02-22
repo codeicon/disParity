@@ -67,8 +67,6 @@ namespace disParityUI
       foreach (var item in listbox.SelectedItems)
       {
         LogEntry e = item as LogEntry;
-        sb.Append(e.Time);
-        sb.Append(" ");
         sb.Append(e.Text);
         sb.Append("\n");
       }

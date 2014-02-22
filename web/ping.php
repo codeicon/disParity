@@ -1,11 +1,11 @@
 <?php
 
 
-//the log file to use - change this
+//the log file to use
 $myFile = "pinglog.txt";
 
-// Redirect file to return after logging
-$redirect_location = 'http://www.vilett.com/disParity/version.txt';
+$releaseVer = "0.39";
+$betaVer = "0.40";
 
 // filter out one dood's script that runs disParity every 20 minutes 
 //if ($_GET["id"]=="264003054")
@@ -58,10 +58,11 @@ fwrite($fh, $stringData);
 //close the file
 fclose($fh);
 
+$beta = $cleaninput["beta"];
 
-
-
-//load the text file for return - change this 
-header('Location:'.$redirect_location);
+if (($beta == "1") && ($version >= 0.40))
+  echo $betaVer;
+else
+  echo $releaseVer;
 
 
