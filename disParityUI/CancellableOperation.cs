@@ -59,8 +59,6 @@ namespace disParityUI
       drive = selectedDrive;
       errorMessages.Clear();
       if (ScanFirst && viewModel.Drives.Count > 0) {
-        scanning = true;
-        Status = "Scanning drives...";
         runningScans = 0;
         scanProgress = new double[viewModel.Drives.Count];
         bool scansStarted = false;
@@ -73,6 +71,8 @@ namespace disParityUI
               continue;
           }
           if ((scanDrive != null && vm == scanDrive) || (scanDrive == null && vm != skipDrive)) {
+            scanning = true;
+            Status = "Scanning drives...";
             Interlocked.Increment(ref runningScans);
             vm.PropertyChanged += HandleDataDrivePropertyChanged;
             vm.DataDrive.ScanCompleted += HandleScanCompleted;

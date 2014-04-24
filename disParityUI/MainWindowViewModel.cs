@@ -372,6 +372,10 @@ namespace disParityUI
       {
         drives.Remove(drive);
       }));
+      // Make sure the FileSystemWatcher for this drive (if any) is disabled
+      drive.DataDrive.DisableWatcher();
+      // Update this to the current time to reset the update countdown timer; otherwise we might start an update immediately 
+      lastUpdateFinished = DateTime.Now;
     }
 
     private void HandleParitySetPropertyChanged(object sender, PropertyChangedEventArgs e)

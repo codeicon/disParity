@@ -31,7 +31,7 @@ namespace disParityUI
       UpdateAdditionalInfo();
     }
 
-    public void Scan(bool auto)
+    internal void Scan(bool auto)
     {
       if (DataDrive.Scanning)
         return;
@@ -52,7 +52,7 @@ namespace disParityUI
       );      
     }
 
-    public DataDrive DataDrive { get; private set; }
+    internal DataDrive DataDrive { get; private set; }
 
     private void UpdateAdditionalInfo()
     {

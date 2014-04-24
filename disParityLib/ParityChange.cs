@@ -38,7 +38,7 @@ namespace disParity
         mmfStream = mmf.CreateViewStream();
       }
       catch (Exception e) {
-        LogFile.Log("Could not create memory mapped file: " + e.Message);
+        LogFile.Error("Could not create memory mapped file: " + e.Message);
         // We'll use a temp file only
         mmf = null;
         mmfStream = null;
@@ -81,7 +81,7 @@ namespace disParity
       else {
         if (tempFileStream == null) {
           if (mmfStream != null) {
-            LogFile.Log("Switching from RAM to temp file at {0}", Utils.SmartSize(mmfStream.Position));
+            LogFile.VerboseLog("Switching from RAM to temp file at {0}", Utils.SmartSize(mmfStream.Position));
             mmfStream.Seek(0, SeekOrigin.Begin); // return MMF stream to its start
           }
           writingToMMF = false;
@@ -129,9 +129,7 @@ namespace disParity
           FreeMMF();
         }
         if (tempFileStream != null) {
-#if DEBUG
-          LogFile.Log("Flushing MMF parity took {0} seconds", (DateTime.Now - start).TotalSeconds);
-#endif
+          LogFile.VerboseLog("Flushing MMF parity took {0} seconds", (DateTime.Now - start).TotalSeconds);
           tempFileStream.Seek(0, SeekOrigin.Begin);
           while (saveBlock < endBlock) {
             tempFileStream.Read(data, 0, Parity.BLOCK_SIZE);
