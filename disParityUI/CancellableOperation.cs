@@ -226,6 +226,8 @@ namespace disParityUI
 
     public void Cancel()
     {
+      if (!AllowCancel())
+        return;
       cancelled = true;
       if (scanning) {
         Status = "Cancelling scan...";
@@ -286,6 +288,14 @@ namespace disParityUI
     /// Whether or not the operation should be aborted if any errors occur during the scan
     /// </summary>
     protected virtual bool AbortIfScanErrors { get { return true; } }
+
+    /// <summary>
+    /// Whether or not the operation can be cancelled right now
+    /// </summary>
+    protected virtual bool AllowCancel()
+    {
+      return true;
+    }
 
     public string Status { get; protected set; }
 

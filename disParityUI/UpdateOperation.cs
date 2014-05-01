@@ -51,6 +51,18 @@ namespace disParityUI
       viewModel.ParitySet.CancelUpdate();
     }
 
+    protected override bool AllowCancel()
+    {
+      if (viewModel.ParitySet.Empty)
+      {
+        if (MessageWindow.Show(viewModel.Owner, "Really cancel update?",
+          "Cancelling the initial update before it completes will cause you to lose all parity data generated so far.  Are you sure you want to cancel?",
+          MessageWindowIcon.Caution, MessageWindowButton.YesNo) != true)
+          return false;
+      }
+      return true;
+    }
+
     public override string Name { get { return "Update"; } }
 
   }
