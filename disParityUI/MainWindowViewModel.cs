@@ -32,7 +32,7 @@ namespace disParityUI
     private Exception configLoadException;
     private DateTime nextHourlyUpdate = DateTime.MinValue;
     private DateTime nextDailyUpdate = DateTime.MinValue;
-    private DateTime lastUpdateFinished = DateTime.MinValue;
+    private DateTime updateSoonBaseTime = DateTime.MinValue;
     private LogWindow logWindow;
 
     public MainWindowViewModel(Window owner)
@@ -375,7 +375,7 @@ namespace disParityUI
       // Make sure the FileSystemWatcher for this drive (if any) is disabled
       drive.DataDrive.DisableWatcher();
       // Update this to the current time to reset the update countdown timer; otherwise we might start an update immediately 
-      lastUpdateFinished = DateTime.Now;
+      updateSoonBaseTime = DateTime.Now;
     }
 
     private void HandleParitySetPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -413,12 +413,17 @@ namespace disParityUI
       return true;
     }
 
+    private bool AnyDriveHasError()
+    {
+      return drives.Where(d => d.DataDrive.DriveStatus == DriveStatus.AccessError).Count() > 0;
+    }
+
     private void HandleUpdateTimer(object sender, System.Timers.ElapsedEventArgs args)
     {
-      UpdateStatus();
       if (operationManager.Busy)
         return;
-      if (!config.MonitorDrives || AllDrivesUpToDate())
+      UpdateStatus();
+      if (!config.MonitorDrives || AllDrivesUpToDate() || AnyDriveHasError())
         return;
 
       DateTime now = DateTime.Now;
@@ -440,7 +445,7 @@ namespace disParityUI
       switch (Config.UpdateMode) {
         case UpdateMode.UpdateSoon:
           {
-            DateTime start = (lastUpdateFinished > paritySet.LastChange) ? lastUpdateFinished : paritySet.LastChange;
+            DateTime start = (updateSoonBaseTime > paritySet.LastChange) ? updateSoonBaseTime : paritySet.LastChange;
             return start + TimeSpan.FromMinutes(config.UpdateDelay);
           }
         case UpdateMode.UpdateHourly:
@@ -458,7 +463,8 @@ namespace disParityUI
     public void UpdateStatus()
     {
       // if an operation is currently running, the status is the status of the operation
-      if (operationManager.Busy) {
+      if (operationManager.Busy) 
+      {
         Status = operationManager.Status;
         return;
       }
@@ -471,7 +477,8 @@ namespace disParityUI
         else if (d.DataDrive.DriveStatus == DriveStatus.UpdateRequired)
           updateRequired = true;
 
-      if (!scanRequired && !updateRequired) {
+      if (!scanRequired && !updateRequired) 
+      {
         long totalSize = 0;
         int totalFiles = 0;
         foreach (DataDriveViewModel d in drives) {
@@ -484,14 +491,22 @@ namespace disParityUI
       }
 
       // If drive monitoring is on, we may be counting down to an update
-      if (config.MonitorDrives) {
-        if (config.UpdateMode == UpdateMode.NoAction) {
+      if (config.MonitorDrives) 
+      {
+        if (config.UpdateMode == UpdateMode.NoAction) 
+        {
           Status = "Changes detected on one or more drives.  An update may be required.";
+          return;
+        }
+        if (AnyDriveHasError())
+        {
+          Status = "Automatic updates disabled due to drive error(s)";
           return;
         }
         DateTime nextAutoUpdate = NextAutoUpdate();
         string status = updateRequired ? "Update required" : "Changes detected";
-        if (nextAutoUpdate > DateTime.Now) {
+        if (nextAutoUpdate > DateTime.Now) 
+        {
           if ((nextAutoUpdate - DateTime.Now).Duration() < TimeSpan.FromHours(1))
             Status = String.Format("{0}.  Backup will update automatically in {1}...", status, (nextAutoUpdate - DateTime.Now).ToString(@"m\:ss"));
           else
@@ -557,8 +572,7 @@ namespace disParityUI
 
     private void HandleOperationFinished(object sender, EventArgs args)
     {
-      if (sender is UpdateOperation)
-        lastUpdateFinished = DateTime.Now;
+      updateSoonBaseTime = DateTime.Now;
       UpdateStatus();
       UpdateParityStatus();
       updateParityStatusTimer.Stop();
@@ -567,6 +581,7 @@ namespace disParityUI
     public void Cancel()
     {
       operationManager.Cancel();
+      updateSoonBaseTime = DateTime.Now;
     }
 
     public void StartProgress()
