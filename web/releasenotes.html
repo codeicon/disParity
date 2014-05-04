@@ -12,21 +12,22 @@ Release notes for disParity Beta
 </font>
 <p>
 <div class="releasenote">
-<i>Changes in version 0.40 beta released Thursday, May 1, 2014</i>
+<i>Changes in version 0.40 beta released Sunday, May 4, 2014</i>
 <ul>
 <li>This beta introduces a new "automatic update" feature which allows disParity to keep your
 backup up to date while running unattended.  Use of the feature is optional.  To configure automatic updates,
 press "Options..." and switch to the "Automatic Updates" tab.  The "monitor drives for changes" box must be checked
-in order for the feature to be active (updates will occur automatically only if changes have been detected.)  By default,
+in order for the feature to be active.  By default,
 the "Indicate changes have occurred but take no further action" option is selected.  This means disParity will indicate
 when it detects changes on a drive, but updates must still be run manually by the user.  After that, there are 3 possible modes for
 automatic updates.  The first mode runs the update a configurable number of minutes after the last change has occurred.
 This means the update will not run as long as changes are still occurring.  The second mode runs an automatic update
-every X number of hours, where X is configurable.  Again, the update will only actually run if changes have occurred; otherwise,
-nothing happens and the next update will happen in another X hours.  The final mode allows you to set a once daily time for
-automatic updates to run (e.g. 2 AM.)
+every X number of hours, where X is configurable.  The final mode allows you to set a once daily time for
+automatic updates to run (e.g. 2 AM.)  Note that in all 3 modes, the update will only actually run if changes have been detected on one or more drives
+since the last update.  
 <li>The log file can now be viewed directly from within disParity by pressing the new "Show Log" button in the main window. 
-The window can be left open while disParity is running to show new entries as they are written to the log.
+The window can be left open while disParity is running to show new entries as they are written to the log.  Any errors encountered by
+disParity will be highlighted in red in the log window.
 <li>Attempts to cancel the initial update will now show a warning first that all parity data will be lost.   
 </ul>
 </div>
