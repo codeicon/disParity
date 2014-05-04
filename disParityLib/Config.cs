@@ -12,8 +12,9 @@ namespace disParity
   public enum UpdateMode
   {
     NoAction,
-    ScanOnly,
-    ScanAndUpdate
+    UpdateSoon,
+    UpdateHourly,
+    UpdateDaily
   }
 
   public class Config
@@ -25,12 +26,18 @@ namespace disParity
     const UInt32 DEFAULT_MAX_TEMP_RAM = 1024;
     const bool DEFAULT_IGNORE_HIDDEN = true;
     const bool DEFAULT_MONITOR_DRIVES = true;
-    const UpdateMode DEFAULT_UPDATE_MODE = UpdateMode.ScanAndUpdate;
-    const int DEFAULT_UPDATE_DELAY = 1;
+    const UpdateMode DEFAULT_UPDATE_MODE = UpdateMode.NoAction;
+    const int DEFAULT_UPDATE_DELAY = 5;
+    const UInt32 DEFAULT_UPDATE_HOURS = 2;
+    DateTime DEFAULT_UPDATE_DAILY = new DateTime(2008, 1, 1, 2, 0, 0); // 2 AM
     const int DEFAULT_MAIN_WINDOW_X = 200;
     const int DEFAULT_MAIN_WINDOW_Y = 200;
     const int DEFAULT_MAIN_WINDOW_WIDTH = 640;
     const int DEFAULT_MAIN_WINDOW_HEIGHT = 480;
+    const int DEFAULT_LOG_WINDOW_X = 900;
+    const int DEFAULT_LOG_WINDOW_Y = 200;
+    const int DEFAULT_LOG_WINDOW_WIDTH = 500;
+    const int DEFAULT_LOG_WINDOW_HEIGHT = 400;
 
     public Config(string filename)
     {
@@ -49,6 +56,13 @@ namespace disParity
       MonitorDrives = DEFAULT_MONITOR_DRIVES;
       UpdateDelay = DEFAULT_UPDATE_DELAY;
       UpdateMode = DEFAULT_UPDATE_MODE;
+      UpdateHours = DEFAULT_UPDATE_HOURS;
+      UpdateDaily = DEFAULT_UPDATE_DAILY;
+      LastHourlyUpdate = DateTime.MinValue;
+      LogWindowHeight = DEFAULT_LOG_WINDOW_HEIGHT;
+      LogWindowWidth = DEFAULT_LOG_WINDOW_WIDTH;
+      LogWindowX = DEFAULT_LOG_WINDOW_X;
+      LogWindowY = DEFAULT_LOG_WINDOW_Y;
       Ignores = new List<string>();
       IgnoresRegex = new List<Regex>();
       Drives = new List<Drive>();
@@ -108,7 +122,8 @@ namespace disParity
     {
       if (!File.Exists(filename))
         return;
-      using (XmlReader reader = XmlReader.Create(new StreamReader(filename))) {
+      using (StreamReader f = new StreamReader(filename))
+      using (XmlReader reader = XmlReader.Create(f)) {
         for (; ; ) {
           reader.Read();
           if (reader.EOF)
@@ -155,9 +170,30 @@ namespace disParity
                 if (mode == 1)
                   UpdateMode = UpdateMode.NoAction;
                 else if (mode == 2)
-                  UpdateMode = UpdateMode.ScanOnly;
+                  UpdateMode = UpdateMode.UpdateSoon;
                 else if (mode == 3)
-                  UpdateMode = UpdateMode.ScanAndUpdate;
+                  UpdateMode = UpdateMode.UpdateHourly;
+                else if (mode == 4)
+                  UpdateMode = UpdateMode.UpdateDaily;
+              }
+              else if (reader.Name == "UpdateHours") {
+                reader.Read();
+                UpdateHours = Convert.ToUInt32(reader.Value);
+                reader.Read();
+              }
+              else if (reader.Name == "UpdateDaily") {
+                reader.Read();
+                DateTime val;
+                if (DateTime.TryParseExact(reader.Value, "HHmm", null, System.Globalization.DateTimeStyles.None, out val))
+                  UpdateDaily = val;
+                reader.Read();
+              }
+              else if (reader.Name == "LastHourly") {
+                reader.Read();
+                long val;
+                if (long.TryParse(reader.Value, out val))
+                  LastHourlyUpdate = DateTime.FromBinary(val);
+                reader.Read();
               }
               else if (reader.Name == "Ignores") {
                 for (; ; ) {
@@ -186,24 +222,52 @@ namespace disParity
                 continue;
               else if (reader.NodeType == XmlNodeType.EndElement)
                 break;
-              else if (reader.Name == "MainWindowX") {
+              else if (reader.Name == "MainWindowX")
+              {
                 reader.Read();
                 MainWindowX = Convert.ToInt32(reader.Value);
                 reader.Read();
               }
-              else if (reader.Name == "MainWindowY") {
+              else if (reader.Name == "MainWindowY")
+              {
                 reader.Read();
                 MainWindowY = Convert.ToInt32(reader.Value);
                 reader.Read();
               }
-              else if (reader.Name == "MainWindowWidth") {
+              else if (reader.Name == "MainWindowWidth")
+              {
                 reader.Read();
                 MainWindowWidth = Convert.ToInt32(reader.Value);
                 reader.Read();
               }
-              else if (reader.Name == "MainWindowHeight") {
+              else if (reader.Name == "MainWindowHeight")
+              {
                 reader.Read();
                 MainWindowHeight = Convert.ToInt32(reader.Value);
+                reader.Read();
+              }
+              else if (reader.Name == "LogWindowX")
+              {
+                reader.Read();
+                LogWindowX = Convert.ToInt32(reader.Value);
+                reader.Read();
+              }
+              else if (reader.Name == "LogWindowY")
+              {
+                reader.Read();
+                LogWindowY = Convert.ToInt32(reader.Value);
+                reader.Read();
+              }
+              else if (reader.Name == "LogWindowWidth")
+              {
+                reader.Read();
+                LogWindowWidth = Convert.ToInt32(reader.Value);
+                reader.Read();
+              }
+              else if (reader.Name == "LogWindowHeight")
+              {
+                reader.Read();
+                LogWindowHeight = Convert.ToInt32(reader.Value);
                 reader.Read();
               }
             }
@@ -247,21 +311,30 @@ namespace disParity
         if (MonitorDrives != DEFAULT_MONITOR_DRIVES)
           writer.WriteElementString("MonitorDrives", MonitorDrives ? "true" : "false");
 
-        /*
         if (UpdateDelay != DEFAULT_UPDATE_DELAY)
           writer.WriteElementString("UpdateDelay", UpdateDelay.ToString());
+
+        if (UpdateHours != DEFAULT_UPDATE_HOURS)
+          writer.WriteElementString("UpdateHours", UpdateHours.ToString());
+
+        if (UpdateDaily != DEFAULT_UPDATE_DAILY)
+          writer.WriteElementString("UpdateDaily", String.Format("{0:HHmm}", UpdateDaily));
+
+        if (LastHourlyUpdate != DateTime.MinValue)
+          writer.WriteElementString("LastHourly", String.Format("{0}", LastHourlyUpdate.ToBinary()));
 
         if (UpdateMode != DEFAULT_UPDATE_MODE) {
           int mode = 0;
           if (UpdateMode == UpdateMode.NoAction)
             mode = 1;
-          else if (UpdateMode == UpdateMode.ScanOnly)
+          else if (UpdateMode == UpdateMode.UpdateSoon)
             mode = 2;
-          else if (UpdateMode == UpdateMode.ScanAndUpdate)
+          else if (UpdateMode == UpdateMode.UpdateHourly)
             mode = 3;
+          else if (UpdateMode == UpdateMode.UpdateDaily)
+            mode = 4;
           writer.WriteElementString("UpdateMode", mode.ToString());
         }
-         */
 
         if (Ignores.Count > 0) {
           writer.WriteStartElement("Ignores");
@@ -278,6 +351,12 @@ namespace disParity
         writer.WriteElementString("MainWindowY", MainWindowY.ToString());
         writer.WriteElementString("MainWindowWidth", MainWindowWidth.ToString());
         writer.WriteElementString("MainWindowHeight", MainWindowHeight.ToString());
+
+        writer.WriteElementString("LogWindowX", LogWindowX.ToString());
+        writer.WriteElementString("LogWindowY", LogWindowY.ToString());
+        writer.WriteElementString("LogWindowWidth", LogWindowWidth.ToString());
+        writer.WriteElementString("LogWindowHeight", LogWindowHeight.ToString());
+        
 
         writer.WriteEndElement(); // Layout
 
@@ -361,6 +440,20 @@ namespace disParity
     public UInt32 UpdateDelay { get; set; }
 
     public UpdateMode UpdateMode { get; set; }
+
+    public UInt32 UpdateHours { get; set; }
+
+    public DateTime UpdateDaily { get; set; }
+
+    public DateTime LastHourlyUpdate { get; set; }
+
+    public int LogWindowWidth { get; set; }
+
+    public int LogWindowHeight { get; set; }
+
+    public int LogWindowX { get; set; }
+
+    public int LogWindowY { get; set; }
 
   }
 

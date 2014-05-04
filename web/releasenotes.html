@@ -12,123 +12,28 @@ Release notes for disParity Beta
 </font>
 <p>
 <div class="releasenote">
-<i>Changes in version 0.39 beta released Monday, May 20, 2013</i>
+<i>Changes in version 0.40 beta released Thursday, May 1, 2014</i>
 <ul>
-<li>Fixed a bug where if a file's "Last Modified" timestamp changed but was otherwise unmodified, it would always be re-checked for changes every scan,
-in some cases leading to very long scan times.
-<li>Fixed an obscure crash bug in Update that could occur if the "Temp RAM" memory mapped file could not be created.  
+<li>This beta introduces a new "automatic update" feature which allows disParity to keep your
+backup up to date while running unattended.  Use of the feature is optional.  To configure automatic updates,
+press "Options..." and switch to the "Automatic Updates" tab.  The "monitor drives for changes" box must be checked
+in order for the feature to be active (updates will occur automatically only if changes have been detected.)  By default,
+the "Indicate changes have occurred but take no further action" option is selected.  This means disParity will indicate
+when it detects changes on a drive, but updates must still be run manually by the user.  After that, there are 3 possible modes for
+automatic updates.  The first mode runs the update a configurable number of minutes after the last change has occurred.
+This means the update will not run as long as changes are still occurring.  The second mode runs an automatic update
+every X number of hours, where X is configurable.  Again, the update will only actually run if changes have occurred; otherwise,
+nothing happens and the next update will happen in another X hours.  The final mode allows you to set a once daily time for
+automatic updates to run (e.g. 2 AM.)
+<li>The log file can now be viewed directly from within disParity by pressing the new "Show Log" button in the main window. 
+The window can be left open while disParity is running to show new entries as they are written to the log.
+<li>Attempts to cancel the initial update will now show a warning first that all parity data will be lost.   
 </ul>
 </div>
-<div class="releasenote">
-<i>Changes in version 0.38 beta released Wednesday, February 13, 2013</i>
-<ul>
-<li>Extensive changes to the underyling parity engine to prevent corruption issues caused by running out of space on the parity drive.
-<li>The number of files that can be undeleted at once from a single drive is now capped at 1000.   
-<li>The upgrade check at startup now happens again once every 24 hours if disParity is left running.
-<li>Numerous other minor tweaks and improved error handling/reporting throughout the application.
-</ul>
-</div>
-<div class="releasenote">
-<i>Changes in version 0.37 beta released Saturday, January 26, 2013</i>
-<ul>
-<li>Fixed error message on initial Update if one or more data drives contained no files.
-<li>Possible fix for crash when importing some old (pre-UI) configurations.
-</ul>
-</div>
-<div class="releasenote">
-<i>Changes in version 0.36 beta released Thursday, January 24, 2013</i>
-<ul>
-<li>Fixed bug that prevented automatic new version check from working in some non-U.S. locales.
-<li>Stack traces for any crashes are now automatically uploaded.  No personal information is sent.
-<li>If a fatal exception forces the application to quit, it now tries to show a dialog first before closing.
-<li>Log file now rotates as soon as it reaches the maximum size rather than only at startup.  Max. log file size increased from 1MB to 5MB.
-<li>Switched to yellow status icon for drives that have deletes.  The red icon was a little too scary, and is now used only for serious errors.
-<li>Progress is now shown for the hash check of moved/renamed files during a scan (previously it could just sit at "Analyzing Results" for extended periods with no other indication of what was happening.)
-<li>Allocated a larger portion of the progress bar to the temp parity flush stage during updates.
-</ul>
-</div>
-<div class="releasenote">
-<i>Changes in version 0.35 beta released Monday, January 14, 2013</i>
-<ul>
-<li>Fixed bug where errors accessing the root of a drive during a scan were not reported in the UI.
-<li>A warning is now displayed when trying to set the temp folder to a location on the parity drive.
-<li>Scanning of the parity folder itself is now prevented.
-<li>The log file now lists the time to completion for long running tasks like update and verify.
-<li>Fixed a sporadic crash bug in Reset. 
-</ul>
-</div>
-<div class="releasenote">
-<i>Changes in version 0.34 beta released Friday, January 4, 2013</i>
-<ul>
-<li>Added a new Reset button to the main button panel.  This button deletes all of the backup parity data, which is useful if you want to rebuild your backup from scratch.
-<li>Fixed a minor layout issue in the main window.
-<li>Parity disk space (used and free) is now updated regularly during an Update.
-<li>Fixed bug where a single-drive Scan was scanning all drives.
-<li>Second attempt to fix interrupted scans caused by files or folders with full paths longer than the max. supported by .NET (248 characters for folders and 260 characters for files.)
-</ul>
-</div>
-<div class="releasenote">
-<i>Changes in version 0.33 beta released Monday, December 31, 2012</i>
-<ul>
-<li>Fixed another bug that could cause Verify to incorrectly report errors.  If you ran a Verify pass in version 0.32 you should run another one.
-<li>Fixed a bug in the reporting of file counts and sizes during an Update.
-</ul>
-</div>
-<div class="releasenote">
-<i>Changes in version 0.32 beta released Friday, December 28, 2012</i>
-<ul>
-<li>Fixed bug that could cause Verify to incorrectly report errors.
-<li>Verify will now attempt to automatically repair any bad blocks it finds.
-<li>Increased default value for Max Temp RAM from 512K to 1,024K 
-</ul>
-</div>
-<div class="releasenote">
-<i>Changes in version 0.31 beta released Wednesday, December 26, 2012</i>
-<ul>
-<li>Fixed two more parity corruption bugs, one of which has actually been around for years and even affects the command line version.  Again, run Verify to see if you have been affected.</li>
-<li>Fixed "Object reference not set to an instance of an object" error when recovering a drive.</li>
-<li>"Edits" are no longer tracked separately from adds and deletes.  This was causing too many issues (e.g. edited files would appear twice in the Undelete dialog.)  Any edited file will appear after a scan as 1 deleted file and 1 added file, since they are processed during an update first by removing the old file and then adding the new file.</li>  
-</ul>
-</div>
-<div class="releasenote">
-<i>Changes in version 0.30 beta released Tuesday, December 25, 2012</i>
-<ul>
-<li>Fixed a parity corruption bug introduced in version 0.29.  The bug affected Updates done where files smaller than the "Max Temp RAM" setting were added or removed.  To see if you were affected by this bug, press the Verify button.  If Verify reports errors (it may take a while), you should rebuild your backup.  To rebuild your backup:
-<ol>
-<br>
-<li>Exit disParity.
-<li>Go to your parity drive and delete "files*.dat" and "parity*.dat".
-<li>Restart disParity.
-<li>Press the Update button.
-</ol>
-</li>
-<li>The drive panel right-click menu now has a "undelete" option.  This will restore any files that have been edited or deleted since the last update.  You can choose which files to restore in the dialog that comes up.</li>
-<li>Better handling for files and folders with names longer than 260 characters (a hard limit imposed by .NET).  The files won't be backed up but they shouldn't cause any other problems. 
-</ul>
-</div>
-<div class="releasenote">
-<i>Changes in version 0.29 beta released Wednesday, December 19, 2012</i>
-<ul>
-<li>Moved drive-specific commands (Scan, Recover, etc.) out of the main button panel and into a right-click menu on the drive panel.</li>
-<li>Added support for file hash checking.  "Hashcheck" re-computes the hash value for every file on a drive  
-and compares it against the saved hash.  Hashcheck errors indicate the possibility of corruption on a drive.  </li>  
-<li>Added a Verify button.  Verify exhaustively re-computes every parity block and compares it with the on-disk parity.  Verify errors indicate 
-the possibility of either file corruption or (more likely) a bug in disParity. </li>  
-<li>The time to flush temp parity is now included in the per-file progress bar during Update.</li>
-<li>Temp RAM is now used for ALL files during an update; files that are larger than temp RAM fall back to the on-disk temp file when temp RAM is full.  This significantly improves Update times for large files.</li>  
-<li>System memory load is now monitored during updates to make sure that high values for the "Max Temp RAM" setting won't severely impact the 
-system.  If memory load gets too high, disParity now switches to the on-disk temp file 
-immediately (rather than waiting to reach Max Temp RAM first.)  This greatly reduces the risk of destabilizing your system by setting the "Max Temp RAM" option too high.</li>   
-<li>Attempts to add the same drive more than once (or different paths on the same drive) are detected and warned against.  Ignore this warning at your own risk!  disParity will not be able to recover any data from a lost drive if that drive appears more than once in the array (either as data or as parity.)</li>
-<li>Buttons on the main button panel now have tooltips.</li>
-<li>File moves and renames (which are time-consuming to detect since files must be hashed) are now processed as part of the Scan phase rather than the Update phase.</li>
-<li>Disk space used and free for the parity drive are now displayed in main window.</li>
-<li>General log file and error handling improvements.</li>
-</ul>           
-</div>
+
 <p align=center>
 <font size="-2">
-&copy; Copyright 2013 <a href="http://www.disparitysolutions.com">Disparity Solutions, LLC</a>
+&copy; Copyright 2014 <a href="http://www.disparitysolutions.com">Disparity Solutions, LLC</a>
 <br>
 All Rights Reserved
 </font>

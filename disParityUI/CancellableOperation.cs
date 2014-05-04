@@ -59,17 +59,30 @@ namespace disParityUI
       drive = selectedDrive;
       errorMessages.Clear();
       if (ScanFirst && viewModel.Drives.Count > 0) {
-        scanning = true;
-        viewModel.Status = "Scanning drives...";
         runningScans = 0;
         scanProgress = new double[viewModel.Drives.Count];
-        foreach (DataDriveViewModel vm in viewModel.Drives) 
+        bool scansStarted = false;
+        foreach (DataDriveViewModel vm in viewModel.Drives) {
+          // don't scan drives that have not recorded any activity since the last scan
+          if (viewModel.Config.MonitorDrives && !ForceScan && !vm.DataDrive.ChangesDetected) {
+            if (vm.DataDrive.DriveStatus == DriveStatus.UpdateRequired)
+              anyDriveNeedsUpdate = true;
+            if (vm.DataDrive.DriveStatus != DriveStatus.ScanRequired)
+              continue;
+          }
           if ((scanDrive != null && vm == scanDrive) || (scanDrive == null && vm != skipDrive)) {
+            scanning = true;
+            Status = "Scanning drives...";
             Interlocked.Increment(ref runningScans);
             vm.PropertyChanged += HandleDataDrivePropertyChanged;
             vm.DataDrive.ScanCompleted += HandleScanCompleted;
             vm.Scan(auto); // runs in a separate Task
+            scansStarted = true;
           }
+        }
+        // if no scans were started (since no drives have changed) then run the main operation now
+        if (!scansStarted)
+          Run();
       }
       else
         Run();
@@ -120,14 +133,14 @@ namespace disParityUI
       viewModel.StopProgress();
 
       if (cancelled) {
-        viewModel.Status = Name + " cancelled";
+        Status = Name + " cancelled";
         End();
         return;
       }
 
       if (scanError && AbortIfScanErrors) {
         // FIXME: Need to report what the errors were!
-        viewModel.Status = "Error(s) encountered during scan";
+        Status = "Error(s) encountered during scan";
         End();
         return;
       }
@@ -213,6 +226,8 @@ namespace disParityUI
 
     public void Cancel()
     {
+      if (!AllowCancel())
+        return;
       cancelled = true;
       if (scanning) {
         Status = "Cancelling scan...";
@@ -239,14 +254,15 @@ namespace disParityUI
 
     protected void DisplayUpToDateStatus()
     {
-      long totalSize = 0;
-      int totalFiles = 0;
-      foreach (DataDriveViewModel vm in viewModel.Drives) {
-        totalSize += vm.DataDrive.TotalFileSize;
-        totalFiles += vm.DataDrive.FileCount;
-      }
-      Status = String.Format("{1:N0} files ({0}) protected.  All drives up to date.",
-        Utils.SmartSize(totalSize), totalFiles);
+      //long totalSize = 0;
+      //int totalFiles = 0;
+      //foreach (DataDriveViewModel vm in viewModel.Drives) {
+      //  totalSize += vm.DataDrive.TotalFileSize;
+      //  totalFiles += vm.DataDrive.FileCount;
+      //}
+      //Status = String.Format("{1:N0} files ({0}) protected.  All drives up to date.",
+      //  Utils.SmartSize(totalSize), totalFiles);
+      viewModel.UpdateStatus();
     }
 
     public bool Running { get { return inProgress; } }
@@ -264,17 +280,24 @@ namespace disParityUI
     protected virtual bool ScanFirst { get { return true; } }
 
     /// <summary>
+    /// Whether drives should be scanned whether they have changed or not
+    /// </summary>
+    protected virtual bool ForceScan { get { return false; } }
+
+    /// <summary>
     /// Whether or not the operation should be aborted if any errors occur during the scan
     /// </summary>
     protected virtual bool AbortIfScanErrors { get { return true; } }
 
-    protected string Status
+    /// <summary>
+    /// Whether or not the operation can be cancelled right now
+    /// </summary>
+    protected virtual bool AllowCancel()
     {
-      set
-      {
-        viewModel.Status = value;
-      }
+      return true;
     }
+
+    public string Status { get; protected set; }
 
   }
 

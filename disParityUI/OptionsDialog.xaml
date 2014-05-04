@@ -69,10 +69,10 @@
           </GroupBox>
         </Grid>
       </TabItem>
-      <!--
       <TabItem Header="Automatic Updates">
         <Grid>
           <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -89,11 +89,10 @@
             </Style>
           </Grid.Resources>
           <CheckBox Margin="10,15,5,5" Grid.Row="0" IsChecked="{Binding Path=MonitorDrives}">Monitor drives for changes</CheckBox>
-          <Label Style="{StaticResource RBStyle}" Margin="23,0,0,0" Grid.Row="1">When a change is detected:</Label>
-          <RadioButton Style="{StaticResource RBStyle}" GroupName="UpdateOptions" Margin="35,7,0,0" Grid.Row="2" IsChecked="{Binding Path=NoAction}">Indicate changes have occurred but take no further action</RadioButton>
-          <RadioButton Style="{StaticResource RBStyle}" GroupName="UpdateOptions" Margin="35,7,0,0" Grid.Row="3" IsChecked="{Binding Path=ScanOnly}">Automatically scan the drive to determine what changed</RadioButton>
-          <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="35,7,0,0" Style="{StaticResource RBStyle}">
-            <RadioButton  GroupName="UpdateOptions" IsChecked="{Binding Path=ScanAndUpdate}">Scan the drive, then automatically update parity after</RadioButton>
+          <Label Style="{StaticResource RBStyle}" Margin="23,0,0,0" Grid.Row="1">If changes are detected:</Label>
+          <RadioButton Style="{StaticResource RBStyle}" GroupName="UpdateOptions" Margin="35,7,0,3" Grid.Row="2" IsChecked="{Binding Path=NoAction}">Indicate changes have occurred but take no further action</RadioButton>
+          <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="35,7,0,0" Style="{StaticResource RBStyle}">
+            <RadioButton  GroupName="UpdateOptions" IsChecked="{Binding Path=UpdateSoon}">Update the backup after</RadioButton>
             <xctk:IntegerUpDown Style="{StaticResource RBStyle}" Margin="4,0,4,0" MinWidth="40" FormatString="N0" Value="{Binding Path=UpdateDelay}" 
              Minimum="1"/>
             <TextBlock Text="minutes of inactivity">
@@ -108,8 +107,28 @@
               </TextBlock.Style>              
             </TextBlock>
           </StackPanel>
+          <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="35,7,0,0" Style="{StaticResource RBStyle}">
+            <RadioButton GroupName="UpdateOptions" IsChecked="{Binding Path=UpdateHourly}">Update the backup every</RadioButton>
+            <xctk:IntegerUpDown Style="{StaticResource RBStyle}" Margin="4,0,4,0" MinWidth="40" FormatString="N0" Value="{Binding Path=UpdateHours}" 
+             Minimum="1" Maximum="23"/>
+            <TextBlock Text="hour(s)">
+            <TextBlock.Style>
+              <Style TargetType="{x:Type TextBlock}">
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding Path=MonitorDrives}" Value="False">
+                    <Setter Property="Foreground" Value="{x:Static SystemColors.GrayTextBrush}"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+            </TextBlock>
+          </StackPanel>
+          <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="35,7,0,0" Style="{StaticResource RBStyle}">
+            <RadioButton GroupName="UpdateOptions" IsChecked="{Binding Path=UpdateDaily}">Update the backup once daily at</RadioButton>
+            <xctk:TimePicker Margin="4,0,4,0" MinWidth="40" Value="{Binding Path=DailyScanTime}"/>
+          </StackPanel>
         </Grid>
-      </TabItem> -->
+      </TabItem>
     </TabControl>
     <Button Grid.Row="1" Width="72" Height="25" Content="OK" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="363,4,0,6" IsDefault="True" Click="HandleOKClick"/>
     <Button Grid.Row="1" Width="70" Height="25" Content="Cancel" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,4,12,6" IsCancel="True" />

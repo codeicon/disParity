@@ -24,6 +24,7 @@ namespace disParityUI
     public static RoutedUICommand HashcheckAll;
     public static RoutedUICommand Undelete;
     public static RoutedUICommand Reset;
+    public static RoutedUICommand Log;
 
     static Commands()
     {
@@ -41,6 +42,7 @@ namespace disParityUI
       HashcheckAll = new RoutedUICommand("Hashcheck All", "Hashcheck All", typeof(MainWindow));
       Undelete = new RoutedUICommand("Undelete", "Undelete", typeof(MainWindow));
       Reset = new RoutedUICommand("Reset", "Reset", typeof(MainWindow));
+      Log = new RoutedUICommand("Log", "Log", typeof(MainWindow));
     }
 
   }

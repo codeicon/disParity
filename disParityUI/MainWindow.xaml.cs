@@ -34,6 +34,7 @@ namespace disParityUI
       Loaded += HandleLoaded;
       Closed += HandleClosed;
       Closing += HandleClosing;
+      StateChanged += HandleStateChanged;
 
       InitializeComponent();
       timer = new DispatcherTimer();
@@ -70,7 +71,16 @@ namespace disParityUI
 
     private void HandleClosed(object sender, EventArgs args)
     {
+      App.Current.Shutdown(); // closes LogWindow as well, if open
       viewModel.Shutdown();
+    }
+
+    private void HandleStateChanged(object sender, EventArgs args)
+    {
+      if (WindowState == WindowState.Minimized)
+        viewModel.SetLogWindowState(WindowState.Minimized);
+      else if (WindowState == WindowState.Normal)
+        viewModel.SetLogWindowState(WindowState.Normal);
     }
 
     #region Command CanExecute/Executed methods
@@ -173,7 +183,9 @@ namespace disParityUI
 
     void OptionsExecuted(object sender, ExecutedRoutedEventArgs e)
     {
-      OptionsDialog dialog = new OptionsDialog(viewModel.GetOptionsDialogViewModel());
+      OptionsDialogViewModel vm = viewModel.GetOptionsDialogViewModel();
+      vm.IgnoresChanged = false;
+      OptionsDialog dialog = new OptionsDialog(vm);
       dialog.Owner = this;
       if (dialog.ShowDialog() == true)
         viewModel.OptionsChanged();
@@ -242,6 +254,16 @@ namespace disParityUI
       e.Handled = true;
     }
 
+    void LogCanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+      e.CanExecute = !viewModel.LogWindowVisible();
+    }
+
+    void LogExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+      viewModel.ShowLogWindow();
+      e.Handled = true;
+    }
 
     #endregion
 

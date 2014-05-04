@@ -28,6 +28,7 @@
     <CommandBinding Command="ui:Commands.HashcheckAll" CanExecute="HashcheckAllCanExecute" Executed="HashcheckAllExecuted"/>
     <CommandBinding Command="ui:Commands.Undelete" CanExecute="UndeleteCanExecute" Executed="UndeleteExecuted"/>
     <CommandBinding Command="ui:Commands.Reset" CanExecute="ResetCanExecute" Executed="ResetExecuted"/>
+    <CommandBinding Command="ui:Commands.Log" CanExecute="LogCanExecute" Executed="LogExecuted"/>
   </Window.CommandBindings>
   <Window.TaskbarItemInfo >
     <TaskbarItemInfo ProgressState="{Binding Path=ProgressState}" ProgressValue="{Binding Path=Progress}" />
@@ -172,6 +173,9 @@
       </Button>
       <Button Margin="0,10,0,0" Command="ui:Commands.Reset" Content="Reset" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Delete all parity data</Button.ToolTip>
+      </Button>
+      <Button Margin="0,10,0,0" Command="ui:Commands.Log" Content="Show Log" ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
+        <Button.ToolTip>Show log window</Button.ToolTip>
       </Button>
       <Button Margin="0,10,0,0" Command="ui:Commands.Options" Content="Options..." ToolTipService.Placement="Relative" ToolTipService.VerticalOffset="-20" ToolTipService.HorizontalOffset="20">
         <Button.ToolTip>Configure disParity</Button.ToolTip>

@@ -77,7 +77,7 @@ namespace disParity
       long position = FilePosition(block);
       if (f != null && partityFileNum == currentParityFile) {
         if (readOnly && position >= f.Length) {
-          LogFile.Log("ERROR: Attempt to read past end of " + ParityFileName(block));
+          LogFile.Error("ERROR: Attempt to read past end of " + ParityFileName(block));
           return false;
         }  
         f.Position = position;
@@ -86,19 +86,19 @@ namespace disParity
       Close();
       string fileName = ParityFileName(block);
       if (readOnly && !File.Exists(fileName)) {
-        LogFile.Log("ERROR: Attempt to open non-existant parity file " + fileName);
+        LogFile.Error("ERROR: Attempt to open non-existant parity file " + fileName);
         return false;
       }
       try {
         f = new FileStream(fileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
       }
       catch (Exception e) {
-        LogFile.Log("ERROR opening parity file " + fileName + ": " + e.Message);
+        LogFile.Error("ERROR opening parity file " + fileName + ": " + e.Message);
         return false;
       }
       if (readOnly && position >= f.Length) {
         Close();
-        LogFile.Log("ERROR: Attempt to read past end of " + fileName);
+        LogFile.Error("ERROR: Attempt to read past end of " + fileName);
         return false;
       }
       currentParityFile = partityFileNum;
@@ -159,8 +159,8 @@ namespace disParity
         }
       }
       catch (Exception e) {
-        LogFile.Log("FATAL ERROR: {0}", e.Message);
-        LogFile.Log("WARNING: parity data appears to be damaged.  It is strongly advised that you recreate the snapshot from scratch.");
+        LogFile.Error("FATAL ERROR: {0}", e.Message);
+        LogFile.Error("WARNING: parity data appears to be damaged.  It is strongly advised that you recreate the snapshot from scratch.");
         return false;
       }
       return true;
@@ -175,13 +175,13 @@ namespace disParity
         f.Write(data, 0, BLOCK_SIZE);
       }
       catch (Exception e) {
-        LogFile.Log("ERROR writing to parity file: " + e.Message);
-        LogFile.Log("Attempting to truncate " + ParityFileName(block) + " to previous block boundary...");
+        LogFile.Error("ERROR writing to parity file: " + e.Message);
+        LogFile.Error("Attempting to truncate " + ParityFileName(block) + " to previous block boundary...");
         try {
           f.SetLength(FilePosition(block));
         }
         catch (Exception e2) {
-          LogFile.Log("Truncate failed: " + e2.Message);
+          LogFile.Error("Truncate failed: " + e2.Message);
           return false;
         }
         LogFile.Log("Truncate succeeded.");

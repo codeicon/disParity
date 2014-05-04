@@ -40,13 +40,13 @@ namespace disParity
     private object fileCloseLock = new object();
     private FileSystemWatcher watcher;
     private IEnvironment env;
+    private DateTime lastScanStart;
 
     const UInt32 META_FILE_VERSION = 1;
     const int MAX_FOLDER = 248;
     const int MAX_PATH = 260;
 
     public event EventHandler<ScanCompletedEventArgs> ScanCompleted;
-    public event EventHandler<EventArgs> ChangesDetected;
     public event EventHandler<ErrorMessageEventArgs> ErrorMessage;
 
     public DataDrive(string root, string metaFile, Config config, IEnvironment environment)
@@ -83,23 +83,32 @@ namespace disParity
       if (config.MonitorDrives)
         EnableWatcher();
 
-      LastScanStart = DateTime.MinValue;
-      LastChanges = DateTime.Now - TimeSpan.FromSeconds(55); // REMOVEME
+      lastScanStart = DateTime.MinValue;
+      LastChange = DateTime.Now;
     }
 
     public void EnableWatcher()
     {
-      //if (watcher == null) {
-      //  watcher = new FileSystemWatcher();
-      //  watcher.Path = Root;
-      //  watcher.Filter = "*.*";
-      //  watcher.IncludeSubdirectories = true;
-      //  watcher.Created += HandleWatcherEvent;
-      //  watcher.Changed += HandleWatcherEvent;
-      //  watcher.Deleted += HandleWatcherEvent;
-      //  watcher.Renamed += HandleWatcherEvent;
-      //  watcher.EnableRaisingEvents = true;
-      //}
+      if (watcher == null)
+      {
+        try
+        {
+          watcher = new FileSystemWatcher();
+          watcher.Path = Root;
+          watcher.Filter = "*.*";
+          watcher.IncludeSubdirectories = true;
+          watcher.Created += HandleWatcherEvent;
+          watcher.Changed += HandleWatcherEvent;
+          watcher.Deleted += HandleWatcherEvent;
+          watcher.Renamed += HandleWatcherEvent;
+          watcher.EnableRaisingEvents = true;
+        }
+        catch (Exception e)
+        {
+          env.LogCrash(e);
+          LogFile.Error("Could not enable file watcher for {0}: {1}", Root, e.Message);
+        }
+      }
     }
 
     public void DisableWatcher()
@@ -112,11 +121,11 @@ namespace disParity
 
     private void HandleWatcherEvent(object sender, FileSystemEventArgs args)
     {
-      LogFile.Log("Changes detected on " + Root);
-      LastChanges = DateTime.Now;
-      if (ChangesDetected != null)
-        ChangesDetected(this, new EventArgs());
-      DriveStatus = DriveStatus.ScanRequired;
+      LogFile.Log(String.Format("Changes detected on {0} ({1})", root, args.ChangeType));
+      LastChange = DateTime.Now;
+      ChangesDetected = true;
+      if (DriveStatus == DriveStatus.UpToDate)
+        DriveStatus = DriveStatus.ScanRequired;
     }
 
     private string MetaFilePath
@@ -227,7 +236,7 @@ namespace disParity
       DriveStatus = DriveStatus.Scanning;
       cancelScan = false;
       Progress = 0;
-      LastScanStart = DateTime.Now;
+      lastScanStart = DateTime.Now;
       ignoreCount = 0;
       bool error = false;
       try {
@@ -258,15 +267,18 @@ namespace disParity
             Progress = 1;
             AnalyzingResults = true;
             Compare();
-            LogFile.Log("Scan of {0} complete. Found {1} file{2} ({3} total) Adds: {4} Deletes: {5} Moves: {6} Edits: {7} Ignored: {8}", Root, scanFiles.Count,
-              scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize), adds.Count, deletes.Count, moves.Count, editCount, ignoreCount);
             if (cancelScan) {
               Status = "Scan required";
               DriveStatus = DriveStatus.ScanRequired;
               return;
             }
+            LogFile.Log("Scan of {0} complete. Found {1} file{2} ({3} total) Adds: {4} Deletes: {5} Moves: {6} Edits: {7} Ignored: {8}", Root, scanFiles.Count,
+              scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize), adds.Count, deletes.Count, moves.Count, editCount, ignoreCount);
             // process moves now as part of the scan, since they don't require changes to parity
             ProcessMoves();
+            // if no file system events occurred since the start of the scan, we are now up to date
+            if (lastChange < lastScanStart)
+              ChangesDetected = false;
           }
           else
             LogFile.Log("{0}: Scan cancelled", Root);
@@ -311,7 +323,7 @@ namespace disParity
       catch (Exception e) {
         if (progress == null)
           throw;
-        LogFile.Log("Warning: Could not enumerate subdirectories of {0}: {1}", dir.FullName, e.Message);
+        LogFile.Error("Warning: Could not enumerate subdirectories of {0}: {1}", dir.FullName, e.Message);
         return;
       }
       FileInfo[] fileInfos;
@@ -319,7 +331,7 @@ namespace disParity
         fileInfos = dir.GetFiles();
       }
       catch (Exception e) {
-        LogFile.Log("Warning: Could not enumerate files in {0}: {1}", dir.FullName, e.Message);
+        LogFile.Error("Warning: Could not enumerate files in {0}: {1}", dir.FullName, e.Message);
         return;
       }
 
@@ -342,7 +354,7 @@ namespace disParity
         }
         string subDir = Path.Combine(dir.FullName, d.Name);
         if (subDir.Length >= MAX_FOLDER) 
-          LogFile.Log("Warning: skipping folder \"" + subDir + "\" because the path is too long.");
+          LogFile.Error("Warning: skipping folder \"" + subDir + "\" because the path is too long.");
         else
           Scan(d, ignores, folderProgress);
         folderProgress.EndPhase();
@@ -357,7 +369,7 @@ namespace disParity
         string fullName = Path.Combine(dir.FullName, f.Name);
         try {
           if (fullName.Length >= MAX_PATH) {
-            LogFile.Log("Warning: skipping file \"" + fullName + "\" because the path is too long");
+            LogFile.Error("Warning: skipping file \"" + fullName + "\" because the path is too long");
             continue;
           }
           if (f.Attributes == (FileAttributes)(-1))
@@ -412,7 +424,7 @@ namespace disParity
 
     private void FireErrorMessage(string message)
     {
-      LogFile.Log(message);
+      LogFile.Error(message);
       if (ErrorMessage != null)
         ErrorMessage(this, new ErrorMessageEventArgs(message));
     }
@@ -575,7 +587,7 @@ namespace disParity
 
     public void UpdateStatus()
     {
-      if (LastChanges > LastScanStart)
+      if (ChangesDetected)
         DriveStatus = DriveStatus.ScanRequired;
       else if (adds.Count > 0 || deletes.Count > 0)
         DriveStatus = DriveStatus.UpdateRequired;
@@ -671,7 +683,7 @@ namespace disParity
           enumComplete = true;
           if (enumCount > 0)
             LoadFileList(); // this loads completed filesX.dat back into the master files list
-          DriveStatus = DriveStatus.UpToDate;
+          UpdateStatus(); // set status to UpToDate, or possibly ScanRequired if more changes have occurred
           return false;
         }
         // Check for zero-length files
@@ -844,7 +856,7 @@ namespace disParity
       }
       catch (Exception e) {
         env.LogCrash(e);
-        LogFile.Log(String.Format("Error reading {0}: {1}", MetaFilePath, e.Message));
+        LogFile.Error(String.Format("Error reading {0}: {1}", MetaFilePath, e.Message));
         files.Clear();
         throw new MetaFileLoadException(MetaFilePath, e);
       }
@@ -902,7 +914,7 @@ namespace disParity
         }
       }
       catch (Exception e) {
-        LogFile.Log(String.Format("Could not save {0}: {1}", fileName, e.Message));
+        LogFile.Error(String.Format("Could not save {0}: {1}", fileName, e.Message));
         // try to delete it in case it got partly saved
         try {
           File.Delete(fileName);
@@ -923,7 +935,7 @@ namespace disParity
         File.Copy(fileName, backup, true);
       }
       catch (Exception e) {
-        LogFile.Log(String.Format("Could not backup {0}: {1}", fileName, e.Message));
+        LogFile.Error(String.Format("Could not backup {0}: {1}", fileName, e.Message));
         return false;
       }
       return true;
@@ -937,7 +949,7 @@ namespace disParity
         File.Copy(backup, fileName, true);
       }
       catch (Exception e) {
-        LogFile.Log(String.Format("Could not restore {0} from backup: {1}", fileName, e.Message));
+        LogFile.Error(String.Format("Could not restore {0} from backup: {1}", fileName, e.Message));
         return false;
       }
       return true;
@@ -961,7 +973,7 @@ namespace disParity
           f.SetLength(fi.Length + add.RecordSize);
       }
       catch (Exception e) {
-        LogFile.Log(String.Format("Could not extend {0}: {1}", fileName, e.Message));
+        LogFile.Error(String.Format("Could not extend {0}: {1}", fileName, e.Message));
         RestoreMetaFile();
         return false;
       }
@@ -1061,6 +1073,23 @@ namespace disParity
 
     public bool AnalyzingResults { get; private set; }
 
+    /// <summary>
+    /// If true, indicates that changes have been detected on the drive that may not be reflected 
+    /// in the most recent scan.
+    /// </summary>
+    private bool changesDetected;
+    public bool ChangesDetected
+    {
+      get
+      {
+        return changesDetected;
+      }
+      set
+      {
+        SetProperty(ref changesDetected, "ChangesDetected", value);
+      }
+    }
+
     private string status;
     public string Status
     {
@@ -1113,16 +1142,16 @@ namespace disParity
       }
     }
 
-    private DateTime lastChanges;
-    public DateTime LastChanges 
+    private DateTime lastChange;
+    public DateTime LastChange 
     {
       get
       {
-        return lastChanges;
+        return lastChange;
       }
       private set
       {
-        SetProperty(ref lastChanges, "LastChanges", value);
+        SetProperty(ref lastChange, "LastChange", value);
       }
     }
 
@@ -1132,7 +1161,6 @@ namespace disParity
     /// </summary>
     public long TotalFileSize { get; private set; }
 
-    public DateTime LastScanStart { get; private set; }
 
 
     #endregion

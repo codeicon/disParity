@@ -35,7 +35,7 @@ namespace disParityUI
       LogFile.Log(e.StackTrace);
       LogFile.Close();
 
-      LogCrash(e, true);
+      LogCrash(e, "HandleUnhandledException", true);
 
       try {
         CrashWindow crashWindow = new CrashWindow(app.MainWindow, new CrashWindowViewModel(e));
@@ -49,9 +49,17 @@ namespace disParityUI
       System.Environment.Exit(0);
     }
 
-    public static void LogCrash(Exception e, bool unhandled = false)
+    public static Application Current
     {
-      CrashLog.Create(e, true, unhandled);
+      get
+      {
+        return app;
+      }
+    }
+
+    public static void LogCrash(Exception e, string context = "", bool unhandled = false)
+    {
+      CrashLog.Create(e, context, true, unhandled);
     }
 
   }

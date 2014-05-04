@@ -58,6 +58,16 @@ namespace disParityUI
       }
     }
 
+    public string Status
+    {
+      get
+      {
+        if (operationInProgress != null)
+          return operationInProgress.Status;
+        return "";
+      }
+    }
+
     public static OperationManager Instance
     {
       get
