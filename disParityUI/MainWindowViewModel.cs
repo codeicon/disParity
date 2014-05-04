@@ -320,6 +320,18 @@ namespace disParityUI
     public void AddDrive(string path)
     {
       bool warned = false;
+
+      if (Utils.PathsAreEqual(path, Path.GetPathRoot(System.Environment.SystemDirectory)))
+      {
+        bool? result = MessageWindow.Show(owner, "Do not add the system drive!", "The path you selected appears to be your system drive.\n\n" +
+          "You cannot back up your system drive with disParity.  It is designed to back up drives containing media files (e.g. photos, music, movies, etc.) " +
+          "It is not designed to back up applications, settings, operating system files, and the other small and frequently changing files typically found on system drives.\n\n" +
+          "If there is a folder on your system drive containing files you want to back up, consider adding just that one folder instead of the entire drive.\n\n" +
+          "Are you sure you want to add this drive?", MessageWindowIcon.Error, MessageWindowButton.YesNo, 500);
+        if (result == false)
+          return;
+      }
+
       if (Utils.PathsAreOnSameDrive(path, Config.ParityDir)) {
         bool? result = MessageWindow.Show(owner, "Duplicate drives detected!", "The path you selected appears to be on same drive as your parity.\n\n" +
           "This is not recommended.  If the drive fails, disParity will not be able to recover any of your data.\n\n" +
