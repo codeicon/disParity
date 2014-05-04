@@ -58,19 +58,23 @@ namespace disParityUI
       inProgress = true;
       drive = selectedDrive;
       errorMessages.Clear();
-      if (ScanFirst && viewModel.Drives.Count > 0) {
+      if (ScanFirst && viewModel.Drives.Count > 0)
+      {
         runningScans = 0;
         scanProgress = new double[viewModel.Drives.Count];
         bool scansStarted = false;
-        foreach (DataDriveViewModel vm in viewModel.Drives) {
+        foreach (DataDriveViewModel vm in viewModel.Drives)
+        {
           // don't scan drives that have not recorded any activity since the last scan
-          if (viewModel.Config.MonitorDrives && !ForceScan && !vm.DataDrive.ChangesDetected) {
+          if (viewModel.Config.MonitorDrives && !ForceScan && !vm.DataDrive.ChangesDetected)
+          {
             if (vm.DataDrive.DriveStatus == DriveStatus.UpdateRequired)
               anyDriveNeedsUpdate = true;
             if (vm.DataDrive.DriveStatus != DriveStatus.ScanRequired)
               continue;
           }
-          if ((scanDrive != null && vm == scanDrive) || (scanDrive == null && vm != skipDrive)) {
+          if ((scanDrive != null && vm == scanDrive) || (scanDrive == null && vm != skipDrive))
+          {
             scanning = true;
             Status = "Scanning drives...";
             Interlocked.Increment(ref runningScans);
@@ -92,12 +96,15 @@ namespace disParityUI
     private void HandleDataDrivePropertyChanged(object sender, PropertyChangedEventArgs args)
     {
       double progress = 0;
-      if (inProgress && args.PropertyName == "Progress") {
+      if (inProgress && args.PropertyName == "Progress")
+      {
         if (scanDrive != null)
           progress = ((DataDriveViewModel)sender).Progress;
-        else {
+        else
+        {
           int i = 0;
-          foreach (DataDriveViewModel vm in viewModel.Drives) {
+          foreach (DataDriveViewModel vm in viewModel.Drives)
+          {
             if (vm.DataDrive.AnalyzingResults)
               scanProgress[i] = 1.0;
             else if (vm.Progress > 0.0)
@@ -115,7 +122,7 @@ namespace disParityUI
     private void HandleScanCompleted(object sender, ScanCompletedEventArgs args)
     {
       ((DataDrive)sender).ScanCompleted -= HandleScanCompleted;
-      foreach (DataDriveViewModel vm in viewModel.Drives) 
+      foreach (DataDriveViewModel vm in viewModel.Drives)
         if (vm.DataDrive == sender)
           vm.PropertyChanged -= HandleDataDrivePropertyChanged;
 
@@ -132,13 +139,15 @@ namespace disParityUI
       scanning = false;
       viewModel.StopProgress();
 
-      if (cancelled) {
+      if (cancelled)
+      {
         Status = Name + " cancelled";
         End();
         return;
       }
 
-      if (scanError && AbortIfScanErrors) {
+      if (scanError && AbortIfScanErrors)
+      {
         // FIXME: Need to report what the errors were!
         Status = "Error(s) encountered during scan";
         End();
@@ -156,7 +165,8 @@ namespace disParityUI
 
     private void HandleErrorMessage(object sender, ErrorMessageEventArgs args)
     {
-      lock (syncObject) {
+      lock (syncObject)
+      {
         errorMessages.Add(args.Message);
       }
     }
@@ -168,7 +178,8 @@ namespace disParityUI
     {
 
       LogFile.Log("Beginning " + Name);
-      if (!PrepareOperation()) {
+      if (!PrepareOperation())
+      {
         LogFile.Log(Name + " cancelled.");
         Status = Name + " cancelled";
         End();
@@ -180,29 +191,43 @@ namespace disParityUI
 
       Task.Factory.StartNew(() =>
       {
-        try {
+        try
+        {
+          viewModel.ParitySet.PropertyChanged += HandleParitySetPropertyChanged;
           DoOperation();
-          if (cancelled) {
+          if (cancelled)
+          {
             LogFile.Log(Name + " cancelled.");
             Status = Name + " cancelled.";
           }
           else
             LogFile.Log(Name + " complete (operation took " + Utils.SmartTime(DateTime.Now - startTime) + ")");
         }
-        catch (Exception e) {
+        catch (Exception e)
+        {
           App.LogCrash(e);
           Status = Name + " failed: " + e.Message;
         }
-        finally {
+        finally
+        {
+          viewModel.ParitySet.PropertyChanged -= HandleParitySetPropertyChanged;
           End();
         }
       });
 
     }
 
+    private void HandleParitySetPropertyChanged(object sender, PropertyChangedEventArgs e)
+    {
+      // If the parity set status changes while an operation is running, that becomes the current status of the operation
+      if (e.PropertyName == "Status")
+        Status = viewModel.ParitySet.Status;
+    }
+
     protected void End()
     {
-      try {
+      try
+      {
         CheckForErrors();
         viewModel.ParitySet.ErrorMessage -= HandleErrorMessage;
         viewModel.StopProgress();
@@ -210,7 +235,8 @@ namespace disParityUI
         if (Finished != null)
           Finished();
       }
-      catch (Exception e) {
+      catch (Exception e)
+      {
         App.LogCrash(e);
       }
     }
@@ -229,14 +255,16 @@ namespace disParityUI
       if (!AllowCancel())
         return;
       cancelled = true;
-      if (scanning) {
+      if (scanning)
+      {
         Status = "Cancelling scan...";
         foreach (DataDriveViewModel vm in viewModel.Drives)
           vm.DataDrive.CancelScan();
       }
-      else {
+      else
+      {
         LogFile.Log("Cancelling " + Name);
-        Status = "Cancelling " + Name + "...";        
+        Status = "Cancelling " + Name + "...";
         CancelOperation();
       }
     }
@@ -245,7 +273,7 @@ namespace disParityUI
     {
       if (errorMessages.Count == 0 || suppressErrorCheck)
         return false;
-      if (MessageWindow.Show(viewModel.Owner, "Errors detected", "Errors were encountered during the " + LowerCaseName + 
+      if (MessageWindow.Show(viewModel.Owner, "Errors detected", "Errors were encountered during the " + LowerCaseName +
         ".  Would you like to see a list of errors?", MessageWindowIcon.Error, MessageWindowButton.YesNo) == true)
         ReportWindow.Show(viewModel.Owner, errorMessages);
       return true;

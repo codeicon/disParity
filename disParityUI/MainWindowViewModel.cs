@@ -420,9 +420,9 @@ namespace disParityUI
 
     private void HandleUpdateTimer(object sender, System.Timers.ElapsedEventArgs args)
     {
+      UpdateStatus();
       if (operationManager.Busy)
         return;
-      UpdateStatus();
       if (!config.MonitorDrives || AllDrivesUpToDate() || AnyDriveHasError())
         return;
 
