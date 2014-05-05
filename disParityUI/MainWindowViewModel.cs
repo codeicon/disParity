@@ -34,6 +34,7 @@ namespace disParityUI
     private DateTime nextDailyUpdate = DateTime.MinValue;
     private DateTime updateSoonBaseTime = DateTime.MinValue;
     private LogWindow logWindow;
+    private bool collectOnNextUpdate;
 
     public MainWindowViewModel(Window owner)
     {
@@ -227,9 +228,12 @@ namespace disParityUI
         return;
       upgradeNotified = true;
       if (MessageWindow.Show(owner, "New version available", "There is a new " + (disParity.Version.Beta ? "beta " : "") + "version of disParity available.\r\n\r\n" +
-        "Would you like to download the latest version now?", MessageWindowIcon.Caution, MessageWindowButton.YesNo) == true) {
-        //Process.Start("http://www.vilett.com/disParity/beta.html");
-        Process.Start("http://www.vilett.com/disParity/upgrade.html");
+        "Would you like to download the latest version now?", MessageWindowIcon.Caution, MessageWindowButton.YesNo) == true) 
+      {
+        if (disParity.Version.Beta)
+          Process.Start("http://www.vilett.com/disParity/beta.html");
+        else
+          Process.Start("http://www.vilett.com/disParity/upgrade.html");
         Application.Current.Dispatcher.BeginInvoke(new Action(() =>
           {
             Application.Current.MainWindow.Close();
@@ -432,6 +436,11 @@ namespace disParityUI
 
     private void HandleUpdateTimer(object sender, System.Timers.ElapsedEventArgs args)
     {
+      if (collectOnNextUpdate)
+      {
+        GC.Collect();
+        collectOnNextUpdate = false;
+      }
       UpdateStatus();
       if (operationManager.Busy)
         return;
@@ -588,6 +597,7 @@ namespace disParityUI
       UpdateStatus();
       UpdateParityStatus();
       updateParityStatusTimer.Stop();
+      collectOnNextUpdate = true;
     }
 
     public void Cancel()
