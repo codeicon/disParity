@@ -466,7 +466,6 @@ namespace disParity
     /// </summary>
     private void Compare()
     {
-      adds.Clear();
       deletes.Clear();
       moves.Clear();
 
