@@ -36,6 +36,8 @@ namespace disParity
 
     public byte[] HashCode { get; set; }
 
+    public bool Seen { get; set; } // whether file was "seen" this scan
+
     static string StripRoot(string root, string path)
     {
       if (!path.StartsWith(root, StringComparison.OrdinalIgnoreCase))
@@ -55,6 +57,11 @@ namespace disParity
     {
       FileInfo fi = new FileInfo(filePath);
       Initialize(fi, Utils.StripRoot(drive.Root, filePath), drive);
+    }
+
+    public FileRecord(FileInfo info, DataDrive drive)
+    {
+      Initialize(info, Utils.StripRoot(drive.Root, info.FullName), drive);
     }
 
     private void Initialize(FileInfo info, string name, DataDrive drive)

@@ -28,8 +28,6 @@ namespace disParity
     private string root;
     private string metaFile;
     private Dictionary<string, FileRecord> files; // Master list of protected files; should reflect what is currently in files.dat at all times
-    private List<FileRecord> scanFiles = new List<FileRecord>(); // List of current files on the drive as seen this scan, non-empty only during a scan
-    private Dictionary<string, FileRecord> seenFileNames = new Dictionary<string, FileRecord>(); // for fast lookups, also only non-empty during a scan
     private int ignoreCount; // number of files that matched an ignore filter this scan
     private HashSet<string> errorFiles = new HashSet<string>(); // list of files that had errors during the scan.  We won't add them on an update, but we won't remove them either.
     private MD5 hash;
@@ -41,6 +39,7 @@ namespace disParity
     private FileSystemWatcher watcher;
     private IEnvironment env;
     private DateTime lastScanStart;
+    private int scanFileCount; // number of files encountered this scan
 
     const UInt32 META_FILE_VERSION = 1;
     const int MAX_FOLDER = 248;
@@ -250,7 +249,13 @@ namespace disParity
           ignores.Add(new Regex(pattern));
         }
 
-        scanFiles.Clear();
+        // clear seen flag on all files
+        foreach (var kvp in files)
+          kvp.Value.Seen = false;
+
+        adds.Clear();
+        edits.Clear();
+        scanFileCount = 0;
         LogFile.Log("Scanning {0}...", root);
         scanProgress = null;
         try {
@@ -260,9 +265,6 @@ namespace disParity
           rootInfo.GetDirectories();
           Scan(rootInfo, ignores); 
           if (!cancelScan) {
-            long totalSize = 0;
-            foreach (FileRecord f in scanFiles)
-              totalSize += f.Length;
             Status = "Scan complete. Analyzing results...";
             Progress = 1;
             AnalyzingResults = true;
@@ -272,8 +274,8 @@ namespace disParity
               DriveStatus = DriveStatus.ScanRequired;
               return;
             }
-            LogFile.Log("Scan of {0} complete. Found {1} file{2} ({3} total) Adds: {4} Deletes: {5} Moves: {6} Edits: {7} Ignored: {8}", Root, scanFiles.Count,
-              scanFiles.Count == 1 ? "" : "s", Utils.SmartSize(totalSize), adds.Count, deletes.Count, moves.Count, editCount, ignoreCount);
+            LogFile.Log("Scan of {0} complete. Found {1} file{2} Adds: {3} Deletes: {4} Moves: {5} Edits: {6} Ignored: {7}", Root, scanFileCount,
+              scanFileCount == 1 ? "" : "s", adds.Count, deletes.Count, moves.Count, edits.Count, ignoreCount);
             // process moves now as part of the scan, since they don't require changes to parity
             ProcessMoves();
             // if no file system events occurred since the start of the scan, we are now up to date
@@ -284,6 +286,7 @@ namespace disParity
             LogFile.Log("{0}: Scan cancelled", Root);
         }
         catch (Exception e) {
+          adds.Clear();
           FireErrorMessage(String.Format("Could not scan {0}: {1}", root, e.Message));
           LogFile.Log(e.StackTrace);
           LastError = e.Message;
@@ -296,8 +299,6 @@ namespace disParity
         AnalyzingResults = false;
         Progress = 0;
         UpdateStatus();
-        scanFiles.Clear();
-        seenFileNames.Clear();
         errorFiles.Clear();
         FireScanCompleted(cancelScan, error, adds.Count > 0 || deletes.Count > 0, auto);
         Scanning = false;
@@ -389,16 +390,32 @@ namespace disParity
               LogFile.Log("Skipping \"{0}\" because it matches an ignore", f.FullName); 
             ignoreCount++;
             continue;
-          }          
-          FileRecord r = new FileRecord(f, relativePath, this);
-          scanFiles.Add(r);
-          seenFileNames[r.Name.ToLower()] = r;
+          }
+          ProcessScannedFile(relativePath, f);
         }
         catch (Exception e) {
           errorFiles.Add(fullName.ToLower());
           FireErrorMessage(String.Format("Error scanning \"{0}\": {1}", fullName, e.Message));
         }
       }
+    }
+
+    private void ProcessScannedFile(string relativePath, FileInfo f)
+    {
+      // try to find this file in the master list of protected files
+      FileRecord r;
+      string relativePathLower = Utils.MakeFullPath(relativePath, f.Name).ToLower();
+      if (files.TryGetValue(relativePathLower, out r))
+      {
+        r.Seen = true;
+        // check for possible edit
+        if (r.Length != f.Length || r.LastWriteTime != f.LastWriteTime)
+          edits.Add(r);
+      }
+      else
+        // not in the list, must be an add
+        adds.Add(new FileRecord(f, relativePath, this));
+      scanFileCount++;
     }
 
     /// <summary>
@@ -433,11 +450,12 @@ namespace disParity
     private List<FileRecord> deletes = new List<FileRecord>();
     public List<FileRecord> Deletes { get { return deletes; } }
 
-    // the "adds" list contains FileRecords from the new scanFiles list
+    // the "adds" list contains new FileRecords generated during the current scan
     private List<FileRecord> adds = new List<FileRecord>();
     public List<FileRecord> Adds { get { return adds; } }
 
-    private int editCount;
+    // the "edits" list contains FileRecords from the master files list
+    private List<FileRecord> edits = new List<FileRecord>();
 
     // the "moves" dictionary maps old file names to new entries from the scanFiles list
     private Dictionary<string, FileRecord> moves = new Dictionary<string, FileRecord>();
@@ -448,19 +466,12 @@ namespace disParity
     /// </summary>
     private void Compare()
     {
-      adds.Clear();
       deletes.Clear();
       moves.Clear();
-      editCount = 0;
-
-      // build list of new files we haven't seen before (adds)
-      foreach (FileRecord r in scanFiles)
-        if (!files.ContainsKey(r.Name.ToLower()))
-          adds.Add(r);
 
       // build list of old files we don't see now (deletes)
       foreach (var kvp in files)
-        if (!seenFileNames.ContainsKey(kvp.Key) && !errorFiles.Contains(kvp.Value.FullPath.ToLower()))
+        if (!kvp.Value.Seen && !errorFiles.Contains(kvp.Value.FullPath.ToLower()))
           deletes.Add(kvp.Value);
       
       // some of the files in add/delete list might actually be moves, check for that
@@ -498,33 +509,33 @@ namespace disParity
 
       // now check for edits
       bool saveFileList = false;
-      foreach (var kvp in files) {
+      foreach (FileRecord r in edits) 
+      {
         if (cancelScan)
           return;
-        FileRecord n;
-        // a file can only be edited if the file name was seen this can
-        if (seenFileNames.TryGetValue(kvp.Key, out n)) {
-          // if we detect an edit, we add the "new" version of the file to the adds list, 
-          // because it has the new attributes and we want those saved later.  The old value goes
-          // into the edits and deletes lists.
-          if (kvp.Value.Length != n.Length) {
-            editCount++;
-            deletes.Add(kvp.Value);
-            adds.Add(n);
+        FileInfo info = new FileInfo(r.FullPath);
+        // For edited files we add the "new" version of the file to the adds list,  because it has the new
+        // attributes and we want those saved later.  The old value goes into the deletes lists.
+        if (r.Length != info.Length)
+        {
+          deletes.Add(r);
+          adds.Add(new FileRecord(info, this));
+        }
+        else 
+        {
+          // length hasn't changed but timestamp says file was modified, check hash code to be sure it has changed
+          Status = "Checking " + r.FullPath;
+          if (!HashCheck(r))
+          {
+            deletes.Add(r);
+            adds.Add(new FileRecord(info, this));
           }
-          else if (kvp.Value.LastWriteTime != n.LastWriteTime) {
-            // length hasn't changed but timestamp says file was modified, check hash code to be sure it has changed
-            Status = "Checking " + kvp.Value.FullPath;
-            if (!HashCheck(kvp.Value)) {
-              editCount++;
-              deletes.Add(kvp.Value);
-              adds.Add(n);
-            } else {
-              // file hasn't actually changed, but we still need to update the LastWriteTime so we don't
-              // keep re-checking it on every scan
-              kvp.Value.LastWriteTime = n.LastWriteTime;
-              saveFileList = true;
-            }
+          else
+          {
+            // file hasn't actually changed, but we still need to update the LastWriteTime so we don't
+            // keep re-checking it on every scan
+            r.LastWriteTime = info.LastWriteTime;
+            saveFileList = true;
           }
         }
       }
@@ -905,6 +916,8 @@ namespace disParity
     private void WriteFileList(string fileName)
     {
       try {
+        Stopwatch sw = new Stopwatch();
+        sw.Start();
         using (FileStream f = new FileStream(fileName, FileMode.OpenOrCreate, FileAccess.Write)) {
           WriteFileHeader(f, (UInt32)files.Count);
           foreach (FileRecord r in files.Values)
@@ -912,6 +925,7 @@ namespace disParity
           f.SetLength(f.Position);
           f.Close();
         }
+        LogFile.Log(String.Format("{0} saved in {1}ms", fileName, sw.ElapsedMilliseconds));
       }
       catch (Exception e) {
         LogFile.Error(String.Format("Could not save {0}: {1}", fileName, e.Message));
