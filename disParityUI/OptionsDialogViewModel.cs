@@ -167,13 +167,15 @@ namespace disParityUI
     public bool CommitChanges()
     {
       bool parityDirMoved = false;
-      if (parityDir != PARITY_NOT_SET) {
-        if ((String.Compare(parityDir, config.ParityDir, true) != 0) && !paritySet.Empty) {
+      if (parityDir != PARITY_NOT_SET) 
+      {
+        if ((String.Compare(parityDir, config.ParityDir, true) != 0) && !paritySet.Empty) 
+        {
           if (!MoveParityData(parityDir))
             return false;
-          config.ParityDir = parityDir;
           parityDirMoved = true;
         }
+        config.ParityDir = parityDir;
       }
       config.MaxTempRAM = (uint)MaxTempRAM;
       if (config.IgnoreHidden != IgnoreHidden) {
