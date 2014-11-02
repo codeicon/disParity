@@ -91,7 +91,14 @@ namespace disParity
           tempFileName = Path.Combine(tempDir, TEMP_PARITY_FILENAME);
           tempFileStream = new FileStream(tempFileName, FileMode.Create, FileAccess.ReadWrite);
         }
-        tempFileStream.Write(parityBlock.Data, 0, Parity.BLOCK_SIZE);
+        try
+        {
+          tempFileStream.Write(parityBlock.Data, 0, Parity.BLOCK_SIZE);
+        }
+        catch (Exception e)
+        {
+          throw new TempParityFailure(e);
+        }
       }
       block++;
     }
@@ -165,6 +172,12 @@ namespace disParity
         File.Delete(tempFileName);
     }
 
+  }
+
+  internal class TempParityFailure : Exception
+  {
+    public TempParityFailure(Exception inner)
+      : base("Error writing to temp parity location: " + inner.Message, inner) { }
   }
 
 }

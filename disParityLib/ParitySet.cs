@@ -930,13 +930,17 @@ namespace disParity
           FireErrorMessage(String.Format("Error opening {0}: {1}", r.FullPath, e.Message));
           return false;
         }
-        try {
-          for (UInt32 b = r.StartBlock; b < endBlock; b++) {
+        try
+        {
+          for (UInt32 b = r.StartBlock; b < endBlock; b++)
+          {
             Int32 bytesRead;
-            try {
+            try
+            {
               bytesRead = f.Read(data, 0, Parity.BLOCK_SIZE);
             }
-            catch (Exception e) {
+            catch (Exception e)
+            {
               FireErrorMessage(String.Format("Error reading {0}: {1}", r.FullPath, e.Message));
               return false;
             }
@@ -956,9 +960,12 @@ namespace disParity
               return false;
           }
         }
-        catch (Exception e) {
+        catch (Exception e)
+        {
           env.LogCrash(e);
           FireErrorMessage(String.Format("Unexpected error while processing {0}: {1}", r.FullPath, e.Message));
+          if (e is TempParityFailure)
+            FireErrorMessage(String.Format("Check available disk space for your temp parity location \"{0}\".  It should have at least as much space as the largest file in your backup.  The location of the temp parity folder can be changed from the Options dialog.", Config.TempDir));
           return false;
         }
         finally {
@@ -1154,6 +1161,7 @@ namespace disParity
 
     private void FireErrorMessage(string message, bool log = true)
     {
+      message = message.Trim();
       if (log)
         LogFile.Error(message);
       if (ErrorMessage != null)
