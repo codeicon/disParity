@@ -20,6 +20,8 @@ namespace disParityUI
   public partial class MessageWindow : Window
   {
 
+    private bool cancelled;
+
     public MessageWindow()
     {
       InitializeComponent();
@@ -43,7 +45,7 @@ namespace disParityUI
 
     public void HandleCancelClick(object Sender, RoutedEventArgs args)
     {
-      DialogResult = null;
+      cancelled = true;
       Close();
     }
 
@@ -54,6 +56,7 @@ namespace disParityUI
 
     internal static bool? Show(Window owner, string caption, string message, MessageWindowIcon icon = MessageWindowIcon.OK, MessageWindowButton buttons = MessageWindowButton.OK, int width = 0)
     {
+      bool cancelled = false;
       bool? result = null;
       Application.Current.Dispatcher.Invoke(new Action(() =>
         {
@@ -63,8 +66,12 @@ namespace disParityUI
           window.DataContext = new MessageWindowViewModel(caption, message, icon, buttons);
           window.Owner = owner;
           result = window.ShowDialog();
+          cancelled = window.cancelled;
         }));
-      return result;
+      if (cancelled)
+        return null;
+      else
+        return result;
     }
 
     internal static void ShowError(Window owner, string caption, string message)
