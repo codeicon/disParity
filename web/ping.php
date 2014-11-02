@@ -5,7 +5,7 @@
 $myFile = "pinglog.txt";
 
 $releaseVer = "0.39";
-$betaVer = "0.40";
+$betaVer = "0.41";
 
 // filter out one dood's script that runs disParity every 20 minutes 
 //if ($_GET["id"]=="264003054")
