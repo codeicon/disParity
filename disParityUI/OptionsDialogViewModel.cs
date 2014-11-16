@@ -43,7 +43,8 @@ namespace disParityUI
       UpdateDelay = config.UpdateDelay;
       updateHours = config.UpdateHours;
       DailyScanTime = config.UpdateDaily;
-      switch (config.UpdateMode) {
+      switch (config.UpdateMode)
+      {
         case UpdateMode.NoAction:
           NoAction = true;
           UpdateSoon = false;
@@ -80,7 +81,8 @@ namespace disParityUI
     {
       string root = Path.GetPathRoot(path);
       foreach (DataDrive d in paritySet.Drives)
-        if (String.Compare(root, Path.GetPathRoot(d.Root), true) == 0) {
+        if (String.Compare(root, Path.GetPathRoot(d.Root), true) == 0)
+        {
           bool? result = MessageWindow.Show(Owner, "Duplicate drives detected!", "The selected parity location appears to be on one of your data drives.\n\n" +
             "This is not recommended.  If the drive fails, disParity will not be able to recover any of your data.\n\n" +
             "Are you sure you want to store parity on this drive?", MessageWindowIcon.Error, MessageWindowButton.YesNo);
@@ -92,16 +94,19 @@ namespace disParityUI
 
       DirectoryInfo dirInfo;
       bool empty;
-      try {
+      try
+      {
         dirInfo = new DirectoryInfo(path);
         dirInfo.GetFiles("files*.dat");
         empty = (dirInfo.GetFiles("files*.dat").Length == 0) && (dirInfo.GetFiles("parity*.dat").Length == 0);
       }
-      catch (Exception e) {
+      catch (Exception e)
+      {
         MessageWindow.Show(Owner, "Error", "Could not access directory: " + e.Message, MessageWindowIcon.Error, MessageWindowButton.OK);
         return;
       }
-      if (!empty) {
+      if (!empty)
+      {
         if (MessageWindow.Show(Owner, "Directory not empty", "This directory appears to contain existing parity data.  Are you sure you want to change to this location?", MessageWindowIcon.Question, MessageWindowButton.YesNo) == false)
           return;
       }
@@ -118,7 +123,8 @@ namespace disParityUI
       // close open parity file (if any)
       paritySet.CloseParity();
 
-      if (result == true) {
+      if (result == true)
+      {
         Win32.SHFILEOPSTRUCT fileOpStruct = new Win32.SHFILEOPSTRUCT();
 
         fileOpStruct.wFunc = 1; // FO_MOVE
@@ -130,7 +136,8 @@ namespace disParityUI
         Marshal.FreeHGlobal(fileOpStruct.pFrom);
         Marshal.FreeHGlobal(fileOpStruct.pTo);
 
-        if (moveResult != 0 || fileOpStruct.fAnyOperationsAborted) {
+        if (moveResult != 0 || fileOpStruct.fAnyOperationsAborted)
+        {
           MessageWindow.Show(Owner, "Could not move parity data", "Warning!  Not all parity files were moved.  Your backup is now in an indeterminate state.  It is strongly recommended that you rebuild your backup from scratch. ", MessageWindowIcon.Error, MessageWindowButton.OK);
           return false;
         }
@@ -141,12 +148,14 @@ namespace disParityUI
 
     public void ImportOldConfiguration(string path)
     {
-      try {
+      try
+      {
         config.ImportOld(path);
         SetProperties();
         ConfigImported = true;
       }
-      catch (Exception e) {
+      catch (Exception e)
+      {
         App.LogCrash(e);
         MessageWindow.ShowError(Owner, "Import error", "Sorry, an error occurred while importing the configuration: " + e.Message);
         return;
@@ -167,9 +176,9 @@ namespace disParityUI
     public bool CommitChanges()
     {
       bool parityDirMoved = false;
-      if (parityDir != PARITY_NOT_SET) 
+      if (parityDir != PARITY_NOT_SET)
       {
-        if ((String.Compare(parityDir, config.ParityDir, true) != 0) && !paritySet.Empty) 
+        if ((String.Compare(parityDir, config.ParityDir, true) != 0) && !paritySet.Empty)
         {
           if (!MoveParityData(parityDir))
             return false;
@@ -178,7 +187,8 @@ namespace disParityUI
         config.ParityDir = parityDir;
       }
       config.MaxTempRAM = (uint)MaxTempRAM;
-      if (config.IgnoreHidden != IgnoreHidden) {
+      if (config.IgnoreHidden != IgnoreHidden)
+      {
         IgnoresChanged = true;
         config.IgnoreHidden = IgnoreHidden;
       }
@@ -197,7 +207,8 @@ namespace disParityUI
 
       config.TempDir = TempDir;
       config.Ignores.Clear();
-      if (!String.IsNullOrEmpty(ignores)) {
+      if (!String.IsNullOrEmpty(ignores))
+      {
         string[] sep = { "\r\n" };
         string[] s = ignores.Split(sep, StringSplitOptions.RemoveEmptyEntries);
         foreach (string i in s)

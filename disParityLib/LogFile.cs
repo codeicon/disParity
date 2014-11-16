@@ -31,10 +31,12 @@ namespace disParity
 
     private static void Open()
     {
-      try {
+      try
+      {
         f = new StreamWriter(filename, true);
       }
-      catch {
+      catch
+      {
         f = null;
         // suppress any errors opening the log file
       }
@@ -43,8 +45,10 @@ namespace disParity
     // Used in console mode only
     public static void Write(string msg)
     {
-      lock (syncObj) {
-        if (f != null) {
+      lock (syncObj)
+      {
+        if (f != null)
+        {
           Console.Write(msg);
           f.Write(msg);
         }
@@ -54,8 +58,10 @@ namespace disParity
     // Used in console mode only
     public static void Write(string msg, params object[] args)
     {
-      lock (syncObj) {
-        if (f != null) {
+      lock (syncObj)
+      {
+        if (f != null)
+        {
           Console.Write(msg, args);
           f.Write(msg, args);
         }
@@ -140,7 +146,8 @@ namespace disParity
     private static void MaybeRotate()
     {
       FileInfo info = new FileInfo(filename);
-      if (info.Length > MAX_FILE_SIZE) {
+      if (info.Length > MAX_FILE_SIZE)
+      {
         Close();
         string newName = Path.ChangeExtension(filename, "old");
         if (File.Exists(newName))
@@ -152,7 +159,8 @@ namespace disParity
 
     private static void Flush()
     {
-      lock (syncObj) {
+      lock (syncObj)
+      {
         if (f != null)
           f.Flush();
       }
@@ -160,8 +168,10 @@ namespace disParity
 
     public static void Close()
     {
-      lock (syncObj) {
-        if (f != null) {
+      lock (syncObj)
+      {
+        if (f != null)
+        {
           f.Dispose();
           f = null;
         }

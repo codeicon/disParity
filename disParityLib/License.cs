@@ -15,7 +15,8 @@ namespace disParity
 
       get
       {
-        try {
+        try
+        {
           Object entry =
             Registry.GetValue("HKEY_CURRENT_USER\\Software\\disParity", "License", 0);
           if (entry == null || (int)entry == 0)
@@ -23,7 +24,8 @@ namespace disParity
           else
             return true;
         }
-        catch (Exception e) {
+        catch (Exception e)
+        {
           LogFile.Log("Registry.GetValue failed: " + e.Message);
           return false;
         }
@@ -31,11 +33,13 @@ namespace disParity
 
       set
       {
-        try {
-          Registry.SetValue("HKEY_CURRENT_USER\\Software\\disParity", "License", 
+        try
+        {
+          Registry.SetValue("HKEY_CURRENT_USER\\Software\\disParity", "License",
             value ? 1 : 0, RegistryValueKind.DWord);
         }
-        catch (Exception e) {
+        catch (Exception e)
+        {
           LogFile.Log("Registry.SetValue failed: " + e.Message);
         }
       }

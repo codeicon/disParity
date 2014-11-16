@@ -31,18 +31,21 @@ namespace disParity
     private void ComputeMaxBlock()
     {
       maxBlock = 0;
-      try {
+      try
+      {
         DirectoryInfo dirInfo = new DirectoryInfo(config.ParityDir);
         FileInfo[] files = dirInfo.GetFiles();
         int maxFileNum = 0;
         FileInfo maxFile = null;
         foreach (FileInfo f in files)
-          if (f.Name.StartsWith("parity") && Path.GetExtension(f.Name) == ".dat") {
+          if (f.Name.StartsWith("parity") && Path.GetExtension(f.Name) == ".dat")
+          {
             string name = f.Name.Replace("parity", "");
             name = name.Replace(".dat", "");
             // all that should be left now is the file number
             int fileNum = Convert.ToInt32(name);
-            if (fileNum > maxFileNum) {
+            if (fileNum > maxFileNum)
+            {
               maxFileNum = fileNum;
               maxFile = f;
             }
@@ -50,7 +53,8 @@ namespace disParity
         if (maxFile != null)
           maxBlock = (UInt32)(maxFileNum * BLOCKS_PER_FILE) + ((UInt32)maxFile.Length / BLOCK_SIZE);
       }
-      catch {
+      catch
+      {
       }
     }
 
@@ -75,28 +79,34 @@ namespace disParity
     {
       UInt32 partityFileNum = block / (UInt32)BLOCKS_PER_FILE;
       long position = FilePosition(block);
-      if (f != null && partityFileNum == currentParityFile) {
-        if (readOnly && position >= f.Length) {
+      if (f != null && partityFileNum == currentParityFile)
+      {
+        if (readOnly && position >= f.Length)
+        {
           LogFile.Error("ERROR: Attempt to read past end of " + ParityFileName(block));
           return false;
-        }  
+        }
         f.Position = position;
         return true;
       }
       Close();
       string fileName = ParityFileName(block);
-      if (readOnly && !File.Exists(fileName)) {
+      if (readOnly && !File.Exists(fileName))
+      {
         LogFile.Error("ERROR: Attempt to open non-existant parity file " + fileName);
         return false;
       }
-      try {
+      try
+      {
         f = new FileStream(fileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
       }
-      catch (Exception e) {
+      catch (Exception e)
+      {
         LogFile.Error("ERROR opening parity file " + fileName + ": " + e.Message);
         return false;
       }
-      if (readOnly && position >= f.Length) {
+      if (readOnly && position >= f.Length)
+      {
         Close();
         LogFile.Error("ERROR: Attempt to read past end of " + fileName);
         return false;
@@ -121,7 +131,8 @@ namespace disParity
       Close();
       // now delete all parity files after this one
       UInt32 partityFileNum = (block / (UInt32)BLOCKS_PER_FILE) + 1;
-      for (; ; ) {
+      for (; ; )
+      {
         string fileName = Path.Combine(config.ParityDir, "parity" + partityFileNum.ToString() + ".dat");
         if (!File.Exists(fileName))
           break;
@@ -133,7 +144,8 @@ namespace disParity
 
     public void Close()
     {
-      if (f != null) {
+      if (f != null)
+      {
         f.Close();
         f.Dispose();
         f = null;
@@ -142,8 +154,10 @@ namespace disParity
 
     public bool ReadBlock(UInt32 block, byte[] data)
     {
-      try {
-        if (!OpenParityFile(block, true)) {
+      try
+      {
+        if (!OpenParityFile(block, true))
+        {
           // OpenParityFile returns false if parityX.dat does not exist
           // FIX ME: WHEN is this a valid case exactly?  It's definitely an error in a lot of cases.
           // It's valid when adding new files to the end of parity.  The non-existent parity block is first read
@@ -152,13 +166,15 @@ namespace disParity
           //Array.Clear(data, 0, BLOCK_SIZE);
           // Now that we are pre-allocating parity before adds this is definitely an error
           return false;
-        } 
-        else {
+        }
+        else
+        {
           int bytesRead = f.Read(data, 0, BLOCK_SIZE);
           Debug.Assert(bytesRead == BLOCK_SIZE);
         }
       }
-      catch (Exception e) {
+      catch (Exception e)
+      {
         LogFile.Error("FATAL ERROR: {0}", e.Message);
         LogFile.Error("WARNING: parity data appears to be damaged.  It is strongly advised that you recreate the snapshot from scratch.");
         return false;
@@ -171,16 +187,20 @@ namespace disParity
       Debug.Assert(block <= maxBlock);
       if (!OpenParityFile(block, false))
         return false;
-      try {
+      try
+      {
         f.Write(data, 0, BLOCK_SIZE);
       }
-      catch (Exception e) {
+      catch (Exception e)
+      {
         LogFile.Error("ERROR writing to parity file: " + e.Message);
         LogFile.Error("Attempting to truncate " + ParityFileName(block) + " to previous block boundary...");
-        try {
+        try
+        {
           f.SetLength(FilePosition(block));
         }
-        catch (Exception e2) {
+        catch (Exception e2)
+        {
           LogFile.Error("Truncate failed: " + e2.Message);
           return false;
         }
@@ -216,16 +236,20 @@ namespace disParity
       get
       {
         string parityDrive = Path.GetPathRoot(config.ParityDir);
-        if (parityDrive != "") {
+        if (parityDrive != "")
+        {
           DriveInfo driveInfo;
-          try {
+          try
+          {
             driveInfo = new DriveInfo(parityDrive);
           }
-          catch {
+          catch
+          {
             return -1;
           }
           return driveInfo.AvailableFreeSpace;
-        } else
+        }
+        else
           return -1;
       }
     }

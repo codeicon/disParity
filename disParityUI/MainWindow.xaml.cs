@@ -45,7 +45,8 @@ namespace disParityUI
 
     private void HandleInitialized(object sender, EventArgs args)
     {
-      if (SingleInstance.AlreadyRunning()) {
+      if (SingleInstance.AlreadyRunning())
+      {
         MessageWindow.ShowError(null, "Already running", "Another instance of disParity is already running");
         Close();
       }
@@ -63,7 +64,8 @@ namespace disParityUI
 
     private void HandleClosing(object sender, CancelEventArgs args)
     {
-      if (viewModel.Busy) {
+      if (viewModel.Busy)
+      {
         MessageWindow.Show(this, "Operation in progress", "Please cancel the current operation before closing disParity", MessageWindowIcon.Caution, MessageWindowButton.OK);
         args.Cancel = true;
       }
@@ -87,7 +89,7 @@ namespace disParityUI
 
     void AddDriveCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
-      e.CanExecute = (viewModel.Config != null) && 
+      e.CanExecute = (viewModel.Config != null) &&
         !String.IsNullOrEmpty(viewModel.Config.ParityDir) && !viewModel.Busy;
     }
 

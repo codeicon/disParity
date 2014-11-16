@@ -24,23 +24,27 @@ namespace disParityUI
 
     public static void Create(Exception e, string context, bool upload, bool unhandled)
     {
-      try {
+      try
+      {
         string crashLog = FullPath;
         if (!Directory.Exists(Path.GetDirectoryName(crashLog)))
           Directory.CreateDirectory(Path.GetDirectoryName(crashLog));
 
-        using (StreamWriter s = new StreamWriter(crashLog)) {
+        using (StreamWriter s = new StreamWriter(crashLog))
+        {
           s.WriteLine("Crash log generated {0}", DateTime.Now);
           s.WriteLine("Version: {0}", disParity.Version.VersionString);
           s.WriteLine("Unhandled: {0}", unhandled ? "Yes" : "No");
           s.WriteLine("Context: {0}", context);
           s.WriteLine();
-          while (e != null) {
+          while (e != null)
+          {
             s.WriteLine("Exception: " + e.GetType().ToString());
             s.WriteLine("Message: " + e.Message);
             s.WriteLine("Stack: " + e.StackTrace);
             e = e.InnerException;
-            if (e != null) {
+            if (e != null)
+            {
               s.WriteLine();
               s.WriteLine("Inner Exception");
               s.WriteLine();
@@ -50,7 +54,8 @@ namespace disParityUI
         if (upload)
           UploadCrashLog();
       }
-      catch {
+      catch
+      {
         // prevent any problems with creating the crash log from taking down the app
       }
     }
@@ -58,16 +63,20 @@ namespace disParityUI
     private static void UploadCrashLog()
     {
       string crashLog = FullPath;
-      if (File.Exists(crashLog)) {
-        Task.Factory.StartNew(() => {
-          try {
+      if (File.Exists(crashLog))
+      {
+        Task.Factory.StartNew(() =>
+        {
+          try
+          {
             string crashText = File.ReadAllText(crashLog);
             //uncomment if we want to rename the crash log after uploading it
             //string oldPath = Path.ChangeExtension(crashLog, ".old");
             //if (File.Exists(oldPath))
             //  File.Delete(oldPath);
             //File.Move(crashLog, oldPath);
-            using (var wb = new WebClient()) {
+            using (var wb = new WebClient())
+            {
               var data = new NameValueCollection();
               data["id"] = disParity.Version.GetID().ToString();
               data["crash"] = crashText;
@@ -75,7 +84,8 @@ namespace disParityUI
               byte[] response = wb.UploadValues(uri, "POST", data);
             }
           }
-          catch (Exception e) {
+          catch (Exception e)
+          {
             LogFile.Log("Error uploading crash log: " + e.Message);
           }
         });

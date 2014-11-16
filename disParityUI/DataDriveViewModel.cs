@@ -37,19 +37,22 @@ namespace disParityUI
         return;
       Task.Factory.StartNew(() =>
       {
-        try {
+        try
+        {
           DataDrive.Scan(auto);
           UpdateAdditionalInfo();
         }
-        catch (Exception e) {
+        catch (Exception e)
+        {
           LogFile.Error("Error occurred during scan of {0}: {1}", DataDrive.Root, e.Message);
         }
-        finally {
+        finally
+        {
           UpdateStatus();
           Progress = 0;
         }
       }
-      );      
+      );
     }
 
     internal DataDrive DataDrive { get; private set; }
@@ -92,7 +95,8 @@ namespace disParityUI
 
     private void UpdateStatus()
     {
-      switch (DataDrive.DriveStatus) {
+      switch (DataDrive.DriveStatus)
+      {
         case DriveStatus.ScanRequired:
           StatusIcon = Icons.Unknown;
           if (DataDrive.ChangesDetected)
@@ -101,7 +105,8 @@ namespace disParityUI
         case DriveStatus.UpdateRequired:
           int addCount = DataDrive.Adds.Count;
           int deleteCount = DataDrive.Deletes.Count;
-          if (addCount == 0 && deleteCount == 0) {
+          if (addCount == 0 && deleteCount == 0)
+          {
             Status = "Up to date";
             StatusIcon = Icons.Good;
             break;
@@ -141,9 +146,9 @@ namespace disParityUI
     private ImageSource statusIcon;
     public ImageSource StatusIcon
     {
-      get 
-      { 
-        return statusIcon; 
+      get
+      {
+        return statusIcon;
       }
       set
       {

@@ -41,15 +41,15 @@ namespace disParityUI
     internal static void Show(Window owner, List<string> report)
     {
       Application.Current.Dispatcher.Invoke(new Action(() =>
-        {
-          ReportWindow window = new ReportWindow();
-          window.Owner = owner;
-          StringBuilder sb = new StringBuilder();
-          foreach (string s in report)
-            sb.AppendLine(s);
-          window.DataContext = new ReportWindowViewModel(sb.ToString());
-          window.ShowDialog();
-        }));
+      {
+        ReportWindow window = new ReportWindow();
+        window.Owner = owner;
+        StringBuilder sb = new StringBuilder();
+        foreach (string s in report)
+          sb.AppendLine(s);
+        window.DataContext = new ReportWindowViewModel(sb.ToString());
+        window.ShowDialog();
+      }));
     }
 
   }

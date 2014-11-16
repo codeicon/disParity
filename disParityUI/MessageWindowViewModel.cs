@@ -17,7 +17,8 @@ namespace disParityUI
       Caption = caption;
       Message = message;
 
-      switch (icon) {
+      switch (icon)
+      {
         case MessageWindowIcon.OK:
           Icon = Icons.Good;
           break;
@@ -32,7 +33,8 @@ namespace disParityUI
           break;
       }
 
-      switch (buttons) {
+      switch (buttons)
+      {
         case MessageWindowButton.OK:
           YesButtonVisibility = Visibility.Collapsed;
           NoButtonVisibility = Visibility.Collapsed;

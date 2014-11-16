@@ -23,7 +23,8 @@ namespace disParityUI
     {
       // check if there are changes on other drives that could mess up the recover
       foreach (DataDriveViewModel vm in viewModel.Drives)
-        if (vm != drive && (vm.DataDrive.Deletes.Count > 0)) {
+        if (vm != drive && (vm.DataDrive.Deletes.Count > 0))
+        {
           if (MessageWindow.Show(viewModel.Owner, "Changes detected", "Other drives have changes which may prevent a complete recovery.  Would you like to recover anyway?", MessageWindowIcon.Caution, MessageWindowButton.OKCancel) != true)
             return false;
         }
@@ -52,16 +53,19 @@ namespace disParityUI
       int failures;
       suppressErrorCheck = true; // tell base class to not report errors, we'll do that here
       viewModel.ParitySet.Recover(drive.DataDrive, recoverPath, out successes, out failures);
-      if (cancelled) {
+      if (cancelled)
+      {
         Status = "Recover cancelled";
         return;
       }
-      if (failures == 0) {
+      if (failures == 0)
+      {
         string msg = String.Format("{0} file{1} successfully recovered!",
           successes, successes == 1 ? "" : "s");
         MessageWindow.Show(viewModel.Owner, "Recovery complete", msg);
       }
-      else {
+      else
+      {
         string msg =
           String.Format("{0} file{1} recovered successfully.\r\n\r\n", successes, successes == 1 ? " was" : "s were") +
           String.Format("{0} file{1} encountered errors during the recovery.", failures, failures == 1 ? "" : "s") +

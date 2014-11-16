@@ -20,20 +20,22 @@ namespace disParityUI
     {
       if (!anyDriveNeedsUpdate)
         DisplayUpToDateStatus();
-      else {
+      else
+      {
         if (!viewModel.ParitySet.CheckAvailableSpaceForUpdate())
           if (MessageWindow.Show(viewModel.Owner, "Insufficient disk space",
             "There does not appear to be enough disk space on your parity drive to complete this operation.  Are you sure you want to attempt an update?",
             MessageWindowIcon.Error, MessageWindowButton.YesNo) != true)
             return;
-        try {
+        try
+        {
           viewModel.ParitySet.Update();
         }
-        catch (Exception e) {
+        catch (Exception e)
+        {
           App.LogCrash(e);
           MessageWindow.Show(viewModel.Owner, "Update failed!", "Sorry, a fatal error interrupted the update:\n\n" +
-            e.Message + "\n\n" +
-            "The update could not be completed.", MessageWindowIcon.Error, MessageWindowButton.OK);
+            e.Message + "\n\n" + "The update could not be completed.", MessageWindowIcon.Error, MessageWindowButton.OK);
           suppressErrorCheck = true;
           throw e;
         }

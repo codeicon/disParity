@@ -41,9 +41,12 @@ namespace disParityUI
 
     public void HandleSupportClick(object Sender, RoutedEventArgs args)
     {
-      try {
+      try
+      {
         Process.Start(new ProcessStartInfo(viewModel.ForumURL));
-      } catch (Exception e) {
+      }
+      catch (Exception e)
+      {
         // log & hide crash trying to launch forum URL.  User 913413526 crashed here according the logs.
         App.LogCrash(e);
       }

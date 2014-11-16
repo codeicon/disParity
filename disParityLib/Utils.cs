@@ -31,22 +31,26 @@ namespace disParity
 
     public static bool PathIsFolder(string path)
     {
-      try {
+      try
+      {
         FileAttributes att = File.GetAttributes(path);
         return (att & FileAttributes.Directory) == FileAttributes.Directory;
       }
-      catch {
+      catch
+      {
         return false;
       }
     }
 
     public static DateTime GetLastWriteTime(string file)
     {
-      try {
+      try
+      {
         FileInfo fi = new FileInfo(file);
         return fi.LastWriteTime;
       }
-      catch {
+      catch
+      {
         return DateTime.MinValue;
       }
     }
@@ -66,10 +70,12 @@ namespace disParity
     public static unsafe void FastXOR(byte[] buf1, byte[] buf2)
     {
       fixed (byte* p1 = buf1)
-      fixed (byte* p2 = buf2) {
+      fixed (byte* p2 = buf2)
+      {
         long* lp1 = (long*)p1;
         long* lp2 = (long*)p2;
-        for (int i = 0; i < (buf1.Length / 8); i++) {
+        for (int i = 0; i < (buf1.Length / 8); i++)
+        {
           *lp1 ^= *lp2;
           lp1++;
           lp2++;
@@ -79,7 +85,7 @@ namespace disParity
 
     public static bool PathsAreEqual(string path1, string path2)
     {
-      return (String.Compare(Path.GetFullPath(path1).TrimEnd('\\'), Path.GetFullPath(path2).TrimEnd('\\'), 
+      return (String.Compare(Path.GetFullPath(path1).TrimEnd('\\'), Path.GetFullPath(path2).TrimEnd('\\'),
         StringComparison.InvariantCultureIgnoreCase) == 0);
     }
 
@@ -102,7 +108,8 @@ namespace disParity
 
       if (timeSpan.Days == 1)
         sb.Append("1 day ");
-      else if (timeSpan.Days > 1) {
+      else if (timeSpan.Days > 1)
+      {
         sb.Append(timeSpan.Days.ToString());
         sb.Append(" days ");
       }
@@ -111,7 +118,8 @@ namespace disParity
         sb.Append("");
       else if (timeSpan.Hours == 1)
         sb.Append("1 hour ");
-      else {
+      else
+      {
         sb.Append(timeSpan.Hours.ToString());
         sb.Append(" hours ");
       }
@@ -120,15 +128,18 @@ namespace disParity
         sb.Append("");
       else if (timeSpan.Minutes == 1)
         sb.Append("1 minute ");
-      else {
+      else
+      {
         sb.Append(timeSpan.Minutes.ToString());
         sb.Append(" minutes ");
       }
 
-      if (timeSpan.Minutes > 0) {
+      if (timeSpan.Minutes > 0)
+      {
         if (timeSpan.Seconds == 1)
           sb.Append("1 second");
-        else {
+        else
+        {
           sb.Append(timeSpan.Seconds.ToString());
           sb.Append(" seconds");
         }
@@ -149,25 +160,30 @@ namespace disParity
       string units;
       double result;
 
-      if (size < KB) {
+      if (size < KB)
+      {
         if (size == 1)
           return "1 byte";
         else
           return size.ToString() + " bytes";
       }
-      else if (size < MB) {
+      else if (size < MB)
+      {
         result = (double)size / KB;
         units = "KB";
       }
-      else if (size < GB) {
+      else if (size < GB)
+      {
         result = (double)size / MB;
         units = "MB";
       }
-      else if (size < TB) {
+      else if (size < TB)
+      {
         result = (double)size / GB;
         units = "GB";
       }
-      else {
+      else
+      {
         result = (double)size / TB;
         units = "TB";
       }
@@ -179,7 +195,8 @@ namespace disParity
     public static ulong TotalSystemRAM()
     {
       Win32.MEMORYSTATUSEX memStatus = new Win32.MEMORYSTATUSEX();
-      if (Win32.GlobalMemoryStatusEx(memStatus)) {
+      if (Win32.GlobalMemoryStatusEx(memStatus))
+      {
         // round up to nearest GB
         ulong RAM = memStatus.ullTotalPhys;
         ulong remainder = RAM % ONE_GB;
@@ -187,7 +204,7 @@ namespace disParity
           return RAM;
         else
           return (RAM + ONE_GB - remainder);
-      } 
+      }
       else
         return 0;
     }

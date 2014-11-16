@@ -59,15 +59,15 @@ namespace disParityUI
       bool cancelled = false;
       bool? result = null;
       Application.Current.Dispatcher.Invoke(new Action(() =>
-        {
-          MessageWindow window = new MessageWindow();
-          if (width != 0)
-            window.Width = width;
-          window.DataContext = new MessageWindowViewModel(caption, message, icon, buttons);
-          window.Owner = owner;
-          result = window.ShowDialog();
-          cancelled = window.cancelled;
-        }));
+      {
+        MessageWindow window = new MessageWindow();
+        if (width != 0)
+          window.Width = width;
+        window.DataContext = new MessageWindowViewModel(caption, message, icon, buttons);
+        window.Owner = owner;
+        result = window.ShowDialog();
+        cancelled = window.cancelled;
+      }));
       if (cancelled)
         return null;
       else

@@ -28,7 +28,7 @@ namespace disParityUI
     private void HandleLoaded(object sender, EventArgs args)
     {
       WindowUtils.RemoveCloseButton(this);
-      vm = (UndeleteWindowViewModel)DataContext; 
+      vm = (UndeleteWindowViewModel)DataContext;
       SelectAll();
     }
 

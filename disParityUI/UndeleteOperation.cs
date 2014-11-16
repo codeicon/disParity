@@ -20,7 +20,8 @@ namespace disParityUI
       if (drive.DataDrive.Deletes.Count == 0)
         return false;
 
-      if (drive.DataDrive.Deletes.Count > MAX_UNDELETE_FILES) {
+      if (drive.DataDrive.Deletes.Count > MAX_UNDELETE_FILES)
+      {
         MessageWindow.Show(viewModel.Owner, "Can't undelete", "There are too many files missing from this drive to perform an Undelete.\n\n" +
           "Try using Recover instead to recover the entire drive.", MessageWindowIcon.Error, MessageWindowButton.OK);
         return false;

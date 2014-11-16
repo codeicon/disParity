@@ -70,7 +70,8 @@ namespace disParity
 
     public void ImportOld(string path)
     {
-      if (File.Exists(path)) {
+      if (File.Exists(path))
+      {
         OldConfig oldConfig = new OldConfig(path);
         ParityDir = oldConfig.ParityDir;
         TempDir = oldConfig.TempDir;
@@ -96,7 +97,8 @@ namespace disParity
     public void Validate()
     {
       // Make sure all data paths are set and valid
-      for (int i = 0; i < Drives.Count; i++) {
+      for (int i = 0; i < Drives.Count; i++)
+      {
         if (Drives[i] == null)
           throw new Exception(String.Format("Path {0} is not set (check {1})", i + 1, Filename));
         if (!Path.IsPathRooted(Drives[i].Path))
@@ -110,7 +112,8 @@ namespace disParity
     public void MakeBackup()
     {
       string backup = Path.ChangeExtension(filename, ".bak");
-      try {
+      try
+      {
         if (File.Exists(backup))
           File.Delete(backup);
         File.Copy(filename, backup);
@@ -123,47 +126,57 @@ namespace disParity
       if (!File.Exists(filename))
         return;
       using (StreamReader f = new StreamReader(filename))
-      using (XmlReader reader = XmlReader.Create(f)) {
-        for (; ; ) {
+      using (XmlReader reader = XmlReader.Create(f))
+      {
+        for (; ; )
+        {
           reader.Read();
           if (reader.EOF)
             break;
           if (reader.NodeType == XmlNodeType.Whitespace)
             continue;
-          if (reader.Name == "Options" && reader.IsStartElement()) {
-            for (; ; ) {
+          if (reader.Name == "Options" && reader.IsStartElement())
+          {
+            for (; ; )
+            {
               if (!reader.Read() || reader.EOF)
                 break;
               if (reader.NodeType == XmlNodeType.Whitespace)
                 continue;
               else if (reader.NodeType == XmlNodeType.EndElement)
                 break;
-              if (reader.Name == "TempDir") {
+              if (reader.Name == "TempDir")
+              {
                 reader.Read();
                 TempDir = reader.Value;
                 reader.Read();
               }
-              else if (reader.Name == "MaxTempRAM") {
+              else if (reader.Name == "MaxTempRAM")
+              {
                 reader.Read();
                 MaxTempRAM = Convert.ToUInt32(reader.Value);
                 reader.Read();
               }
-              else if (reader.Name == "IgnoreHidden") {
+              else if (reader.Name == "IgnoreHidden")
+              {
                 reader.Read();
                 IgnoreHidden = (reader.Value == "true") ? true : false;
                 reader.Read();
               }
-              else if (reader.Name == "MonitorDrives") {
+              else if (reader.Name == "MonitorDrives")
+              {
                 reader.Read();
                 MonitorDrives = (reader.Value == "true") ? true : false;
                 reader.Read();
               }
-              else if (reader.Name == "UpdateDelay") {
+              else if (reader.Name == "UpdateDelay")
+              {
                 reader.Read();
                 UpdateDelay = Convert.ToUInt32(reader.Value);
                 reader.Read();
               }
-              else if (reader.Name == "UpdateMode") {
+              else if (reader.Name == "UpdateMode")
+              {
                 reader.Read();
                 int mode = Convert.ToInt32(reader.Value);
                 reader.Read();
@@ -176,34 +189,40 @@ namespace disParity
                 else if (mode == 4)
                   UpdateMode = UpdateMode.UpdateDaily;
               }
-              else if (reader.Name == "UpdateHours") {
+              else if (reader.Name == "UpdateHours")
+              {
                 reader.Read();
                 UpdateHours = Convert.ToUInt32(reader.Value);
                 reader.Read();
               }
-              else if (reader.Name == "UpdateDaily") {
+              else if (reader.Name == "UpdateDaily")
+              {
                 reader.Read();
                 DateTime val;
                 if (DateTime.TryParseExact(reader.Value, "HHmm", null, System.Globalization.DateTimeStyles.None, out val))
                   UpdateDaily = val;
                 reader.Read();
               }
-              else if (reader.Name == "LastHourly") {
+              else if (reader.Name == "LastHourly")
+              {
                 reader.Read();
                 long val;
                 if (long.TryParse(reader.Value, out val))
                   LastHourlyUpdate = DateTime.FromBinary(val);
                 reader.Read();
               }
-              else if (reader.Name == "Ignores") {
-                for (; ; ) {
+              else if (reader.Name == "Ignores")
+              {
+                for (; ; )
+                {
                   if (!reader.Read() || reader.EOF)
                     break;
                   if (reader.NodeType == XmlNodeType.Whitespace)
                     continue;
                   else if (reader.NodeType == XmlNodeType.EndElement)
                     break;
-                  if (reader.Name == "Ignore" && reader.IsStartElement()) {
+                  if (reader.Name == "Ignore" && reader.IsStartElement())
+                  {
                     reader.Read();
                     Ignores.Add(reader.Value);
                     reader.Read(); // skip end element
@@ -214,8 +233,10 @@ namespace disParity
           }
           else if (reader.Name == "Parity")
             ParityDir = reader.GetAttribute("Path");
-          else if (reader.Name == "Layout" && reader.IsStartElement()) {
-            for (; ; ) {
+          else if (reader.Name == "Layout" && reader.IsStartElement())
+          {
+            for (; ; )
+            {
               if (!reader.Read() || reader.EOF)
                 break;
               if (reader.NodeType == XmlNodeType.Whitespace)
@@ -272,8 +293,10 @@ namespace disParity
               }
             }
           }
-          else if (reader.Name == "Drives" && reader.IsStartElement()) {
-            for (; ; ) {
+          else if (reader.Name == "Drives" && reader.IsStartElement())
+          {
+            for (; ; )
+            {
               if (!reader.Read() || reader.EOF)
                 break;
               if (reader.NodeType == XmlNodeType.Whitespace)
@@ -292,8 +315,9 @@ namespace disParity
     public void Save()
     {
       XmlWriterSettings settings = new XmlWriterSettings();
-      settings.Indent = true; 
-      using (XmlWriter writer = XmlWriter.Create(filename, settings)) {
+      settings.Indent = true;
+      using (XmlWriter writer = XmlWriter.Create(filename, settings))
+      {
         writer.WriteStartDocument();
         writer.WriteStartElement("disParity");
         writer.WriteAttributeString("Version", VERSION.ToString());
@@ -323,7 +347,8 @@ namespace disParity
         if (LastHourlyUpdate != DateTime.MinValue)
           writer.WriteElementString("LastHourly", String.Format("{0}", LastHourlyUpdate.ToBinary()));
 
-        if (UpdateMode != DEFAULT_UPDATE_MODE) {
+        if (UpdateMode != DEFAULT_UPDATE_MODE)
+        {
           int mode = 0;
           if (UpdateMode == UpdateMode.NoAction)
             mode = 1;
@@ -336,7 +361,8 @@ namespace disParity
           writer.WriteElementString("UpdateMode", mode.ToString());
         }
 
-        if (Ignores.Count > 0) {
+        if (Ignores.Count > 0)
+        {
           writer.WriteStartElement("Ignores");
           foreach (string i in Ignores)
             writer.WriteElementString("Ignore", i);
@@ -356,7 +382,7 @@ namespace disParity
         writer.WriteElementString("LogWindowY", LogWindowY.ToString());
         writer.WriteElementString("LogWindowWidth", LogWindowWidth.ToString());
         writer.WriteElementString("LogWindowHeight", LogWindowHeight.ToString());
-        
+
 
         writer.WriteEndElement(); // Layout
 
@@ -365,7 +391,8 @@ namespace disParity
         writer.WriteEndElement();
 
         writer.WriteStartElement("Drives");
-        foreach (Drive d in Drives) {
+        foreach (Drive d in Drives)
+        {
           writer.WriteStartElement("Drive");
           writer.WriteAttributeString("Path", d.Path);
           writer.WriteAttributeString("Meta", d.Metafile);
@@ -390,7 +417,7 @@ namespace disParity
     public string ParityDir { get; set; }
 
     private string tempDir;
-    public string TempDir 
+    public string TempDir
     {
       get
       {
@@ -409,7 +436,8 @@ namespace disParity
     {
       // Convert list of ignores to a list of Regex
       IgnoresRegex.Clear();
-      foreach (string i in Ignores) {
+      foreach (string i in Ignores)
+      {
         string pattern = Regex.Escape(i.ToLower());       // Escape the original string
         pattern = pattern.Replace(@"\?", ".");  // Replace all \? with .
         pattern = pattern.Replace(@"\*", ".*"); // Replace all \* with .*

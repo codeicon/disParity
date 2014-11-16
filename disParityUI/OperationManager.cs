@@ -25,13 +25,15 @@ namespace disParityUI
 
     public void Begin(CancellableOperation operation, DataDriveViewModel drive = null)
     {
-      try {
+      try
+      {
         Debug.Assert(!Busy);
         operation.Finished += HandleOperationFinished;
         operationInProgress = operation;
         operation.Begin(vm, drive);
       }
-      catch (Exception e) {
+      catch (Exception e)
+      {
         App.LogCrash(e);
         LogFile.Log("Exception trying to begin {0}: {1} ", operation.Name, e.Message);
       }

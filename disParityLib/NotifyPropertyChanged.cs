@@ -14,7 +14,8 @@ namespace disParity
 
     protected bool SetProperty<T>(ref T property, string name, T value)
     {
-      if ((property == null && value != null) || (property != null && !property.Equals(value))) {
+      if ((property == null && value != null) || (property != null && !property.Equals(value)))
+      {
         property = value;
         FirePropertyChanged(name);
         return true;

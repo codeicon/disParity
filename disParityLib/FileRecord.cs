@@ -79,14 +79,16 @@ namespace disParity
     {
       if (!File.Exists(FullPath))
         return false;
-      try {
+      try
+      {
         FileInfo info = new FileInfo(FullPath);
         Length = info.Length;
         Attributes = info.Attributes;
         CreationTime = info.CreationTime;
         LastWriteTime = info.LastWriteTime;
       }
-      catch {
+      catch
+      {
         return false;
       }
       return true;
@@ -226,7 +228,8 @@ namespace disParity
     public static UInt32 ReadUInt32(FileStream f)
     {
       UInt32 result = ReadByte(f);
-      for (int i = 0; i < 3; i++) {
+      for (int i = 0; i < 3; i++)
+      {
         result <<= 8;
         result += ReadByte(f);
       }

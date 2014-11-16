@@ -19,7 +19,8 @@ namespace disParity
 
     private static void GetVersion()
     {
-      if (String.IsNullOrEmpty(version)) {
+      if (String.IsNullOrEmpty(version))
+      {
         Assembly thisAssembly = Assembly.GetExecutingAssembly();
         object[] attributes = thisAssembly.GetCustomAttributes(typeof(AssemblyFileVersionAttribute), false);
         if (attributes.Length == 1)
@@ -34,14 +35,16 @@ namespace disParity
 #if !DEBUG
       Task.Factory.StartNew(() =>
       {
-        try {
+        try
+        {
           LogFile.Log("Checking for upgrade...");
           UInt32 id = GetID();
           int dc, mpb;
           GetStats(out dc, out mpb);
           string url = @"http://www.vilett.com/disParity/ping.php?id=" + id.ToString() + (firstRun ? "&firstRun=1" : "") +
             "&dc=" + dc + "&mpb=" + mpb + "&beta=" + (Beta ? "1" : "0") + "&ver=" + Version.VersionString;
-          using (WebClient webClient = new WebClient()) {
+          using (WebClient webClient = new WebClient())
+          {
             byte[] buf = webClient.DownloadData(new System.Uri(url));
             double currentVersion = VersionNum;
             double latestVersion = double.Parse(Encoding.ASCII.GetString(buf), CultureInfo.InvariantCulture);
@@ -50,7 +53,8 @@ namespace disParity
               callback(Encoding.ASCII.GetString(buf));
           }
         }
-        catch (Exception e) {
+        catch (Exception e)
+        {
           LogFile.Error("Error checking for upgrade: " + e.Message);
         }
       });
@@ -61,7 +65,8 @@ namespace disParity
     {
       dc = 0;
       mpb = 0;
-      try {
+      try
+      {
         Object entry = Registry.GetValue("HKEY_CURRENT_USER\\Software\\disParity", "dc", 0);
         if (entry != null)
           dc = (int)entry;
@@ -69,7 +74,8 @@ namespace disParity
         if (entry != null)
           mpb = (int)entry;
       }
-      catch (Exception e) {
+      catch (Exception e)
+      {
         LogFile.Error("Error accessing registry: " + e.Message);
       }
     }
@@ -77,10 +83,12 @@ namespace disParity
     public static UInt32 GetID()
     {
       firstRun = false;
-      try {
+      try
+      {
         UInt32 id;
         Object entry = Registry.GetValue("HKEY_CURRENT_USER\\Software\\disParity", "ID", 0);
-        if (entry == null || (int)entry == 0) {
+        if (entry == null || (int)entry == 0)
+        {
           firstRun = true;
           Random r = new Random();
           id = (UInt32)r.Next();
@@ -90,7 +98,8 @@ namespace disParity
           id = (UInt32)(int)entry;
         return id;
       }
-      catch (Exception e) {
+      catch (Exception e)
+      {
         LogFile.Error("Error accessing registry: " + e.Message);
         return 0;
       }

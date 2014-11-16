@@ -17,7 +17,8 @@ namespace disParity
     /// </summary>
     public static bool AlreadyRunning()
     {
-      try {
+      try
+      {
         if (mutex == null)
           mutex = new Mutex(true, "7546c390-1543-42fd-8b7a-92334e439568");
         if (!mutex.WaitOne(TimeSpan.Zero, true))
@@ -25,7 +26,8 @@ namespace disParity
         else
           return false;
       }
-      catch {
+      catch
+      {
         return false;
       }
     }

@@ -13,36 +13,43 @@ namespace disParity
     {
       TempDir = "";
       Ignores = new string[0];
-      using (StreamReader f = new StreamReader(path)) {
+      using (StreamReader f = new StreamReader(path))
+      {
         string s;
         List<string> data = new List<string>();
-        while ((s = f.ReadLine()) != null) {
+        while ((s = f.ReadLine()) != null)
+        {
           s = s.Trim();
           if (s.Length == 0 || s[0] == '#')
             continue;
           string[] t = s.Split('=');
           string left = t[0].ToLower();
-          if (left == "parity") {
+          if (left == "parity")
+          {
             ParityDir = t[1];
             if (ParityDir[ParityDir.Length - 1] != '\\')
               ParityDir += '\\';
             continue;
           }
-          else if (left == "temp") {
+          else if (left == "temp")
+          {
             TempDir = t[1];
             if (TempDir[TempDir.Length - 1] != '\\')
               TempDir += '\\';
             continue;
           }
-          else if (left == "tempram") {
+          else if (left == "tempram")
+          {
             MaxTempRAM = Convert.ToUInt32(t[1]);
             continue;
           }
-          else if (left == "ignorehidden") {
+          else if (left == "ignorehidden")
+          {
             if (t[1] == "1")
               IgnoreHidden = true;
           }
-          else if (left == "ignore") {
+          else if (left == "ignore")
+          {
             Ignores = t[1].Split('|');
           }
           if (left.Substring(0, 4) != "data")
