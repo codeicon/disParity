@@ -30,6 +30,7 @@ namespace disParity
     private Dictionary<string, FileRecord> files; // Master list of protected files; should reflect what is currently in files.dat at all times
     private int ignoreCount; // number of files that matched an ignore filter this scan
     private HashSet<string> errorFiles = new HashSet<string>(); // list of files that had errors during the scan.  We won't add them on an update, but we won't remove them either.
+
     private MD5 hash;
     private Config config;
     private ProgressEstimator scanProgress;
@@ -55,16 +56,19 @@ namespace disParity
       this.config = config;
       this.env = environment;
 
-      if (!root.StartsWith(@"\\")) {
+      if (!root.StartsWith(@"\\"))
+      {
         string drive = Path.GetPathRoot(root);
         if (!String.IsNullOrEmpty(drive))
-          try {
+          try
+          {
             DriveInfo driveInfo = new DriveInfo(drive);
             DriveType = driveInfo.DriveType;
             VolumeLabel = driveInfo.VolumeLabel;
             TotalSpace = driveInfo.TotalSize;
           }
-          catch {
+          catch
+          {
             DriveType = DriveType.Unknown;
           }
       }
@@ -112,7 +116,8 @@ namespace disParity
 
     public void DisableWatcher()
     {
-      if (watcher != null) {
+      if (watcher != null)
+      {
         watcher.Dispose();
         watcher = null;
       }
@@ -138,7 +143,7 @@ namespace disParity
 
     public UInt32 MaxBlock { get; private set; }
 
-    public IEnumerable<FileRecord> Files { get {  return files.Values; } }
+    public IEnumerable<FileRecord> Files { get { return files.Values; } }
 
     public string LastError { get; private set; }
 
@@ -146,15 +151,17 @@ namespace disParity
 
     public string VolumeLabel { get; private set; }
 
-    public long FreeSpace 
+    public long FreeSpace
     {
       get
       {
-        try {
+        try
+        {
           DriveInfo driveInfo = new DriveInfo(Path.GetPathRoot(root));
           return driveInfo.TotalFreeSpace;
         }
-        catch {
+        catch
+        {
           return 0;
         }
       }
@@ -238,11 +245,13 @@ namespace disParity
       lastScanStart = DateTime.Now;
       ignoreCount = 0;
       bool error = false;
-      try {
+      try
+      {
 
         // Convert list of ignores to a list of Regex
         List<Regex> ignores = new List<Regex>();
-        foreach (string i in config.Ignores) {
+        foreach (string i in config.Ignores)
+        {
           string pattern = Regex.Escape(i.ToLower());       // Escape the original string
           pattern = pattern.Replace(@"\?", ".");  // Replace all \? with .
           pattern = pattern.Replace(@"\*", ".*"); // Replace all \* with .*
@@ -258,18 +267,21 @@ namespace disParity
         scanFileCount = 0;
         LogFile.Log("Scanning {0}...", root);
         scanProgress = null;
-        try {
+        try
+        {
           DirectoryInfo rootInfo = new DirectoryInfo(root);
           // try enumerating the sub directories of root, for the sole purpose of triggering an exception 
           // (caught below) if there is some reason why we can't access the drive
           rootInfo.GetDirectories();
-          Scan(rootInfo, ignores); 
-          if (!cancelScan) {
+          Scan(rootInfo, ignores);
+          if (!cancelScan)
+          {
             Status = "Scan complete. Analyzing results...";
             Progress = 1;
             AnalyzingResults = true;
             Compare();
-            if (cancelScan) {
+            if (cancelScan)
+            {
               Status = "Scan required";
               DriveStatus = DriveStatus.ScanRequired;
               return;
@@ -285,7 +297,8 @@ namespace disParity
           else
             LogFile.Log("{0}: Scan cancelled", Root);
         }
-        catch (Exception e) {
+        catch (Exception e)
+        {
           adds.Clear();
           FireErrorMessage(String.Format("Could not scan {0}: {1}", root, e.Message));
           LogFile.Log(e.StackTrace);
@@ -295,7 +308,8 @@ namespace disParity
           return;
         }
       }
-      finally {
+      finally
+      {
         AnalyzingResults = false;
         Progress = 0;
         UpdateStatus();
@@ -310,7 +324,8 @@ namespace disParity
       if (cancelScan)
         return;
       // never allow scanning of our own parity folder
-      if (Utils.PathsAreEqual(dir.FullName, config.ParityDir)) {
+      if (Utils.PathsAreEqual(dir.FullName, config.ParityDir))
+      {
         LogFile.Log("Warning: skipping " + dir.FullName + " because it is the parity folder.");
         return;
       }
@@ -318,26 +333,33 @@ namespace disParity
       if (scanProgress != null)
         Progress = scanProgress.Progress;
       DirectoryInfo[] subDirs;
-      try {
+      try
+      {
         subDirs = dir.GetDirectories();
       }
-      catch (Exception e) {
+      catch (Exception e)
+      {
         if (progress == null)
           throw;
         LogFile.Error("Warning: Could not enumerate subdirectories of {0}: {1}", dir.FullName, e.Message);
+        HandleFolderError(dir);
         return;
       }
       FileInfo[] fileInfos;
-      try {
+      try
+      {
         fileInfos = dir.GetFiles();
       }
-      catch (Exception e) {
+      catch (Exception e)
+      {
         LogFile.Error("Warning: Could not enumerate files in {0}: {1}", dir.FullName, e.Message);
+        HandleFolderError(dir);
         return;
       }
 
       ProgressEstimator folderProgress;
-      if (scanProgress == null) {
+      if (scanProgress == null)
+      {
         scanProgress = new ProgressEstimator();
         scanProgress.Reset(subDirs.Length);
         folderProgress = scanProgress;
@@ -345,16 +367,18 @@ namespace disParity
       else
         folderProgress = progress.BeginSubPhase(subDirs.Length);
 
-      foreach (DirectoryInfo d in subDirs) {
+      foreach (DirectoryInfo d in subDirs)
+      {
         if (cancelScan)
           return;
         if ((config.IgnoreHidden && (d.Attributes & FileAttributes.Hidden) != 0) ||
-            ((d.Attributes & FileAttributes.System) != 0)) {
+            ((d.Attributes & FileAttributes.System) != 0))
+        {
           folderProgress.EndPhase();
           continue;
         }
         string subDir = Path.Combine(dir.FullName, d.Name);
-        if (subDir.Length >= MAX_FOLDER) 
+        if (subDir.Length >= MAX_FOLDER)
           LogFile.Error("Warning: skipping folder \"" + subDir + "\" because the path is too long.");
         else
           Scan(d, ignores, folderProgress);
@@ -362,14 +386,17 @@ namespace disParity
       }
       Progress = scanProgress.Progress;
       string relativePath = Utils.StripRoot(root, dir.FullName);
-      foreach (FileInfo f in fileInfos) {
+      foreach (FileInfo f in fileInfos)
+      {
         if (cancelScan)
           return;
         // have to use Path.Combine here because accessing the f.FullName property throws
         // an exception if the path is too long
         string fullName = Path.Combine(dir.FullName, f.Name);
-        try {
-          if (fullName.Length >= MAX_PATH) {
+        try
+        {
+          if (fullName.Length >= MAX_PATH)
+          {
             LogFile.Error("Warning: skipping file \"" + fullName + "\" because the path is too long");
             continue;
           }
@@ -381,23 +408,40 @@ namespace disParity
             continue;
           bool ignore = false;
           foreach (Regex regex in ignores)
-            if (regex.IsMatch(f.Name.ToLower())) {
+            if (regex.IsMatch(f.Name.ToLower()))
+            {
               ignore = true;
               break;
             }
-          if (ignore) {
+          if (ignore)
+          {
             if (LogFile.Verbose)
-              LogFile.Log("Skipping \"{0}\" because it matches an ignore", f.FullName); 
+              LogFile.Log("Skipping \"{0}\" because it matches an ignore", f.FullName);
             ignoreCount++;
             continue;
           }
           ProcessScannedFile(relativePath, f);
         }
-        catch (Exception e) {
+        catch (Exception e)
+        {
           errorFiles.Add(fullName.ToLower());
           FireErrorMessage(String.Format("Error scanning \"{0}\": {1}", fullName, e.Message));
         }
       }
+    }
+
+    /// <summary>
+    /// Called when we can't access a folder during a scan for some reason.  We need to make sure there are no
+    /// protected files under this folder.  If there are, we need to add them to errorFiles otherwise they will
+    /// all be removed on the next update.
+    /// </summary>
+    /// <param name="dir"></param>
+    private void HandleFolderError(DirectoryInfo dir)
+    {
+      string folderName = Utils.StripRoot(root, dir.FullName).ToLower() + Path.DirectorySeparatorChar;
+      foreach (string fileName in files.Keys)
+        if (fileName.StartsWith(folderName))
+          errorFiles.Add(Path.Combine(root.ToLower(), fileName));
     }
 
     private void ProcessScannedFile(string relativePath, FileInfo f)
@@ -473,21 +517,25 @@ namespace disParity
       foreach (var kvp in files)
         if (!kvp.Value.Seen && !errorFiles.Contains(kvp.Value.FullPath.ToLower()))
           deletes.Add(kvp.Value);
-      
+
       // some of the files in add/delete list might actually be moves, check for that
-      foreach (FileRecord a in adds) {
+      foreach (FileRecord a in adds)
+      {
         byte[] hashCode = null;
         if (a.Length > 0)
           foreach (FileRecord d in deletes)
-            if (a.Length == d.Length && a.LastWriteTime == d.LastWriteTime) {
+            if (a.Length == d.Length && a.LastWriteTime == d.LastWriteTime)
+            {
               // probably the same file, but we need to check the hash to be sure
-              if (hashCode == null) {
+              if (hashCode == null)
+              {
                 Status = "Checking " + a.FullPath;
                 hashCode = ComputeHash(a, true);
               }
               if (cancelScan)
                 return;
-              if (Utils.HashCodesMatch(hashCode, d.HashCode)) {
+              if (Utils.HashCodesMatch(hashCode, d.HashCode))
+              {
                 LogFile.Log("{0} moved to {1}", Utils.MakeFullPath(root, d.Name), Utils.MakeFullPath(root, a.Name));
                 moves[d.Name.ToLower()] = a;
               }
@@ -495,10 +543,12 @@ namespace disParity
       }
 
       // remove the moved files from the add and delete lists
-      foreach (var kvp in moves) {
+      foreach (var kvp in moves)
+      {
         FileRecord delete = null;
         foreach (FileRecord r in deletes)
-          if (String.Equals(kvp.Key, r.Name.ToLower())) {
+          if (String.Equals(kvp.Key, r.Name.ToLower()))
+          {
             delete = r;
             break;
           }
@@ -509,7 +559,7 @@ namespace disParity
 
       // now check for edits
       bool saveFileList = false;
-      foreach (FileRecord r in edits) 
+      foreach (FileRecord r in edits)
       {
         if (cancelScan)
           return;
@@ -521,7 +571,7 @@ namespace disParity
           deletes.Add(r);
           adds.Add(new FileRecord(info, this));
         }
-        else 
+        else
         {
           // length hasn't changed but timestamp says file was modified, check hash code to be sure it has changed
           Status = "Checking " + r.FullPath;
@@ -554,7 +604,8 @@ namespace disParity
         return;
       // the moves dictionary maps old file names to new FileRecords
       LogFile.Log("Processing moves for {0}...", root);
-      foreach (var kvp in moves) {
+      foreach (var kvp in moves)
+      {
         // find the old entry
         FileRecord old;
         if (!files.TryGetValue(kvp.Key, out old))
@@ -614,7 +665,7 @@ namespace disParity
       if (r.Length == 0)
         return true; // zero length files cannot fail a hash check
       else
-       return Utils.HashCodesMatch(ComputeHash(r), r.HashCode);
+        return Utils.HashCodesMatch(ComputeHash(r), r.HashCode);
     }
 
     /// <summary>
@@ -623,14 +674,16 @@ namespace disParity
     private byte[] ComputeHash(FileRecord r, bool showProgress = false)
     {
       using (FileStream s = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read))
-      using (MD5 hash = MD5.Create()) {
+      using (MD5 hash = MD5.Create())
+      {
         hash.Initialize();
         byte[] buf = new byte[Parity.BLOCK_SIZE];
         int read;
         int block = 0;
         if (showProgress)
           Progress = 0;
-        while (!cancelScan && ((read = s.Read(buf, 0, Parity.BLOCK_SIZE)) > 0)) {
+        while (!cancelScan && ((read = s.Read(buf, 0, Parity.BLOCK_SIZE)) > 0))
+        {
           hash.TransformBlock(buf, 0, read, buf, 0);
           if (showProgress)
             Progress = (double)++block / r.LengthInBlocks;
@@ -685,10 +738,12 @@ namespace disParity
       if (buf.Length != Parity.BLOCK_SIZE)
         throw new Exception("Invalid buffer size (must be " + Parity.BLOCK_SIZE + " bytes)");
 
-      if (enumFile == null) {
+      if (enumFile == null)
+      {
         if (enumComplete)
           return false;
-        if (!enumerator.MoveNext()) {
+        if (!enumerator.MoveNext())
+        {
           EndFileEnum();
           adds.Clear();
           enumComplete = true;
@@ -698,16 +753,19 @@ namespace disParity
           return false;
         }
         // Check for zero-length files
-        if (enumerator.Current.Length == 0) {
+        if (enumerator.Current.Length == 0)
+        {
           AppendFileRecord(enumerator.Current);
           enumCount++;
           return GetNextBlock(buf);
         }
         string fullName = Utils.MakeFullPath(root, enumerator.Current.Name);
-        try {
+        try
+        {
           enumFile = new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read);
         }
-        catch (Exception e) {
+        catch (Exception e)
+        {
           FireErrorMessage(String.Format("Error opening {0} for reading ({1}.)  File will be skipped this update.", fullName, e.Message));
           enumFile = null; // just to be sure
           return GetNextBlock(buf);
@@ -722,7 +780,8 @@ namespace disParity
       int bytesRead = enumFile.Read(buf, 0, Parity.BLOCK_SIZE);
       if (enumFile.Position < enumFile.Length)
         hash.TransformBlock(buf, 0, bytesRead, buf, 0);
-      else {
+      else
+      {
         // reached end of this file
         hash.TransformFinalBlock(buf, 0, bytesRead);
         enumerator.Current.HashCode = hash.Hash;
@@ -741,12 +800,13 @@ namespace disParity
       Progress = (double)enumBlock / (double)enumBlocks;
       return true;
 
-    }    
+    }
 
     public void EndFileEnum()
     {
       enumerator.Dispose();
-      if (enumFile != null) {
+      if (enumFile != null)
+      {
         enumFile.Dispose();
         enumFile = null;
       }
@@ -771,18 +831,23 @@ namespace disParity
       r = FindFileContaining(block);
       if (r == null)
         return false;
-      lock (fileCloseLock) {
-        if (r != currentOpenFile) {
-          if (currentOpenFileStream != null) {
+      lock (fileCloseLock)
+      {
+        if (r != currentOpenFile)
+        {
+          if (currentOpenFileStream != null)
+          {
             currentOpenFileStream.Dispose();
             currentOpenFileStream = null;
           }
           if (!File.Exists(r.FullPath))
             return false;
-          try {
+          try
+          {
             currentOpenFileStream = new FileStream(r.FullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
           }
-          catch (Exception e) {
+          catch (Exception e)
+          {
             throw new Exception(String.Format("Error opening {0}: {1}", r.FullPath, e.Message), e);
           }
           currentOpenFile = r;
@@ -791,13 +856,15 @@ namespace disParity
         fileCloseTimer.Start();
         Status = "Reading " + currentOpenFile.FullPath;
         DriveStatus = DriveStatus.ReadingFile;
-        try {
+        try
+        {
           currentOpenFileStream.Position = ((long)(block - r.StartBlock)) * Parity.BLOCK_SIZE;
           int bytesRead = currentOpenFileStream.Read(data, 0, data.Length);
           while (bytesRead < data.Length)
             data[bytesRead++] = 0;
         }
-        catch (Exception e) {
+        catch (Exception e)
+        {
           throw new Exception(String.Format("Error reading {0}: {1}", r.FullPath, e.Message), e);
         }
       }
@@ -806,8 +873,10 @@ namespace disParity
 
     private void HandleFileCloseTimer(object sender, ElapsedEventArgs args)
     {
-      lock (fileCloseLock) {
-        if (currentOpenFileStream != null) {
+      lock (fileCloseLock)
+      {
+        if (currentOpenFileStream != null)
+        {
           currentOpenFileStream.Dispose();
           currentOpenFileStream = null;
           currentOpenFile = null;
@@ -825,7 +894,8 @@ namespace disParity
       {
         CalculateMaxBlock();
         BitArray blockMask = new BitArray((int)MaxBlock);
-        foreach (FileRecord r in files.Values) {
+        foreach (FileRecord r in files.Values)
+        {
           UInt32 endBlock = r.StartBlock + r.LengthInBlocks;
           for (int i = (int)r.StartBlock; i < endBlock; i++)
             blockMask.Set(i, true);
@@ -848,8 +918,10 @@ namespace disParity
     /// </summary>
     private void LoadFileList()
     {
-      try {
-        using (FileStream metaData = new FileStream(MetaFilePath, FileMode.Open, FileAccess.Read)) {
+      try
+      {
+        using (FileStream metaData = new FileStream(MetaFilePath, FileMode.Open, FileAccess.Read))
+        {
           UInt32 version = FileRecord.ReadUInt32(metaData);
           if (version == 1)
             // skip past unused count field
@@ -857,7 +929,8 @@ namespace disParity
           else if (version != META_FILE_VERSION)
             throw new Exception("file version mismatch: " + MetaFilePath);
           files.Clear();
-          while (metaData.Position < metaData.Length) {
+          while (metaData.Position < metaData.Length)
+          {
             FileRecord r = FileRecord.LoadFromFile(metaData, this);
             if (r == null)
               break;
@@ -865,7 +938,8 @@ namespace disParity
           }
         }
       }
-      catch (Exception e) {
+      catch (Exception e)
+      {
         env.LogCrash(e);
         LogFile.Error(String.Format("Error reading {0}: {1}", MetaFilePath, e.Message));
         files.Clear();
@@ -883,7 +957,8 @@ namespace disParity
       get
       {
         string metaFile = MetaFilePath;
-        if (File.Exists(metaFile)) {
+        if (File.Exists(metaFile))
+        {
           FileInfo fi = new FileInfo(metaFile);
           return fi.Length;
         }
@@ -915,10 +990,12 @@ namespace disParity
 
     private void WriteFileList(string fileName)
     {
-      try {
+      try
+      {
         Stopwatch sw = new Stopwatch();
         sw.Start();
-        using (FileStream f = new FileStream(fileName, FileMode.OpenOrCreate, FileAccess.Write)) {
+        using (FileStream f = new FileStream(fileName, FileMode.OpenOrCreate, FileAccess.Write))
+        {
           WriteFileHeader(f, (UInt32)files.Count);
           foreach (FileRecord r in files.Values)
             r.WriteToFile(f);
@@ -927,13 +1004,16 @@ namespace disParity
         }
         LogFile.Log(String.Format("{0} saved in {1}ms", fileName, sw.ElapsedMilliseconds));
       }
-      catch (Exception e) {
+      catch (Exception e)
+      {
         LogFile.Error(String.Format("Could not save {0}: {1}", fileName, e.Message));
         // try to delete it in case it got partly saved
-        try {
+        try
+        {
           File.Delete(fileName);
         }
-        catch {
+        catch
+        {
         }
         throw new MetaFileSaveException(fileName, e);
       }
@@ -945,10 +1025,12 @@ namespace disParity
       if (!File.Exists(fileName))
         return true; // this is a valid case, if a new drive has just been added to the array
       string backup = Path.ChangeExtension(MetaFilePath, ".bak");
-      try {
+      try
+      {
         File.Copy(fileName, backup, true);
       }
-      catch (Exception e) {
+      catch (Exception e)
+      {
         LogFile.Error(String.Format("Could not backup {0}: {1}", fileName, e.Message));
         return false;
       }
@@ -959,10 +1041,12 @@ namespace disParity
     {
       string fileName = MetaFilePath;
       string backup = Path.ChangeExtension(MetaFilePath, ".bak");
-      try {
+      try
+      {
         File.Copy(backup, fileName, true);
       }
-      catch (Exception e) {
+      catch (Exception e)
+      {
         LogFile.Error(String.Format("Could not restore {0} from backup: {1}", fileName, e.Message));
         return false;
       }
@@ -977,16 +1061,18 @@ namespace disParity
       if (!BackupMetaFile())
         return false;
       string fileName = MetaFilePath;
-      if (!File.Exists(fileName)) 
+      if (!File.Exists(fileName))
         // this is a valid case if a new drive has just been added to the array
         using (FileStream f = new FileStream(fileName, FileMode.Create, FileAccess.Write))
           WriteFileHeader(f, 0);
       FileInfo fi = new FileInfo(fileName);
-      try {
+      try
+      {
         using (FileStream f = new FileStream(fileName, FileMode.Open, FileAccess.Write))
           f.SetLength(fi.Length + add.RecordSize);
       }
-      catch (Exception e) {
+      catch (Exception e)
+      {
         LogFile.Error(String.Format("Could not extend {0}: {1}", fileName, e.Message));
         RestoreMetaFile();
         return false;
@@ -996,10 +1082,12 @@ namespace disParity
 
     public void SaveFileList()
     {
-      try {
+      try
+      {
         WriteFileList(MetaFilePath);
       }
-      catch (Exception e) {
+      catch (Exception e)
+      {
         // try to restore from the backup
         RestoreMetaFile();
         throw e;
@@ -1010,13 +1098,14 @@ namespace disParity
     private void AppendFileRecord(FileRecord r)
     {
       if (!File.Exists(MetaFilePath))
-        using (FileStream fNew = new FileStream(MetaFilePath, FileMode.Create, FileAccess.Write)) {
+        using (FileStream fNew = new FileStream(MetaFilePath, FileMode.Create, FileAccess.Write))
+        {
           WriteFileHeader(fNew, 0); // unknown count
         }
       using (FileStream f = new FileStream(MetaFilePath, FileMode.Append, FileAccess.Write))
-        r.WriteToFile(f); 
+        r.WriteToFile(f);
     }
-    
+
     /// <summary>
     /// Determines the index of the first unused 64K parity block for this drive.
     /// Also re-calculates TotalSize while we're at it.
@@ -1025,7 +1114,8 @@ namespace disParity
     {
       MaxBlock = 0;
       TotalFileSize = 0;
-      foreach (FileRecord r in files.Values) {
+      foreach (FileRecord r in files.Values)
+      {
         UInt32 endBlock = r.StartBlock + r.LengthInBlocks;
         if (endBlock > MaxBlock)
           MaxBlock = endBlock;
@@ -1042,7 +1132,8 @@ namespace disParity
     {
       FileRecord found = null;
       foreach (FileRecord r in adds)
-        if (String.Compare(name, r.FullPath, true) == 0) {
+        if (String.Compare(name, r.FullPath, true) == 0)
+        {
           found = r;
           break;
         }
@@ -1062,11 +1153,13 @@ namespace disParity
       List<FreeNode> freeList = new List<FreeNode>();
       UInt32 block = 0;
       while (block < MaxBlock)
-        if (!blockMask.Get((int)block)) {
+        if (!blockMask.Get((int)block))
+        {
           FreeNode n = new FreeNode();
           n.Start = block++;
           n.Length = 1;
-          while (block < MaxBlock && (!blockMask.Get((int)block))) {
+          while (block < MaxBlock && (!blockMask.Get((int)block)))
+          {
             n.Length++;
             block++;
           }
@@ -1157,7 +1250,7 @@ namespace disParity
     }
 
     private DateTime lastChange;
-    public DateTime LastChange 
+    public DateTime LastChange
     {
       get
       {
@@ -1208,7 +1301,8 @@ namespace disParity
     {
       FreeNode best = null;
       foreach (FreeNode n in list)
-        if (n.Length == blocks) {
+        if (n.Length == blocks)
+        {
           best = n;
           break;
         }
@@ -1220,7 +1314,8 @@ namespace disParity
       UInt32 result = best.Start;
       if (best.Length == blocks)
         list.Remove(best);
-      else {
+      else
+      {
         best.Start += blocks;
         best.Length -= blocks;
       }
