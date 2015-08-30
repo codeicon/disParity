@@ -1,5 +1,4 @@
-# disParity
-Roland Vilett's disParity
+# Roland Vilett's disParity
 
 This is the public repository for the disParity project created by Roland Vilett.
 
