@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -26,8 +27,7 @@ namespace disParity
   {
 
     private string root;
-    private string metaFile;
-    private Dictionary<string, FileRecord> files; // Master list of protected files; should reflect what is currently in files.dat at all times
+    private FileDB fileDb;
     private int ignoreCount; // number of files that matched an ignore filter this scan
     private HashSet<string> errorFiles = new HashSet<string>(); // list of files that had errors during the scan.  We won't add them on an update, but we won't remove them either.
 
@@ -52,7 +52,6 @@ namespace disParity
     public DataDrive(string root, string metaFile, Config config, IEnvironment environment)
     {
       this.root = root;
-      this.metaFile = metaFile;
       this.config = config;
       this.env = environment;
 
@@ -76,7 +75,7 @@ namespace disParity
         DriveType = DriveType.Network;
 
       hash = MD5.Create();
-      files = new Dictionary<string, FileRecord>();
+      fileDb = new FileDB(Path.Combine(config.ParityDir, metaFile), environment);
       Reset();
 
       fileCloseTimer = new Timer(1000); // keep cached read files open for at most one second
@@ -132,18 +131,13 @@ namespace disParity
         DriveStatus = DriveStatus.ScanRequired;
     }
 
-    private string MetaFilePath
-    {
-      get { return Path.Combine(config.ParityDir, metaFile); }
-    }
-
-    public string MetaFile { get { return metaFile; } }
+    internal string MetaFile { get { return Path.GetFileName(fileDb.FileName); } }
 
     public string Root { get { return root; } }
 
     public UInt32 MaxBlock { get; private set; }
 
-    public IEnumerable<FileRecord> Files { get { return files.Values; } }
+    internal IEnumerable<FileRecord> Files { get { return fileDb.Files; } }
 
     public string LastError { get; private set; }
 
@@ -188,12 +182,12 @@ namespace disParity
     /// <summary>
     /// Returns the total size of all protected files on this drive, in blocks.
     /// </summary>
-    public UInt32 TotalFileBlocks
+    internal UInt32 TotalFileBlocks
     {
       get
       {
         UInt32 result = 0;
-        foreach (FileRecord r in files.Values)
+        foreach (FileRecord r in fileDb.Files)
           result += r.LengthInBlocks;
         return result;
       }
@@ -202,13 +196,9 @@ namespace disParity
     /// <summary>
     /// Clears all state of the DataDrive, resetting to empty (deletes on-disk meta data as well.)
     /// </summary>
-    public void Clear()
+    internal void Clear()
     {
-      if (File.Exists(MetaFilePath))
-        File.Delete(MetaFilePath);
-      if (File.Exists(Path.ChangeExtension(MetaFilePath, ".bak")))
-        File.Delete(Path.ChangeExtension(MetaFilePath, ".bak"));
-      files.Clear();
+      fileDb.Clear();
       FileCount = 0;
       TotalFileSize = 0;
       Status = "Scan required";
@@ -218,13 +208,11 @@ namespace disParity
     /// <summary>
     /// Resets state to on-disk meta data
     /// </summary>
-    public void Reset()
+    internal void Reset()
     {
-      files.Clear();
       FileCount = 0;
       MaxBlock = 0;
-      if (File.Exists(MetaFilePath))
-        LoadFileList();
+      LoadFileList();
       Status = "Scan required";
       DriveStatus = DriveStatus.ScanRequired;
     }
@@ -259,8 +247,7 @@ namespace disParity
         }
 
         // clear seen flag on all files
-        foreach (var kvp in files)
-          kvp.Value.Seen = false;
+        fileDb.MarkAllAsUnseen();
 
         adds.Clear();
         edits.Clear();
@@ -439,7 +426,7 @@ namespace disParity
     private void HandleFolderError(DirectoryInfo dir)
     {
       string folderName = Utils.StripRoot(root, dir.FullName).ToLower() + Path.DirectorySeparatorChar;
-      foreach (string fileName in files.Keys)
+      foreach (string fileName in fileDb.FilesInFolder(folderName))
         if (fileName.StartsWith(folderName))
           errorFiles.Add(Path.Combine(root.ToLower(), fileName));
     }
@@ -447,9 +434,9 @@ namespace disParity
     private void ProcessScannedFile(string relativePath, FileInfo f)
     {
       // try to find this file in the master list of protected files
-      FileRecord r;
       string relativePathLower = Utils.MakeFullPath(relativePath, f.Name).ToLower();
-      if (files.TryGetValue(relativePathLower, out r))
+      FileRecord r = fileDb.Find(relativePathLower);
+      if (r != null)
       {
         r.Seen = true;
         // check for possible edit
@@ -458,7 +445,7 @@ namespace disParity
       }
       else
         // not in the list, must be an add
-        adds.Add(new FileRecord(f, relativePath, this));
+        adds.Add(new FileRecord(f, relativePath, root));
       scanFileCount++;
     }
 
@@ -514,9 +501,9 @@ namespace disParity
       moves.Clear();
 
       // build list of old files we don't see now (deletes)
-      foreach (var kvp in files)
-        if (!kvp.Value.Seen && !errorFiles.Contains(kvp.Value.FullPath.ToLower()))
-          deletes.Add(kvp.Value);
+      foreach (FileRecord r in fileDb.Files)
+        if (!r.Seen && !errorFiles.Contains(r.FullPath.ToLower()))
+          deletes.Add(r);
 
       // some of the files in add/delete list might actually be moves, check for that
       foreach (FileRecord a in adds)
@@ -569,7 +556,7 @@ namespace disParity
         if (r.Length != info.Length)
         {
           deletes.Add(r);
-          adds.Add(new FileRecord(info, this));
+          adds.Add(new FileRecord(info, root));
         }
         else
         {
@@ -578,7 +565,7 @@ namespace disParity
           if (!HashCheck(r))
           {
             deletes.Add(r);
-            adds.Add(new FileRecord(info, this));
+            adds.Add(new FileRecord(info, root));
           }
           else
           {
@@ -605,22 +592,11 @@ namespace disParity
       // the moves dictionary maps old file names to new FileRecords
       LogFile.Log("Processing moves for {0}...", root);
       foreach (var kvp in moves)
-      {
-        // find the old entry
-        FileRecord old;
-        if (!files.TryGetValue(kvp.Key, out old))
-          throw new Exception("Unable to locate moved file " + kvp.Key + " in master file table");
-        // remove it from the table
-        files.Remove(kvp.Key);
-        // update new record to carry over meta data from the old one
-        kvp.Value.StartBlock = old.StartBlock;
-        kvp.Value.HashCode = old.HashCode;
-        // store new record in master file table
-        files[kvp.Value.Name.ToLower()] = kvp.Value;
-      }
+        fileDb.Move(kvp.Key, kvp.Value);
       // save updated master file table
-      BackupMetaFile();
-      SaveFileList();
+      fileDb.Backup();
+      fileDb.Save();
+      CalculateMaxBlock();
       // clear moves list, don't need it anymore
       moves.Clear();
     }
@@ -628,22 +604,28 @@ namespace disParity
     /// <summary>
     /// Removes the file from the master files list
     /// </summary>
-    public void RemoveFile(FileRecord r)
+    internal void RemoveFile(FileRecord r)
     {
-      string filename = r.Name.ToLower();
-      Debug.Assert(files.ContainsKey(filename));
-      files.Remove(filename);
+      fileDb.Remove(r);
+      CalculateMaxBlock();
       FileCount--;
+    }
+
+    /// <summary>
+    /// Backs up and then extendes the existing filesX.dat by the amount necessary to store the given new file record
+    /// </summary>
+    internal bool PrepareToAdd(FileRecord r)
+    {
+      return fileDb.Extend(r);
     }
 
     /// <summary>
     /// Adds the file to the master files list
     /// </summary>
-    public void AddFile(FileRecord r)
+    internal void AddFile(FileRecord r)
     {
-      string filename = r.Name.ToLower();
-      Debug.Assert(!files.ContainsKey(filename));
-      files[filename] = r;
+      fileDb.Add(r);
+      CalculateMaxBlock();
       FileCount++;
     }
 
@@ -655,6 +637,13 @@ namespace disParity
         DriveStatus = DriveStatus.UpdateRequired;
       else if (DriveStatus != DriveStatus.ScanRequired && DriveStatus != DriveStatus.AccessError)
         DriveStatus = DriveStatus.UpToDate;
+    }
+
+    // FIXME: This is only called from ParitySet.RemoveFromParity().  Once deletes are handled by simply
+    // marking the record as deleted, we won't need this anymore.
+    internal bool BackupMetaFile()
+    {
+      return fileDb.Backup();
     }
 
     /// <summary>
@@ -701,17 +690,6 @@ namespace disParity
       }
     }
 
-    /// <summary>
-    /// Finds the file containing this block
-    /// </summary>
-    public FileRecord FileFromBlock(UInt32 block)
-    {
-      foreach (FileRecord r in files.Values)
-        if (r.ContainsBlock(block))
-          return r;
-      return null;
-    }
-
     private UInt32 enumBlock;
     private UInt32 enumBlocks;
     private int enumCount;
@@ -755,7 +733,7 @@ namespace disParity
         // Check for zero-length files
         if (enumerator.Current.Length == 0)
         {
-          AppendFileRecord(enumerator.Current);
+          fileDb.Append(enumerator.Current);
           enumCount++;
           return GetNextBlock(buf);
         }
@@ -785,7 +763,7 @@ namespace disParity
         // reached end of this file
         hash.TransformFinalBlock(buf, 0, bytesRead);
         enumerator.Current.HashCode = hash.Hash;
-        AppendFileRecord(enumerator.Current);
+        fileDb.Append(enumerator.Current);
         enumFile.Close();
         enumFile.Dispose();
         enumFile = null;
@@ -828,7 +806,7 @@ namespace disParity
     /// </summary>
     public bool ReadBlock(UInt32 block, byte[] data, out FileRecord r)
     {
-      r = FindFileContaining(block);
+      r = FileFromBlock(block);
       if (r == null)
         return false;
       lock (fileCloseLock)
@@ -888,13 +866,13 @@ namespace disParity
     /// <summary>
     /// Returns a mask of used/unused blocks for this drive
     /// </summary>
-    public BitArray BlockMask
+    internal BitArray BlockMask
     {
       get
       {
         CalculateMaxBlock();
         BitArray blockMask = new BitArray((int)MaxBlock);
-        foreach (FileRecord r in files.Values)
+        foreach (FileRecord r in fileDb.Files)
         {
           UInt32 endBlock = r.StartBlock + r.LengthInBlocks;
           for (int i = (int)r.StartBlock; i < endBlock; i++)
@@ -904,13 +882,14 @@ namespace disParity
       }
     }
 
-    private FileRecord FindFileContaining(UInt32 block)
+    /// <summary>
+    /// Finds the file containing this block
+    /// </summary>
+    internal FileRecord FileFromBlock(UInt32 block)
     {
-      if (block < MaxBlock)
-        foreach (FileRecord r in files.Values)
-          if (r.ContainsBlock(block))
-            return r;
-      return null;
+      if (block >= MaxBlock)
+        return null;
+      return fileDb.Files.FirstOrDefault(r => r.ContainsBlock(block));
     }
 
     /// <summary>
@@ -918,192 +897,31 @@ namespace disParity
     /// </summary>
     private void LoadFileList()
     {
-      try
-      {
-        using (FileStream metaData = new FileStream(MetaFilePath, FileMode.Open, FileAccess.Read))
-        {
-          UInt32 version = FileRecord.ReadUInt32(metaData);
-          if (version == 1)
-            // skip past unused count field
-            FileRecord.ReadUInt32(metaData);
-          else if (version != META_FILE_VERSION)
-            throw new Exception("file version mismatch: " + MetaFilePath);
-          files.Clear();
-          while (metaData.Position < metaData.Length)
-          {
-            FileRecord r = FileRecord.LoadFromFile(metaData, this);
-            if (r == null)
-              break;
-            files[r.Name.ToLower()] = r;
-          }
-        }
-      }
-      catch (Exception e)
-      {
-        env.LogCrash(e);
-        LogFile.Error(String.Format("Error reading {0}: {1}", MetaFilePath, e.Message));
-        files.Clear();
-        throw new MetaFileLoadException(MetaFilePath, e);
-      }
+      fileDb.Load(root);
       CalculateMaxBlock();
-      FileCount = files.Count;
-    }
-
-    /// <summary>
-    /// Returns the actual size of the current filesX.dat file on disk
-    /// </summary>
-    public long MetaFileSize
-    {
-      get
-      {
-        string metaFile = MetaFilePath;
-        if (File.Exists(metaFile))
-        {
-          FileInfo fi = new FileInfo(metaFile);
-          return fi.Length;
-        }
-        else
-          return 0;
-      }
+      FileCount = fileDb.FileCount;
     }
 
     /// <summary>
     /// Returns the predicted meta file size if the current list of Adds is 
     /// written to the filesX.dat file.  Called only before a Create() to check free space.
     /// </summary>
-    public long PredictedMetaFileSize
+    internal long PredictedMetaFileSize
     {
       get
       {
         long size = 0;
         foreach (FileRecord r in adds)
-          size += r.RecordSize;
+          using (MemoryStream ms = r.Encode())
+              size += r.RecLength;
         return size;
       }
     }
 
-    private void WriteFileHeader(FileStream f, UInt32 count)
+    internal void SaveFileList()
     {
-      FileRecord.WriteUInt32(f, META_FILE_VERSION);
-      FileRecord.WriteUInt32(f, count);
-    }
-
-    private void WriteFileList(string fileName)
-    {
-      try
-      {
-        Stopwatch sw = new Stopwatch();
-        sw.Start();
-        using (FileStream f = new FileStream(fileName, FileMode.OpenOrCreate, FileAccess.Write))
-        {
-          WriteFileHeader(f, (UInt32)files.Count);
-          foreach (FileRecord r in files.Values)
-            r.WriteToFile(f);
-          f.SetLength(f.Position);
-          f.Close();
-        }
-        LogFile.Log(String.Format("{0} saved in {1}ms", fileName, sw.ElapsedMilliseconds));
-      }
-      catch (Exception e)
-      {
-        LogFile.Error(String.Format("Could not save {0}: {1}", fileName, e.Message));
-        // try to delete it in case it got partly saved
-        try
-        {
-          File.Delete(fileName);
-        }
-        catch
-        {
-        }
-        throw new MetaFileSaveException(fileName, e);
-      }
-    }
-
-    public bool BackupMetaFile()
-    {
-      string fileName = MetaFilePath;
-      if (!File.Exists(fileName))
-        return true; // this is a valid case, if a new drive has just been added to the array
-      string backup = Path.ChangeExtension(MetaFilePath, ".bak");
-      try
-      {
-        File.Copy(fileName, backup, true);
-      }
-      catch (Exception e)
-      {
-        LogFile.Error(String.Format("Could not backup {0}: {1}", fileName, e.Message));
-        return false;
-      }
-      return true;
-    }
-
-    public bool RestoreMetaFile()
-    {
-      string fileName = MetaFilePath;
-      string backup = Path.ChangeExtension(MetaFilePath, ".bak");
-      try
-      {
-        File.Copy(backup, fileName, true);
-      }
-      catch (Exception e)
-      {
-        LogFile.Error(String.Format("Could not restore {0} from backup: {1}", fileName, e.Message));
-        return false;
-      }
-      return true;
-    }
-
-    /// <summary>
-    /// Backs up and then extendes the existing filesX.dat by the amount necessary to store the given new file record
-    /// </summary>
-    public bool ExtendMetaFile(FileRecord add)
-    {
-      if (!BackupMetaFile())
-        return false;
-      string fileName = MetaFilePath;
-      if (!File.Exists(fileName))
-        // this is a valid case if a new drive has just been added to the array
-        using (FileStream f = new FileStream(fileName, FileMode.Create, FileAccess.Write))
-          WriteFileHeader(f, 0);
-      FileInfo fi = new FileInfo(fileName);
-      try
-      {
-        using (FileStream f = new FileStream(fileName, FileMode.Open, FileAccess.Write))
-          f.SetLength(fi.Length + add.RecordSize);
-      }
-      catch (Exception e)
-      {
-        LogFile.Error(String.Format("Could not extend {0}: {1}", fileName, e.Message));
-        RestoreMetaFile();
-        return false;
-      }
-      return true;
-    }
-
-    public void SaveFileList()
-    {
-      try
-      {
-        WriteFileList(MetaFilePath);
-      }
-      catch (Exception e)
-      {
-        // try to restore from the backup
-        RestoreMetaFile();
-        throw e;
-      }
+      fileDb.Save();
       CalculateMaxBlock();
-    }
-
-    private void AppendFileRecord(FileRecord r)
-    {
-      if (!File.Exists(MetaFilePath))
-        using (FileStream fNew = new FileStream(MetaFilePath, FileMode.Create, FileAccess.Write))
-        {
-          WriteFileHeader(fNew, 0); // unknown count
-        }
-      using (FileStream f = new FileStream(MetaFilePath, FileMode.Append, FileAccess.Write))
-        r.WriteToFile(f);
     }
 
     /// <summary>
@@ -1114,7 +932,7 @@ namespace disParity
     {
       MaxBlock = 0;
       TotalFileSize = 0;
-      foreach (FileRecord r in files.Values)
+      foreach (FileRecord r in fileDb.Files)
       {
         UInt32 endBlock = r.StartBlock + r.LengthInBlocks;
         if (endBlock > MaxBlock)
@@ -1146,7 +964,7 @@ namespace disParity
     /// for this drive which we can then re-use for adds, so that we don't grow 
     /// the parity data unnecessarily.
     /// </summary>
-    public List<FreeNode> GetFreeList()
+    internal List<FreeNode> GetFreeList()
     {
       BitArray blockMask = BlockMask;
 

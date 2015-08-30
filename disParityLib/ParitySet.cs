@@ -187,7 +187,7 @@ namespace disParity
           d.Deletes.CopyTo(deleteList);
           foreach (FileRecord r in deleteList)
           {
-            if (RemoveFromParity(r))
+            if (RemoveFromParity(d, r))
             {
               deleteCount++;
               deleteSize += r.Length;
@@ -215,7 +215,7 @@ namespace disParity
           d.Adds.CopyTo(addList);
           foreach (FileRecord r in addList)
           {
-            if (AddToParity(r))
+            if (AddToParity(d, r))
             {
               addCount++;
               addSize += r.Length;
@@ -530,7 +530,7 @@ namespace disParity
       drive.Progress = 0;
       foreach (FileRecord r in files)
       {
-        RemoveFromParity(r);
+        RemoveFromParity(drive, r);
         if (cancel)
           break;
       }
@@ -602,7 +602,7 @@ namespace disParity
       try
       {
         foreach (FileRecord f in drive.Files)
-          if (RecoverFile(f, path))
+          if (RecoverFile(drive, f, path))
             successes++;
           else
           {
@@ -649,7 +649,7 @@ namespace disParity
         int restored = 0;
         foreach (FileRecord r in files)
         {
-          if (RecoverFile(r, drive.Root))
+          if (RecoverFile(drive, r, drive.Root))
           {
             restored++;
             drive.Deletes.Remove(r);
@@ -676,12 +676,12 @@ namespace disParity
 
     }
 
-    private bool RecoverFile(FileRecord r, string path)
+    private bool RecoverFile(DataDrive drive, FileRecord r, string path)
     {
       string fullPath = Utils.MakeFullPath(path, r.Name);
-      r.Drive.Status = "Recovering " + r.Name + " ...";
-      LogFile.Log(r.Drive.Status);
-      r.Drive.Progress = 0;
+      drive.Status = "Recovering " + r.Name + " ...";
+      LogFile.Log(drive.Status);
+      drive.Progress = 0;
       try
       {
         // make sure the destination directory exists
@@ -695,13 +695,13 @@ namespace disParity
           UInt32 block = r.StartBlock;
           while (leftToWrite > 0)
           {
-            RecoverBlock(r.Drive, block, parityBlock);
+            RecoverBlock(drive, block, parityBlock);
             int blockSize = leftToWrite > Parity.BLOCK_SIZE ? Parity.BLOCK_SIZE : (int)leftToWrite;
             f.Write(parityBlock.Data, 0, blockSize);
             hash.TransformBlock(parityBlock.Data, 0, blockSize, parityBlock.Data, 0);
             leftToWrite -= Parity.BLOCK_SIZE;
             block++;
-            r.Drive.Progress = (double)(block - r.StartBlock) / r.LengthInBlocks;
+            drive.Progress = (double)(block - r.StartBlock) / r.LengthInBlocks;
             Progress = (double)(recoverBlocks + (block - r.StartBlock)) / recoverTotalBlocks;
             if (cancel)
             {
@@ -712,7 +712,7 @@ namespace disParity
           }
           hash.TransformFinalBlock(parityBlock.Data, 0, 0);
         }
-        r.Drive.Progress = 0;
+        drive.Progress = 0;
         File.SetCreationTime(fullPath, r.CreationTime);
         File.SetLastWriteTime(fullPath, r.LastWriteTime);
         File.SetAttributes(fullPath, r.Attributes);
@@ -765,7 +765,7 @@ namespace disParity
         }
     }
 
-    private bool AddToParity(FileRecord r)
+    private bool AddToParity(DataDrive drive, FileRecord r)
     {
       string fullPath = r.FullPath;
       // file may have been deleted, or attributes may have changed since we scanned, so refresh
@@ -775,80 +775,69 @@ namespace disParity
         return false;
       }
 
-      if (!r.Drive.ExtendMetaFile(r))
+      if (!drive.PrepareToAdd(r))
       {
-        FireErrorMessage(String.Format("Unable to expand {0} to add {1}.  File will be skipped this update.", r.Drive.MetaFile, fullPath));
+        FireErrorMessage(String.Format("Unable to expand {0} to add {1}.  File will be skipped this update.", drive.MetaFile, fullPath));
         return false;
       }
 
-      bool success = false;
-      try
+      if (r.Length > 0)
       {
-        if (r.Length > 0)
+        // See if we can find an empty chunk in the parity we can re-use.
+        // We don't want just any empty spot, we want the smallest one 
+        // that is large enough to contain the file, to minimize 
+        // fragmentation.  A chunk that is exactly the same size is ideal.
+        List<FreeNode> freeList = drive.GetFreeList();
+        UInt32 startBlock = FreeNode.FindBest(freeList, r.LengthInBlocks);
+        if (startBlock == FreeNode.INVALID_BLOCK)
+          startBlock = drive.MaxBlock;
+        UInt32 endBlock = startBlock + r.LengthInBlocks;
+
+        // compute how much space this update is going to require
+        long required = 0;
+        if (endBlock > parity.MaxBlock)
+          // File is going on the end, so we are going to need additional space for the growing parityX.dat file
+          required = ((long)(endBlock - parity.MaxBlock)) * Parity.BLOCK_SIZE;
+        long available = parity.FreeSpace;
+        if ((available != -1) && (available < required))
         {
-          // See if we can find an empty chunk in the parity we can re-use.
-          // We don't want just any empty spot, we want the smallest one 
-          // that is large enough to contain the file, to minimize 
-          // fragmentation.  A chunk that is exactly the same size is ideal.
-          List<FreeNode> freeList = r.Drive.GetFreeList();
-          UInt32 startBlock = FreeNode.FindBest(freeList, r.LengthInBlocks);
-          if (startBlock == FreeNode.INVALID_BLOCK)
-            startBlock = r.Drive.MaxBlock;
-          UInt32 endBlock = startBlock + r.LengthInBlocks;
+          FireErrorMessage(String.Format("Insufficient space available on {0} to process " +
+            "{1}.  File will be skipped this update. (Required: {2} " +
+            "Available: {3})", Config.ParityDir, fullPath, Utils.SmartSize(required), Utils.SmartSize(available)));
+          return false;
+        }
 
-          // compute how much space this update is going to require
-          long required = 0;
-          if (endBlock > parity.MaxBlock)
-            // File is going on the end, so we are going to need additional space for the growing parityX.dat file
-            required = ((long)(endBlock - parity.MaxBlock)) * Parity.BLOCK_SIZE;
-          long available = parity.FreeSpace;
-          if ((available != -1) && (available < required))
-          {
-            FireErrorMessage(String.Format("Insufficient space available on {0} to process " +
-              "{1}.  File will be skipped this update. (Required: {2} " +
-              "Available: {3})", Config.ParityDir, fullPath, Utils.SmartSize(required), Utils.SmartSize(available)));
-            return false;
-          }
+        r.StartBlock = startBlock;
+        if (LogFile.Verbose)
+          LogFile.Log("Adding {0} to blocks {1} to {2}...", fullPath, startBlock, endBlock - 1);
+        else
+          LogFile.Log("Adding {0}...", fullPath);
 
-          r.StartBlock = startBlock;
-          if (LogFile.Verbose)
-            LogFile.Log("Adding {0} to blocks {1} to {2}...", fullPath, startBlock, endBlock - 1);
-          else
-            LogFile.Log("Adding {0}...", fullPath);
+        drive.Status = "Adding " + fullPath;
 
-          r.Drive.Status = "Adding " + fullPath;
-
-          // pre-allocate actual needed parity space before even trying to add the file
-          if (endBlock > parity.MaxBlock)
-          {
-            LogFile.Log(String.Format("Extending parity by {0} blocks for add...", endBlock - parity.MaxBlock));
-            if (!ExtendParity(endBlock))
-            {
-              if (!cancel)
-                FireErrorMessage(String.Format("Unable to extend parity space for {0}.  File will be skipped this update.", fullPath));
-              return false;
-            }
-            LogFile.Log("Parity extended");
-          }
-
-          if (!XORFileWithParity(r, false))
+        // pre-allocate actual needed parity space before even trying to add the file
+        if (endBlock > parity.MaxBlock)
+        {
+          LogFile.Log(String.Format("Extending parity by {0} blocks for add...", endBlock - parity.MaxBlock));
+          if (!ExtendParity(endBlock))
           {
             if (!cancel)
-              // assume FireErrorMessage was already called
-              LogFile.Error("Could not add {0} to parity.  File will be skipped.", r.FullPath);
+              FireErrorMessage(String.Format("Unable to extend parity space for {0}.  File will be skipped this update.", fullPath));
             return false;
           }
+          LogFile.Log("Parity extended");
         }
-        r.Drive.AddFile(r);
-        r.Drive.SaveFileList();
-        success = true;
-      }
-      finally
-      {
-        if (!success)
-          r.Drive.RestoreMetaFile(); // restore the backup filesX.dat created by ExtendMetaFile()
-      }
 
+        if (!XORFileWithParity(drive, r, false))
+        {
+          if (!cancel)
+            // assume FireErrorMessage was already called
+            LogFile.Error("Could not add {0} to parity.  File will be skipped.", r.FullPath);
+          return false;
+        }
+      }
+      drive.AddFile(r);
+        
       return true;
     }
 
@@ -871,95 +860,76 @@ namespace disParity
       return true;
     }
 
-    private bool RemoveFromParity(FileRecord r)
+    private bool RemoveFromParity(DataDrive drive, FileRecord r)
     {
-      // make a backup copy of the meta file first.  If this fails, we know we won't be able to complete the remove. 
-      if (!r.Drive.BackupMetaFile())
+      if (r.Length > 0)
       {
-        FireErrorMessage("Error removing " + r.FullPath + ": could not back up " + r.Drive.MetaFile);
-        return false;
-      }
+        string fullPath = r.FullPath;
+        UInt32 startBlock = r.StartBlock;
+        UInt32 endBlock = startBlock + r.LengthInBlocks;
+        if (LogFile.Verbose)
+          LogFile.Log("Removing {0} from blocks {1} to {2}...", fullPath, startBlock, endBlock - 1);
+        else
+          LogFile.Log("Removing {0}...", fullPath);
 
-      bool success = false;
-      try
-      {
-        if (r.Length > 0)
+        drive.Status = "Removing  " + fullPath;
+
+        // Optimization: if the file still exists and is unmodified, we can remove it much faster this way
+        if (!r.Modified && XORFileWithParity(drive, r, true))
         {
-          string fullPath = r.FullPath;
-          UInt32 startBlock = r.StartBlock;
-          UInt32 endBlock = startBlock + r.LengthInBlocks;
-          if (LogFile.Verbose)
-            LogFile.Log("Removing {0} from blocks {1} to {2}...", fullPath, startBlock, endBlock - 1);
-          else
-            LogFile.Log("Removing {0}...", fullPath);
-
-          r.Drive.Status = "Removing  " + fullPath;
-
-          // Optimization: if the file still exists and is unmodified, we can remove it much faster this way
-          if (!r.Modified && XORFileWithParity(r, true))
-          {
-            r.Drive.RemoveFile(r);
-            r.Drive.SaveFileList();
-            success = true; // so finally() clause doesn't try to restore backup
-            return true;
-          }
-
-          UInt32 totalProgresBlocks = r.LengthInBlocks + (UInt32)(TEMP_FLUSH_PERCENT * r.LengthInBlocks);
-
-          // Recalulate parity from scratch for all blocks that contained the deleted file's data.
-          using (ParityChange change = new ParityChange(parity, Config, startBlock, r.LengthInBlocks))
-            try
-            {
-
-              byte[] data = new byte[Parity.BLOCK_SIZE];
-              for (UInt32 b = startBlock; b < endBlock; b++)
-              {
-                change.Reset(false);
-                foreach (DataDrive d in drives)
-                {
-                  if (d == r.Drive)
-                    continue;
-                  // Note it's possible that this file may also have been deleted. That's OK, ReadFileData 
-                  // returns false and we don't try to add the deleted file to the parity.
-                  FileRecord f;
-                  try
-                  {
-                    if (d.ReadBlock(b, data, out f))
-                      change.AddData(data);
-                  }
-                  catch (Exception e)
-                  {
-                    FireErrorMessage(e.Message);
-                    return false;
-                  }
-                }
-                change.Write();
-                currentUpdateBlocks++;
-                r.Drive.Progress = (double)(b - startBlock) / totalProgresBlocks;
-                Progress = (double)currentUpdateBlocks / totalUpdateBlocks;
-                if (cancel)
-                  return false;
-              }
-
-              FlushTempParity(r.Drive, change);
-
-            }
-            catch (Exception e)
-            {
-              env.LogCrash(e);
-              FireErrorMessage(String.Format("Error removing {0}: {1}", r.FullPath, e.Message));
-              return false;
-            }
+          drive.RemoveFile(r);
+          return true;
         }
-        r.Drive.RemoveFile(r);
-        r.Drive.SaveFileList();
-        success = true;
+
+        UInt32 totalProgresBlocks = r.LengthInBlocks + (UInt32)(TEMP_FLUSH_PERCENT * r.LengthInBlocks);
+
+        // Recalulate parity from scratch for all blocks that contained the deleted file's data.
+        using (ParityChange change = new ParityChange(parity, Config, startBlock, r.LengthInBlocks))
+          try
+          {
+
+            byte[] data = new byte[Parity.BLOCK_SIZE];
+            for (UInt32 b = startBlock; b < endBlock; b++)
+            {
+              change.Reset(false);
+              foreach (DataDrive d in drives)
+              {
+                if (d == drive)
+                  continue;
+                // Note it's possible that this file may also have been deleted. That's OK, ReadFileData 
+                // returns false and we don't try to add the deleted file to the parity.
+                FileRecord f;
+                try
+                {
+                  if (d.ReadBlock(b, data, out f))
+                    change.AddData(data);
+                }
+                catch (Exception e)
+                {
+                  FireErrorMessage(e.Message);
+                  return false;
+                }
+              }
+              change.Write();
+              currentUpdateBlocks++;
+              drive.Progress = (double)(b - startBlock) / totalProgresBlocks;
+              Progress = (double)currentUpdateBlocks / totalUpdateBlocks;
+              if (cancel)
+                return false;
+            }
+
+            FlushTempParity(drive, change);
+
+          }
+          catch (Exception e)
+          {
+            env.LogCrash(e);
+            FireErrorMessage(String.Format("Error removing {0}: {1}", r.FullPath, e.Message));
+            return false;
+          }
       }
-      finally
-      {
-        if (!success)
-          r.Drive.RestoreMetaFile(); // restore the backup filesX.dat created by BackupMetaFile()
-      }
+      drive.RemoveFile(r);
+        
       return true;
     }
 
@@ -995,7 +965,7 @@ namespace disParity
     /// it verifies the file's hash matches the hash on record before commiting the parity.
     /// If false, it updates the file's hash on record.
     /// </summary>
-    private bool XORFileWithParity(FileRecord r, bool checkHash)
+    private bool XORFileWithParity(DataDrive drive, FileRecord r, bool checkHash)
     {
       if (!File.Exists(r.FullPath))
         return false;
@@ -1044,7 +1014,7 @@ namespace disParity
             change.AddData(data);
             change.Write();
             currentUpdateBlocks++;
-            r.Drive.Progress = (double)(b - r.StartBlock) / totalProgresBlocks;
+            drive.Progress = (double)(b - r.StartBlock) / totalProgresBlocks;
             Progress = (double)currentUpdateBlocks / totalUpdateBlocks;
             if (cancel)
               return false;
@@ -1074,9 +1044,9 @@ namespace disParity
         else
           r.HashCode = hash.Hash;
 
-        FlushTempParity(r.Drive, change); // commit the parity change to disk
+        FlushTempParity(drive, change); // commit the parity change to disk
       }
-      r.Drive.Progress = 0;
+      drive.Progress = 0;
       return true;
     }
 

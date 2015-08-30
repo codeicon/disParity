@@ -13,10 +13,8 @@ namespace disParity
     {
       if (path == "")
         return name;
-      if (path[path.Length - 1] == '\\')
-        return path + name;
       else
-        return path + "\\" + name;
+        return Path.Combine(path, name);
     }
 
     public static string StripRoot(string root, string path)
